@@ -166,6 +166,8 @@ function createInitialSeedData(): DatabaseSchema {
     city: 'Santiago del Estero',
     activeOrdersCount: 1,
     totalDriversCount: 1,
+    businessType: 'LOGISTICS',
+    foodEnabled: false,
   };
 
   const initialCompany: Company = {
@@ -177,6 +179,8 @@ function createInitialSeedData(): DatabaseSchema {
     city: 'Buenos Aires',
     activeOrdersCount: 2,
     totalDriversCount: 4,
+    businessType: 'LOGISTICS',
+    foodEnabled: false,
   };
 
   const initialCompany2: Company = {
@@ -188,6 +192,21 @@ function createInitialSeedData(): DatabaseSchema {
     city: 'Buenos Aires',
     activeOrdersCount: 0,
     totalDriversCount: 1,
+    businessType: 'LOGISTICS',
+    foodEnabled: false,
+  };
+
+  const foodCompanyDonPedro: Company = {
+    id: 'comp_food_don_pedro_01',
+    name: 'Hamburguesería Don Pedro',
+    category: 'Gastronomía',
+    address: 'Av. Belgrano 1234, CABA',
+    phone: '+54 9 11 4555-8800',
+    city: 'Buenos Aires',
+    activeOrdersCount: 0,
+    totalDriversCount: 0,
+    businessType: 'FOOD',
+    foodEnabled: true,
   };
 
   const initialUsers: UserRecord[] = [
@@ -587,7 +606,7 @@ function createInitialSeedData(): DatabaseSchema {
 
   const initialFoodStores: FoodStore[] = [
     {
-      companyId: 'comp_centro_logistico_01',
+      companyId: 'comp_food_don_pedro_01',
       foodEnabled: true,
       name: 'Hamburguesería Don Pedro',
       description: 'Las mejores hamburguesas artesanales con carne 100% novillo y papas fritas caseras.',
@@ -616,45 +635,18 @@ function createInitialSeedData(): DatabaseSchema {
       createdAt: Date.now() - 30 * 86400000,
       updatedAt: Date.now(),
     },
-    {
-      companyId: 'comp_ubika_piloto',
-      foodEnabled: true,
-      name: 'Pizzería Ubika Piloto',
-      description: 'Pizzas a la piedra y empanadas tradicionales.',
-      address: 'Calle Corrientes 500, CABA',
-      phone: '+54 9 11 9999-0000',
-      whatsappNumber: '5491199990000',
-      isOpenManual: true,
-      schedule: [
-        { dayOfWeek: 0, openTime: '12:00', closeTime: '00:00', isOpen: true },
-        { dayOfWeek: 1, openTime: '12:00', closeTime: '00:00', isOpen: true },
-        { dayOfWeek: 2, openTime: '12:00', closeTime: '00:00', isOpen: true },
-        { dayOfWeek: 3, openTime: '12:00', closeTime: '00:00', isOpen: true },
-        { dayOfWeek: 4, openTime: '12:00', closeTime: '00:00', isOpen: true },
-        { dayOfWeek: 5, openTime: '12:00', closeTime: '01:00', isOpen: true },
-        { dayOfWeek: 6, openTime: '12:00', closeTime: '01:00', isOpen: true },
-      ],
-      bankInfo: {
-        bankName: 'Mercado Pago',
-        alias: 'PIZZA.UBIKA.MP',
-        cbu: '0000003100088887776655',
-        holderName: 'Pizzería Ubika Demo',
-      },
-      createdAt: Date.now() - 30 * 86400000,
-      updatedAt: Date.now(),
-    },
   ];
 
   const initialFoodCategories: FoodCategory[] = [
-    { id: 'cat_burgers', companyId: 'comp_centro_logistico_01', name: 'HAMBURGUESAS', description: 'Incluyen papas fritas', displayOrder: 1, active: true },
-    { id: 'cat_papas', companyId: 'comp_centro_logistico_01', name: 'PAPAS FRITAS', description: 'Papas caseras corte bastón', displayOrder: 2, active: true },
-    { id: 'cat_bebidas', companyId: 'comp_centro_logistico_01', name: 'BEBIDAS', description: 'Bebidas frías 500ml', displayOrder: 3, active: true },
+    { id: 'cat_burgers', companyId: 'comp_food_don_pedro_01', name: 'HAMBURGUESAS', description: 'Incluyen papas fritas', displayOrder: 1, active: true },
+    { id: 'cat_papas', companyId: 'comp_food_don_pedro_01', name: 'PAPAS FRITAS', description: 'Papas caseras corte bastón', displayOrder: 2, active: true },
+    { id: 'cat_bebidas', companyId: 'comp_food_don_pedro_01', name: 'BEBIDAS', description: 'Bebidas frías 500ml', displayOrder: 3, active: true },
   ];
 
   const initialFoodProducts: FoodProduct[] = [
     {
       id: 'prod_burg_clasica',
-      companyId: 'comp_centro_logistico_01',
+      companyId: 'comp_food_don_pedro_01',
       categoryId: 'cat_burgers',
       name: 'Hamburguesa Clásica',
       description: '180g de medallón novillo, queso cheddar, lechuga, tomate y salsa especial Don Pedro.',
@@ -678,7 +670,7 @@ function createInitialSeedData(): DatabaseSchema {
     },
     {
       id: 'prod_burg_completa',
-      companyId: 'comp_centro_logistico_01',
+      companyId: 'comp_food_don_pedro_01',
       categoryId: 'cat_burgers',
       name: 'Hamburguesa Completa',
       description: 'Doble medallón 360g, cuádruple cheddar, panceta ahumada, huevo frito y cebolla caramelizada.',
@@ -702,7 +694,7 @@ function createInitialSeedData(): DatabaseSchema {
     },
     {
       id: 'prod_papas_clasicas',
-      companyId: 'comp_centro_logistico_01',
+      companyId: 'comp_food_don_pedro_01',
       categoryId: 'cat_papas',
       name: 'Papas Clásicas',
       description: 'Porción generosa de papas bastón crocantes.',
@@ -713,7 +705,7 @@ function createInitialSeedData(): DatabaseSchema {
     },
     {
       id: 'prod_gaseosa',
-      companyId: 'comp_centro_logistico_01',
+      companyId: 'comp_food_don_pedro_01',
       categoryId: 'cat_bebidas',
       name: 'Gaseosa 500ml',
       description: 'Coca-Cola, Sprite o Fanta bien fría.',
@@ -725,7 +717,7 @@ function createInitialSeedData(): DatabaseSchema {
 
   const initialShippingRates: FoodShippingRate[] = [
     {
-      companyId: 'comp_centro_logistico_01',
+      companyId: 'comp_food_don_pedro_01',
       baseFee: 1500,
       includedKm: 2,
       perKmFee: 500,
@@ -734,20 +726,11 @@ function createInitialSeedData(): DatabaseSchema {
       storeLatitude: -34.6037,
       storeLongitude: -58.3816,
     },
-    {
-      companyId: 'comp_ubika_piloto',
-      baseFee: 1200,
-      includedKm: 2,
-      perKmFee: 400,
-      maxDistanceKm: 10,
-      storeLatitude: -34.6080,
-      storeLongitude: -58.3700,
-    },
   ];
 
   return {
-    version: 1,
-    companies: [pilotoCompany, initialCompany, initialCompany2],
+    version: 2,
+    companies: [pilotoCompany, initialCompany, initialCompany2, foodCompanyDonPedro],
     users: initialUsers,
     drivers: initialDrivers,
     deliveries: initialDeliveries,
@@ -760,6 +743,191 @@ function createInitialSeedData(): DatabaseSchema {
     food_shipping_rates: initialShippingRates,
     food_orders: [],
   };
+}
+
+/**
+ * Multi-tenant Food Migration Helper
+ * Ensures comp_centro_logistico_01 and comp_ubika_piloto do not have food stores/products,
+ * and comp_food_don_pedro_01 is properly created and populated.
+ */
+function runFoodMigration(db: DatabaseSchema): boolean {
+  let changed = false;
+
+  // 1. Ensure comp_food_don_pedro_01 exists in companies
+  let donPedroComp = db.companies.find((c) => c.id === 'comp_food_don_pedro_01');
+  if (!donPedroComp) {
+    donPedroComp = {
+      id: 'comp_food_don_pedro_01',
+      name: 'Hamburguesería Don Pedro',
+      category: 'Gastronomía',
+      address: 'Av. Belgrano 1234, CABA',
+      phone: '+54 9 11 4555-8800',
+      city: 'Buenos Aires',
+      activeOrdersCount: 0,
+      totalDriversCount: 0,
+      businessType: 'FOOD',
+      foodEnabled: true,
+    };
+    db.companies.push(donPedroComp);
+    changed = true;
+  } else {
+    if (donPedroComp.businessType !== 'FOOD' || donPedroComp.foodEnabled !== true) {
+      donPedroComp.businessType = 'FOOD';
+      donPedroComp.foodEnabled = true;
+      changed = true;
+    }
+  }
+
+  // Ensure admin user for comp_food_don_pedro_01 exists
+  let donPedroUser = db.users.find((u) => u.companyId === 'comp_food_don_pedro_01');
+  if (!donPedroUser) {
+    const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+    const pwdHash = adminPassword ? bcrypt.hashSync(adminPassword, 10) : '';
+    db.users.push({
+      id: 'usr_don_pedro_01',
+      companyId: 'comp_food_don_pedro_01',
+      name: 'Admin Don Pedro',
+      email: 'donpedro@ubikafood.com',
+      passwordHash: pwdHash,
+      role: 'COMPANY_ADMIN',
+      createdAt: Date.now(),
+      active: true,
+    });
+    changed = true;
+  } else if (!donPedroUser.active) {
+    donPedroUser.active = true;
+    changed = true;
+  }
+
+  // Ensure driver for comp_farma_norte_02 exists
+  if (!db.drivers.some((d) => d.id === 'drv_farma_01')) {
+    db.drivers.push({
+      id: 'drv_farma_01',
+      companyId: 'comp_farma_norte_02',
+      name: 'Esteban Morales',
+      phone: '+54 9 11 4780-1122',
+      email: 'esteban@farmanorte.com',
+      internalId: 'F-01',
+      vehicle: 'moto',
+      status: 'disponible',
+      createdAt: Date.now() - 10 * 86400000,
+      totalDeliveries: 10,
+      rating: 4.8,
+      lastActiveAt: Date.now(),
+      speedKmH: 0,
+    });
+    changed = true;
+  }
+
+  // 2. Ensure logistics companies are businessType: 'LOGISTICS' and foodEnabled: false
+  const centroLogistico = db.companies.find((c) => c.id === 'comp_centro_logistico_01');
+  if (centroLogistico) {
+    if (centroLogistico.businessType !== 'LOGISTICS' || centroLogistico.foodEnabled !== false) {
+      centroLogistico.businessType = 'LOGISTICS';
+      centroLogistico.foodEnabled = false;
+      changed = true;
+    }
+  }
+
+  const ubikaPiloto = db.companies.find((c) => c.id === 'comp_ubika_piloto');
+  if (ubikaPiloto) {
+    if (ubikaPiloto.businessType !== 'LOGISTICS' || ubikaPiloto.foodEnabled !== false) {
+      ubikaPiloto.businessType = 'LOGISTICS';
+      ubikaPiloto.foodEnabled = false;
+      changed = true;
+    }
+  }
+
+  // 3. Ensure food arrays exist
+  db.food_stores = db.food_stores || [];
+  db.food_categories = db.food_categories || [];
+  db.food_products = db.food_products || [];
+  db.food_shipping_rates = db.food_shipping_rates || [];
+  db.food_orders = db.food_orders || [];
+
+  // Reassign Don Pedro food store if assigned to logistics companies
+  for (const store of db.food_stores) {
+    if (store.companyId === 'comp_centro_logistico_01' || store.companyId === 'comp_ubika_piloto') {
+      if (store.name.includes('Don Pedro') || store.name.includes('Hamburguesería')) {
+        store.companyId = 'comp_food_don_pedro_01';
+        store.foodEnabled = true;
+      }
+      changed = true;
+    }
+  }
+
+  // Remove any remaining food store tied to logistics companies
+  const originalStoresLen = db.food_stores.length;
+  db.food_stores = db.food_stores.filter(
+    (s) => s.companyId !== 'comp_centro_logistico_01' && s.companyId !== 'comp_ubika_piloto'
+  );
+  if (db.food_stores.length !== originalStoresLen) changed = true;
+
+  // Reassign categories
+  for (const cat of db.food_categories) {
+    if (cat.companyId === 'comp_centro_logistico_01' || cat.companyId === 'comp_ubika_piloto') {
+      cat.companyId = 'comp_food_don_pedro_01';
+      changed = true;
+    }
+  }
+
+  // Reassign products
+  for (const prod of db.food_products) {
+    if (prod.companyId === 'comp_centro_logistico_01' || prod.companyId === 'comp_ubika_piloto') {
+      prod.companyId = 'comp_food_don_pedro_01';
+      changed = true;
+    }
+  }
+
+  // Reassign shipping rates
+  for (const rate of db.food_shipping_rates) {
+    if (rate.companyId === 'comp_centro_logistico_01' || rate.companyId === 'comp_ubika_piloto') {
+      rate.companyId = 'comp_food_don_pedro_01';
+      changed = true;
+    }
+  }
+
+  // Ensure Don Pedro has store, categories, products, shipping rates
+  const seed = createInitialSeedData();
+  const seedStores = seed.food_stores || [];
+  const seedCategories = seed.food_categories || [];
+  const seedProducts = seed.food_products || [];
+  const seedShippingRates = seed.food_shipping_rates || [];
+
+  if (!db.food_stores.some((s) => s.companyId === 'comp_food_don_pedro_01') && seedStores.length > 0) {
+    db.food_stores.push(seedStores[0]);
+    changed = true;
+  }
+  if (!db.food_categories.some((c) => c.companyId === 'comp_food_don_pedro_01') && seedCategories.length > 0) {
+    db.food_categories.push(...seedCategories);
+    changed = true;
+  }
+  if (!db.food_products.some((p) => p.companyId === 'comp_food_don_pedro_01') && seedProducts.length > 0) {
+    db.food_products.push(...seedProducts);
+    changed = true;
+  }
+  if (!db.food_shipping_rates.some((r) => r.companyId === 'comp_food_don_pedro_01') && seedShippingRates.length > 0) {
+    db.food_shipping_rates.push(...seedShippingRates);
+    changed = true;
+  }
+
+  // Final check: filter out any food entries remaining on logistics companies
+  db.food_categories = db.food_categories.filter(
+    (c) => c.companyId !== 'comp_centro_logistico_01' && c.companyId !== 'comp_ubika_piloto'
+  );
+  db.food_products = db.food_products.filter(
+    (p) => p.companyId !== 'comp_centro_logistico_01' && p.companyId !== 'comp_ubika_piloto'
+  );
+  db.food_shipping_rates = db.food_shipping_rates.filter(
+    (r) => r.companyId !== 'comp_centro_logistico_01' && r.companyId !== 'comp_ubika_piloto'
+  );
+
+  if ((db.version || 1) < 2) {
+    db.version = 2;
+    changed = true;
+  }
+
+  return changed;
 }
 
 /**
@@ -779,9 +947,11 @@ export function loadDatabase(): DatabaseSchema {
         // Ensure piloto test company & drivers exist in development/demo mode
         const seed = createInitialSeedData();
         let changed = false;
-        if (seed.companies.length > 0 && !dbState.companies.some((c) => c.id === 'comp_ubika_piloto')) {
-          dbState.companies.unshift(seed.companies[0]);
-          changed = true;
+        for (const c of seed.companies) {
+          if (!dbState.companies.some((x) => x.id === c.id)) {
+            dbState.companies.push(c);
+            changed = true;
+          }
         }
         for (const u of seed.users) {
           const existingIdx = dbState.users.findIndex((x) => x.id === u.id);
@@ -793,7 +963,7 @@ export function loadDatabase(): DatabaseSchema {
             changed = true;
           }
         }
-        for (const d of seed.drivers.filter((d) => d.companyId === 'comp_ubika_piloto')) {
+        for (const d of seed.drivers) {
           if (!dbState.drivers.some((x) => x.id === d.id)) {
             dbState.drivers.push(d);
             changed = true;
@@ -846,6 +1016,12 @@ export function loadDatabase(): DatabaseSchema {
       dbState.food_products = dbState.food_products || [];
       dbState.food_shipping_rates = dbState.food_shipping_rates || [];
       dbState.food_orders = dbState.food_orders || [];
+
+      // Run Food multi-tenant isolation migration
+      const migrationChanged = runFoodMigration(dbState);
+      if (migrationChanged) {
+        saveDatabaseSync();
+      }
 
       console.log(`[DB] Base de datos persistente cargada con éxito desde ${DB_FILE}`);
       return dbState;

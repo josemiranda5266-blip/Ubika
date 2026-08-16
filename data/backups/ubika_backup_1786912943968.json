@@ -63,7 +63,7 @@
     {
       "id": "usr_admin_piloto",
       "email": "admin@ubikapiloto.com",
-      "passwordHash": "$2b$10$z4osRv1GdVeCw5Lj59IBT.2ZJEfFTqf/4wGWlvbe5OCjznlHFngjm",
+      "passwordHash": "$2b$10$llZ9R7s1aQmrEhxnYMgFKuvHLKY9SBUYc1Zx/ZPRDUXUaezdPZ/l2",
       "name": "ADMIN PILOTO",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_ubika_piloto",
@@ -74,7 +74,7 @@
     {
       "id": "usr_driver_piloto",
       "email": "driver@ubikapiloto.com",
-      "passwordHash": "$2b$10$z4osRv1GdVeCw5Lj59IBT.rtSh0KFho/0/dRBPDDNM70J/U1TEXny",
+      "passwordHash": "$2b$10$llZ9R7s1aQmrEhxnYMgFKuPsbarz5efAf4Qhxfiugv3KOcDy39ZQy",
       "name": "DRIVER PILOTO",
       "role": "DRIVER",
       "companyId": "comp_ubika_piloto",
@@ -86,7 +86,7 @@
     {
       "id": "usr_admin_01",
       "email": "admin@logisticaexpress.com",
-      "passwordHash": "$2b$10$z4osRv1GdVeCw5Lj59IBT.2ZJEfFTqf/4wGWlvbe5OCjznlHFngjm",
+      "passwordHash": "$2b$10$llZ9R7s1aQmrEhxnYMgFKuvHLKY9SBUYc1Zx/ZPRDUXUaezdPZ/l2",
       "name": "Martín Rodríguez (Admin)",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_centro_logistico_01",
@@ -97,7 +97,7 @@
     {
       "id": "usr_dispatcher_01",
       "email": "despacho@logisticaexpress.com",
-      "passwordHash": "$2b$10$z4osRv1GdVeCw5Lj59IBT.2ZJEfFTqf/4wGWlvbe5OCjznlHFngjm",
+      "passwordHash": "$2b$10$llZ9R7s1aQmrEhxnYMgFKuvHLKY9SBUYc1Zx/ZPRDUXUaezdPZ/l2",
       "name": "Carla Méndez (Despachadora)",
       "role": "DISPATCHER",
       "companyId": "comp_centro_logistico_01",
@@ -108,7 +108,7 @@
     {
       "id": "usr_driver_01",
       "email": "driver1@logisticaexpress.com",
-      "passwordHash": "$2b$10$z4osRv1GdVeCw5Lj59IBT.rtSh0KFho/0/dRBPDDNM70J/U1TEXny",
+      "passwordHash": "$2b$10$llZ9R7s1aQmrEhxnYMgFKuPsbarz5efAf4Qhxfiugv3KOcDy39ZQy",
       "name": "Carlos Mendoza",
       "role": "DRIVER",
       "companyId": "comp_centro_logistico_01",
@@ -120,7 +120,7 @@
     {
       "id": "usr_driver_02",
       "email": "driver2@logisticaexpress.com",
-      "passwordHash": "$2b$10$z4osRv1GdVeCw5Lj59IBT.rtSh0KFho/0/dRBPDDNM70J/U1TEXny",
+      "passwordHash": "$2b$10$llZ9R7s1aQmrEhxnYMgFKuPsbarz5efAf4Qhxfiugv3KOcDy39ZQy",
       "name": "Gonzalo Silva",
       "role": "DRIVER",
       "companyId": "comp_centro_logistico_01",
@@ -132,7 +132,7 @@
     {
       "id": "usr_admin_farma_02",
       "email": "admin@farmanorte.com",
-      "passwordHash": "$2b$10$z4osRv1GdVeCw5Lj59IBT.2ZJEfFTqf/4wGWlvbe5OCjznlHFngjm",
+      "passwordHash": "$2b$10$llZ9R7s1aQmrEhxnYMgFKuvHLKY9SBUYc1Zx/ZPRDUXUaezdPZ/l2",
       "name": "Dra. Silvina Ramos",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_farma_norte_02",
@@ -143,7 +143,7 @@
     {
       "id": "usr_driver_farma_02",
       "email": "driver@farmanorte.com",
-      "passwordHash": "$2b$10$z4osRv1GdVeCw5Lj59IBT.rtSh0KFho/0/dRBPDDNM70J/U1TEXny",
+      "passwordHash": "$2b$10$llZ9R7s1aQmrEhxnYMgFKuPsbarz5efAf4Qhxfiugv3KOcDy39ZQy",
       "name": "Roberto Farma Driver",
       "role": "DRIVER",
       "companyId": "comp_farma_norte_02",
@@ -201,7 +201,7 @@
       "vehicle": "moto",
       "status": "disponible",
       "createdAt": 1785616878364,
-      "totalDeliveries": 145,
+      "totalDeliveries": 144,
       "rating": 4.9,
       "lastActiveAt": 1786912878364,
       "speedKmH": 28,
@@ -282,81 +282,6 @@
     }
   ],
   "deliveries": [
-    {
-      "id": "del_1786912948878",
-      "orderNumber": 1006,
-      "companyId": "comp_centro_logistico_01",
-      "driverId": "drv_01",
-      "driverName": "Carlos Mendoza",
-      "driverPhone": "+54 9 11 5555-1234",
-      "driverVehicle": "moto",
-      "recipientPhone": "+54 9 11 3333-2222",
-      "description": "Paquete para validación real de purgado",
-      "paymentMethod": "Efectivo",
-      "priority": "normal",
-      "sessionToken": "tok_live_5952aedcb643c94fb48ee950b03d1e8b",
-      "status": "entregado",
-      "createdAt": 1786912948878,
-      "assignedAt": 1786912948878,
-      "expiresAt": 1786927348878,
-      "driverLocation": {
-        "latitude": -34.6037,
-        "longitude": -58.3816,
-        "accuracy": 8,
-        "updatedAt": 1786912878364,
-        "speed": 28,
-        "heading": 145
-      },
-      "routeHistory": [
-        {
-          "latitude": -34.6037,
-          "longitude": -58.3816,
-          "timestamp": 1786912948878,
-          "speed": 28
-        }
-      ],
-      "privacyPolicyPurged": true,
-      "recipientLocation": null,
-      "authorizedAt": 1786912948888,
-      "distanceMeters": 0,
-      "etaMinutes": 0,
-      "endedAt": 1786912948897
-    },
-    {
-      "id": "del_1786912948871",
-      "orderNumber": 1005,
-      "companyId": "comp_centro_logistico_01",
-      "driverId": "drv_01",
-      "driverName": "Carlos Mendoza",
-      "driverPhone": "+54 9 11 5555-1234",
-      "driverVehicle": "moto",
-      "recipientPhone": "+54 9 11 8888-7777",
-      "description": "Entrega de prueba aislamiento inyección",
-      "paymentMethod": "Efectivo",
-      "priority": "normal",
-      "sessionToken": "tok_live_9b3bbc28c0b140ce3d2d3f425c6fcdec",
-      "status": "asignado",
-      "createdAt": 1786912948871,
-      "assignedAt": 1786912948871,
-      "expiresAt": 1786927348871,
-      "driverLocation": {
-        "latitude": -34.6037,
-        "longitude": -58.3816,
-        "accuracy": 8,
-        "updatedAt": 1786912878364,
-        "speed": 28,
-        "heading": 145
-      },
-      "routeHistory": [
-        {
-          "latitude": -34.6037,
-          "longitude": -58.3816,
-          "timestamp": 1786912948871,
-          "speed": 28
-        }
-      ],
-      "privacyPolicyPurged": false
-    },
     {
       "id": "del_1786912888456",
       "orderNumber": 1004,
@@ -585,190 +510,9 @@
       "createdAt": 1786912878496,
       "expiresAt": 1786912887496,
       "status": "EXPIRED"
-    },
-    {
-      "id": "sess_del_1786912948871",
-      "deliveryId": "del_1786912948871",
-      "companyId": "comp_centro_logistico_01",
-      "sessionTokenHash": "9a6c7c5b1b4aa78bb51d59c889c65139b9e601968a107701aba5dc22d5ca1050",
-      "createdAt": 1786912948871,
-      "expiresAt": 1786927348871,
-      "status": "ACTIVE"
-    },
-    {
-      "id": "sess_del_1786912948878",
-      "deliveryId": "del_1786912948878",
-      "companyId": "comp_centro_logistico_01",
-      "sessionTokenHash": "ae174ba5aeb33a60cfa79766abec7790490492794c5f85abef2fb00b584d5555",
-      "createdAt": 1786912948878,
-      "expiresAt": 1786927348878,
-      "status": "PURGED",
-      "authorizedAt": 1786912948888,
-      "recipientLocation": null,
-      "endedAt": 1786912948897
-    },
-    {
-      "id": "sess_expired_test",
-      "deliveryId": "del_1786912948878",
-      "companyId": "comp_centro_logistico_01",
-      "sessionTokenHash": "4d18b8fb37112584760ab607556be215703d18ab79103c27286f5a3f5f7fb81f",
-      "createdAt": 1786912938920,
-      "expiresAt": 1786912947920,
-      "status": "EXPIRED"
     }
   ],
   "events": [
-    {
-      "id": "ev_1786912948899_y46yq",
-      "companyId": "comp_centro_logistico_01",
-      "deliveryId": "del_1786912948878",
-      "orderNumber": 1006,
-      "type": "DELIVERY_COMPLETED",
-      "description": "Entrega #1006 finalizada con éxito por Carlos Mendoza.",
-      "timestamp": 1786912948899,
-      "author": "Carlos Mendoza",
-      "actorId": "drv_01",
-      "actorRole": "DRIVER"
-    },
-    {
-      "id": "ev_1786912948897_tpeed",
-      "companyId": "comp_centro_logistico_01",
-      "deliveryId": "del_1786912948878",
-      "orderNumber": 1006,
-      "type": "LOCATION_PURGED",
-      "description": "Coordenadas exactas del destinatario purgadas según política de retención de privacidad.",
-      "timestamp": 1786912948897,
-      "author": "Sistema UBIKA",
-      "actorRole": "SYSTEM"
-    },
-    {
-      "id": "ev_1786912948889_g8gu0",
-      "companyId": "comp_centro_logistico_01",
-      "deliveryId": "del_1786912948878",
-      "orderNumber": 1006,
-      "type": "LOCATION_SHARED",
-      "description": "El destinatario autorizó y compartió su posición GPS precisa (Av. Corrientes 1234).",
-      "timestamp": 1786912948889,
-      "author": "Destinatario",
-      "actorRole": "CLIENT"
-    },
-    {
-      "id": "ev_1786912948879_oafl8",
-      "companyId": "comp_centro_logistico_01",
-      "deliveryId": "del_1786912948878",
-      "orderNumber": 1006,
-      "type": "DRIVER_ASSIGNED",
-      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
-      "timestamp": 1786912948879,
-      "author": "Martín Rodríguez (Admin)",
-      "actorId": "usr_admin_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_1786912948879_q4s9m",
-      "companyId": "comp_centro_logistico_01",
-      "deliveryId": "del_1786912948878",
-      "orderNumber": 1006,
-      "type": "DELIVERY_CREATED",
-      "description": "Tarea #1006 creada desde UBIKA CONTROL.",
-      "timestamp": 1786912948879,
-      "author": "Martín Rodríguez (Admin)",
-      "actorId": "usr_admin_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_1786912948873_d1zv4",
-      "companyId": "comp_centro_logistico_01",
-      "deliveryId": "del_1786912948871",
-      "orderNumber": 1005,
-      "type": "DRIVER_ASSIGNED",
-      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
-      "timestamp": 1786912948873,
-      "author": "Martín Rodríguez (Admin)",
-      "actorId": "usr_admin_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_1786912948872_obnnm",
-      "companyId": "comp_centro_logistico_01",
-      "deliveryId": "del_1786912948871",
-      "orderNumber": 1005,
-      "type": "DELIVERY_CREATED",
-      "description": "Tarea #1005 creada desde UBIKA CONTROL.",
-      "timestamp": 1786912948872,
-      "author": "Martín Rodríguez (Admin)",
-      "actorId": "usr_admin_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_pdone_1786912944018",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786912943972_aacic",
-      "orderNumber": 1010,
-      "type": "FOOD_ORDER_PICKED_UP",
-      "description": "Pedido #1010 retirado por el cliente con código validado [3NJ2S].",
-      "timestamp": 1786912944018,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_pready_1786912944010",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786912943972_aacic",
-      "orderNumber": 1010,
-      "type": "FOOD_ORDER_PICKUP_READY",
-      "description": "Pedido #1010 listo para ser retirado en local con código [3NJ2S].",
-      "timestamp": 1786912944010,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_prep_1786912944007",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786912943972_aacic",
-      "orderNumber": 1010,
-      "type": "FOOD_ORDER_PREPARING",
-      "description": "Pedido #1010 puesto en preparación por la cocina.",
-      "timestamp": 1786912944007,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_pay_1786912943990",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786912943972_aacic",
-      "orderNumber": 1010,
-      "type": "FOOD_PAYMENT_PENDING",
-      "description": "El cliente informó haber realizado la transferencia bancaria por 8000 para el pedido #1010. Pendiente de verificación por el comercio.",
-      "timestamp": 1786912943990,
-      "author": "Román Riquelme",
-      "actorRole": "CLIENT"
-    },
-    {
-      "id": "ev_food_1786912943972",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786912943972_aacic",
-      "orderNumber": 1010,
-      "type": "FOOD_ORDER_CREATED",
-      "description": "Nuevo pedido gastronómico #1010 (🏪 Retiro). Total: 8000",
-      "timestamp": 1786912943972,
-      "author": "Román Riquelme",
-      "actorRole": "CLIENT"
-    },
-    {
-      "id": "ev_food_1786912943968",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786912943967_7kwf9",
-      "orderNumber": 1009,
-      "type": "FOOD_ORDER_CREATED",
-      "description": "Nuevo pedido gastronómico #1009 (🛵 Delivery). Total: 17500",
-      "timestamp": 1786912943968,
-      "author": "Martín Palermo",
-      "actorRole": "CLIENT"
-    },
     {
       "id": "ev_1786912888474_awu4o",
       "companyId": "comp_centro_logistico_01",
@@ -1352,37 +1096,6 @@
     }
   ],
   "food_orders": [
-    {
-      "id": "forder_1786912943972_aacic",
-      "orderNumber": 1010,
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryType": "FOOD_PICKUP",
-      "items": [
-        {
-          "productId": "prod_burg_clasica",
-          "productName": "Hamburguesa Clásica",
-          "quantity": 1,
-          "unitPrice": 8000,
-          "selectedOptions": [],
-          "totalPrice": 8000
-        }
-      ],
-      "subtotal": 8000,
-      "shippingCost": 0,
-      "totalAmount": 8000,
-      "recipientName": "Román Riquelme",
-      "recipientPhone": "+5491166667777",
-      "recipientLocation": null,
-      "paymentMethod": "TRANSFER",
-      "paymentStatus": "PROCESSING",
-      "pickupCode": "3NJ2S",
-      "publicTrackingToken": "tr_food_1786912943972_rrahzupf",
-      "orderStatus": "PICKED_UP",
-      "createdAt": 1786912943972,
-      "updatedAt": 1786912944017,
-      "bankTransferReportedAt": 1786912943989,
-      "pickedUpAt": 1786912944017
-    },
     {
       "id": "forder_1786912943967_7kwf9",
       "orderNumber": 1009,

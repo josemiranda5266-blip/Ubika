@@ -252,7 +252,8 @@ async function runAuditSuite() {
     const createdData = (await resCreate.json()) as any;
     assert(
       createdData.companyId === 'comp_centro_logistico_01',
-      'Inyección de companyId en el cuerpo de la solicitud es sobrescrita con el companyId del token verificado'
+      'Inyección de companyId en el cuerpo de la solicitud es sobrescrita con el companyId del token verificado',
+      JSON.stringify(createdData)
     );
 
     // ----------------------------------------------------

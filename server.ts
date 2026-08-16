@@ -32,6 +32,7 @@ import type {
   FoodOrderItemSelection,
   LocationCoords,
 } from "./src/types";
+import { isFoodAuthorizedCompany } from "./src/types";
 
 // Haversine distance calculator
 function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -1283,73 +1284,62 @@ export function createUbikaApp(): express.Express {
   });
 
   // ======================================================
-  // --- UBIKA FOOD ENDPOINTS ---
+  // --- UBIKA FOOD ENDPOINTS & HELPER ---
   // ======================================================
 
-  // 1. PUBLIC STORE DETAILS & MENU (`/api/food/store/:companyId`)
-  app.get("/api/food/store/:companyId", (req: Request, res: Response) => {
-    const { companyId } = req.params;
+  function generatePublicTrackingToken(): string {
+    return `tr_food_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+  }
+
+  function getAuthorizedFoodMerchant(companyId: string): {
+    ok: boolean;
+    status: number;
+    error?: string;
+    company?: Company;
+    store?: FoodStore;
+  } {
+    if (!companyId || typeof companyId !== 'string') {
+      return { ok: false, status: 400, error: 'companyId es requerido y debe ser válido' };
+    }
     const company = db.getCompanyById(companyId);
     if (!company) {
-      return res.status(404).json({ error: "Comercio no encontrado" });
+      return { ok: false, status: 404, error: 'Comercio no encontrado' };
+    }
+    if (!isFoodAuthorizedCompany(company)) {
+      return { ok: false, status: 403, error: 'El comercio no está clasificado como empresa gastronómica (FOOD/HYBRID)' };
+    }
+    if (company.foodEnabled === false) {
+      return { ok: false, status: 403, error: 'El comercio tiene la función FOOD deshabilitada' };
+    }
+    const store = db.getFoodStoreByCompanyId(companyId);
+    if (!store || !store.foodEnabled) {
+      return { ok: false, status: 404, error: 'La tienda gastronómica no está disponible o no existe' };
+    }
+    return { ok: true, status: 200, company, store };
+  }
+
+  // 1. PUBLIC STORE DETAILS & MENU (`GET /api/food/store/:companyId`) - STRICT READ-ONLY
+  app.get("/api/food/store/:companyId", (req: Request, res: Response) => {
+    const { companyId } = req.params;
+    const authCheck = getAuthorizedFoodMerchant(companyId);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status).json({ error: authCheck.error });
     }
 
-    let store = db.getFoodStoreByCompanyId(companyId);
-    if (!store) {
-      store = db.upsertFoodStore({
-        companyId,
-        foodEnabled: true,
-        name: company.name,
-        description: `${company.category} - Tienda Oficial Ubika Food`,
-        address: company.address,
-        phone: company.phone,
-        whatsappNumber: company.phone.replace(/[^0-9]/g, ''),
-        isOpenManual: true,
-        schedule: [
-          { dayOfWeek: 0, openTime: '11:00', closeTime: '01:00', isOpen: true },
-          { dayOfWeek: 1, openTime: '11:00', closeTime: '01:00', isOpen: true },
-          { dayOfWeek: 2, openTime: '11:00', closeTime: '01:00', isOpen: true },
-          { dayOfWeek: 3, openTime: '11:00', closeTime: '01:00', isOpen: true },
-          { dayOfWeek: 4, openTime: '11:00', closeTime: '01:00', isOpen: true },
-          { dayOfWeek: 5, openTime: '11:00', closeTime: '02:00', isOpen: true },
-          { dayOfWeek: 6, openTime: '11:00', closeTime: '02:00', isOpen: true },
-        ],
-        bankInfo: {
-          bankName: 'Mercado Pago / Banco',
-          alias: `${company.name.toUpperCase().replace(/\s+/g, '.')}.UBIKA`,
-          cbu: '0000000000000000000000',
-          holderName: company.name,
-        },
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    }
-
-    if (!store.foodEnabled) {
-      return res.status(403).json({ error: "El comercio no tiene habilitada la venta de comida pública" });
-    }
-
+    const { store } = authCheck;
     const categories = db.getFoodCategoriesByCompanyId(companyId);
     const products = db.getFoodProductsByCompanyId(companyId);
-    let shippingRate = db.getFoodShippingRateByCompanyId(companyId);
+    const shippingRate = db.getFoodShippingRateByCompanyId(companyId);
 
     if (!shippingRate) {
-      shippingRate = db.upsertFoodShippingRate({
-        companyId,
-        baseFee: 1500,
-        includedKm: 2,
-        perKmFee: 500,
-        maxDistanceKm: 12,
-        storeLatitude: -34.6037,
-        storeLongitude: -58.3816,
-      });
+      return res.status(404).json({ error: "Tarifa de envío no configurada para este comercio" });
     }
 
     const now = new Date();
     const currentDay = now.getDay();
-    const daySchedule = store.schedule.find((s) => s.dayOfWeek === currentDay);
+    const daySchedule = store!.schedule.find((s) => s.dayOfWeek === currentDay);
     const isOpenSchedule = daySchedule ? daySchedule.isOpen : true;
-    const isCurrentlyOpen = store.isOpenManual && isOpenSchedule;
+    const isCurrentlyOpen = store!.isOpenManual && isOpenSchedule;
 
     res.json({
       store: {
@@ -1364,9 +1354,18 @@ export function createUbikaApp(): express.Express {
 
   // 2. SHIPPING CALCULATOR (`POST /api/food/calculate-shipping`)
   app.post("/api/food/calculate-shipping", (req: Request, res: Response) => {
-    const { companyId, latitude, longitude } = req.body;
-    if (!companyId || typeof latitude !== 'number' || typeof longitude !== 'number') {
+    const { companyId, latitude, longitude, subtotal } = req.body;
+    if (
+      !companyId ||
+      typeof latitude !== 'number' || latitude < -90 || latitude > 90 || !Number.isFinite(latitude) ||
+      typeof longitude !== 'number' || longitude < -180 || longitude > 180 || !Number.isFinite(longitude)
+    ) {
       return res.status(400).json({ error: "Se requieren companyId, latitude y longitude válidos" });
+    }
+
+    const authCheck = getAuthorizedFoodMerchant(companyId);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status).json({ error: authCheck.error });
     }
 
     const rate = db.getFoodShippingRateByCompanyId(companyId);
@@ -1390,7 +1389,9 @@ export function createUbikaApp(): express.Express {
     }
 
     let shippingCost = rate.baseFee;
-    if (distanceKm > rate.includedKm) {
+    if (rate.freeShippingThreshold && typeof subtotal === 'number' && subtotal >= rate.freeShippingThreshold) {
+      shippingCost = 0;
+    } else if (distanceKm > rate.includedKm) {
       const extraKm = Math.ceil(distanceKm - rate.includedKm);
       shippingCost += extraKm * rate.perKmFee;
     }
@@ -1404,7 +1405,7 @@ export function createUbikaApp(): express.Express {
     });
   });
 
-  // 3. CREATE FOOD ORDER (`POST /api/food/orders`) - STRICT BACKEND RECALCULATION & PAYMENT CHECKS
+  // 3. CREATE FOOD ORDER (`POST /api/food/orders`) - STRICT VALIDATION & SERVER RECALCULATION
   app.post("/api/food/orders", (req: Request, res: Response) => {
     const {
       companyId,
@@ -1431,47 +1432,82 @@ export function createUbikaApp(): express.Express {
       return res.status(400).json({ error: "El pago por transferencia bancaria solo está disponible para pedidos de RETIRO EN LOCAL" });
     }
 
-    const company = db.getCompanyById(companyId);
-    const store = db.getFoodStoreByCompanyId(companyId);
-    if (!company || !store) {
-      return res.status(404).json({ error: "Comercio no encontrado" });
+    const authCheck = getAuthorizedFoodMerchant(companyId);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status).json({ error: authCheck.error });
     }
+    const store = authCheck.store!;
 
     // BACKEND PRICE RECALCULATION & OPTION VALIDATION
     let calculatedSubtotal = 0;
     const processedItems: FoodOrderItem[] = [];
+    const categories = db.getFoodCategoriesByCompanyId(companyId);
 
     for (const rawItem of items) {
       const product = db.getFoodProductById(rawItem.productId);
-      if (!product || product.companyId !== companyId) {
-        return res.status(400).json({ error: `Producto no encontrado o no disponible: ${rawItem.productId}` });
+      if (!product || product.companyId !== companyId || !product.isAvailable) {
+        return res.status(400).json({ error: `Producto no disponible o no pertenece al comercio: ${rawItem.productId}` });
+      }
+
+      // Verify category belongs to companyId
+      const cat = categories.find((c) => c.id === product.categoryId);
+      if (!cat || !cat.active) {
+        return res.status(400).json({ error: `La categoría del producto ${product.name} no está disponible` });
       }
 
       const quantity = Math.max(1, parseInt(rawItem.quantity || 1, 10));
-      let unitPrice = product.price;
+      let selectedOptionsPrice = 0;
       const selectedSelections: FoodOrderItemSelection[] = [];
 
-      // Validate selected options against product optionGroups
-      if (Array.isArray(rawItem.selectedOptions) && product.optionGroups) {
-        for (const selOption of rawItem.selectedOptions) {
-          for (const grp of product.optionGroups) {
-            const matchedOpt = grp.options.find((o) => o.id === (selOption.optionId || selOption));
-            if (matchedOpt) {
-              selectedSelections.push({
-                optionGroupId: grp.id,
-                optionGroupName: grp.name,
-                optionId: matchedOpt.id,
-                optionName: matchedOpt.name,
-                price: matchedOpt.price,
-              });
-              unitPrice += matchedOpt.price;
+      // OptionGroups Validation
+      if (product.optionGroups && product.optionGroups.length > 0) {
+        const rawSelections: any[] = Array.isArray(rawItem.selectedOptions) ? rawItem.selectedOptions : [];
+
+        for (const grp of product.optionGroups) {
+          // Find selections for this group
+          const grpSelections = rawSelections.filter((sel) => {
+            const optId = typeof sel === 'string' ? sel : (sel.optionId || sel.id);
+            return grp.options.some((o) => o.id === optId);
+          });
+
+          if (grp.required && (grp.minSelections || 1) >= 1 && grpSelections.length < (grp.minSelections || 1)) {
+            return res.status(400).json({
+              error: `Debe seleccionar al menos ${grp.minSelections || 1} opción(es) en "${grp.name}" para el producto ${product.name}`,
+            });
+          }
+
+          if (grp.minSelections && grpSelections.length < grp.minSelections) {
+            return res.status(400).json({
+              error: `El grupo "${grp.name}" requiere un mínimo de ${grp.minSelections} selecciones`,
+            });
+          }
+
+          if (grp.maxSelections && grpSelections.length > grp.maxSelections) {
+            return res.status(400).json({
+              error: `El grupo "${grp.name}" permite un máximo de ${grp.maxSelections} selecciones`,
+            });
+          }
+
+          for (const sel of grpSelections) {
+            const optId = typeof sel === 'string' ? sel : (sel.optionId || sel.id);
+            const matchedOpt = grp.options.find((o) => o.id === optId);
+            if (!matchedOpt) {
+              return res.status(400).json({ error: `Opción no válida [${optId}] para el producto ${product.name}` });
             }
+            selectedSelections.push({
+              optionGroupId: grp.id,
+              optionGroupName: grp.name,
+              optionId: matchedOpt.id,
+              optionName: matchedOpt.name,
+              price: matchedOpt.price,
+            });
+            selectedOptionsPrice += matchedOpt.price;
           }
         }
       }
 
-      const itemTotal = unitPrice * quantity;
-      calculatedSubtotal += itemTotal;
+      const itemTotalPrice = (product.price + selectedOptionsPrice) * quantity;
+      calculatedSubtotal += itemTotalPrice;
 
       processedItems.push({
         productId: product.id,
@@ -1480,7 +1516,7 @@ export function createUbikaApp(): express.Express {
         unitPrice: product.price,
         selectedOptions: selectedSelections,
         itemNotes: rawItem.itemNotes ? String(rawItem.itemNotes).slice(0, 200) : undefined,
-        totalPrice: itemTotal,
+        totalPrice: itemTotalPrice,
       });
     }
 
@@ -1488,8 +1524,12 @@ export function createUbikaApp(): express.Express {
     let validatedCoords: LocationCoords | null = null;
 
     if (deliveryType === 'FOOD_DELIVERY') {
-      if (!recipientLocation || typeof recipientLocation.latitude !== 'number' || typeof recipientLocation.longitude !== 'number') {
-        return res.status(400).json({ error: "Se requiere la ubicación GPS para pedidos de Delivery" });
+      if (
+        !recipientLocation ||
+        typeof recipientLocation.latitude !== 'number' || recipientLocation.latitude < -90 || recipientLocation.latitude > 90 || !Number.isFinite(recipientLocation.latitude) ||
+        typeof recipientLocation.longitude !== 'number' || recipientLocation.longitude < -180 || recipientLocation.longitude > 180 || !Number.isFinite(recipientLocation.longitude)
+      ) {
+        return res.status(400).json({ error: "Se requiere la ubicación GPS válida para pedidos de Delivery" });
       }
 
       validatedCoords = {
@@ -1501,24 +1541,30 @@ export function createUbikaApp(): express.Express {
       };
 
       const rate = db.getFoodShippingRateByCompanyId(companyId);
-      if (rate) {
-        const distanceKm = calculateHaversineDistanceKm(
-          rate.storeLatitude,
-          rate.storeLongitude,
-          validatedCoords.latitude,
-          validatedCoords.longitude
-        );
+      if (!rate) {
+        return res.status(404).json({ error: "Tarifa de envío no configurada para este comercio" });
+      }
 
-        if (rate.freeShippingThreshold && calculatedSubtotal >= rate.freeShippingThreshold) {
-          calculatedShippingCost = 0;
-        } else if (distanceKm <= rate.includedKm) {
-          calculatedShippingCost = rate.baseFee;
-        } else {
-          const extraKm = Math.ceil(distanceKm - rate.includedKm);
-          calculatedShippingCost = rate.baseFee + extraKm * rate.perKmFee;
-        }
+      const distanceKm = calculateHaversineDistanceKm(
+        rate.storeLatitude,
+        rate.storeLongitude,
+        validatedCoords.latitude,
+        validatedCoords.longitude
+      );
+
+      if (rate.maxDistanceKm && distanceKm > rate.maxDistanceKm) {
+        return res.status(400).json({
+          error: `La ubicación supera la distancia máxima de entrega (${rate.maxDistanceKm} km)`,
+        });
+      }
+
+      if (rate.freeShippingThreshold && calculatedSubtotal >= rate.freeShippingThreshold) {
+        calculatedShippingCost = 0;
+      } else if (distanceKm <= rate.includedKm) {
+        calculatedShippingCost = rate.baseFee;
       } else {
-        calculatedShippingCost = 1500;
+        const extraKm = Math.ceil(distanceKm - rate.includedKm);
+        calculatedShippingCost = rate.baseFee + extraKm * rate.perKmFee;
       }
     }
 
@@ -1528,8 +1574,8 @@ export function createUbikaApp(): express.Express {
     const existingOrders = db.getFoodOrdersByCompanyId(companyId);
     const nextOrderNum = existingOrders.length > 0 ? Math.max(...existingOrders.map((o) => o.orderNumber)) + 1 : 1001;
 
-    // Pickup Code generation for FOOD_PICKUP
     const pickupCode = deliveryType === 'FOOD_PICKUP' ? generatePickupCode() : undefined;
+    const publicTrackingToken = generatePublicTrackingToken();
 
     const newOrder: FoodOrder = {
       id: `forder_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
@@ -1548,6 +1594,7 @@ export function createUbikaApp(): express.Express {
       paymentMethod: paymentMethod || (deliveryType === 'FOOD_PICKUP' ? 'TRANSFER' : 'CASH'),
       paymentStatus: 'PENDING',
       pickupCode,
+      publicTrackingToken,
       orderStatus: 'PENDING',
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -1562,7 +1609,7 @@ export function createUbikaApp(): express.Express {
       deliveryId: newOrder.id,
       orderNumber: newOrder.orderNumber,
       type: 'FOOD_ORDER_CREATED',
-      description: `Nuevo pedido gastronómico #${newOrder.orderNumber} (${deliveryType === 'FOOD_DELIVERY' ? '🛵 Delivery' : '🏪 Retiro'}). Total: $${calculatedTotal}`,
+      description: `Nuevo pedido gastronómico #${newOrder.orderNumber} (${deliveryType === 'FOOD_DELIVERY' ? '🛵 Delivery' : '🏪 Retiro'}). Total: ${calculatedTotal}`,
       timestamp: Date.now(),
       author: recipientName,
       actorRole: 'CLIENT',
@@ -1571,15 +1618,22 @@ export function createUbikaApp(): express.Express {
     res.status(201).json({
       order: newOrder,
       storeBankInfo: deliveryType === 'FOOD_PICKUP' ? store.bankInfo : null,
+      publicTrackingToken,
     });
   });
 
-  // 4. PUBLIC ORDER STATUS CHECK (`GET /api/food/orders/public/:orderId`)
+  // 4. PUBLIC ORDER STATUS CHECK (`GET /api/food/orders/public/:orderId`) - SECURED WITH TOKEN
   app.get("/api/food/orders/public/:orderId", (req: Request, res: Response) => {
     const { orderId } = req.params;
+    const token = req.query.token as string;
+
     const order = db.getFoodOrderById(orderId);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    if (!token || order.publicTrackingToken !== token) {
+      return res.status(403).json({ error: "Token de seguimiento público inválido o no proporcionado" });
     }
 
     const store = db.getFoodStoreByCompanyId(order.companyId);
@@ -1603,9 +1657,10 @@ export function createUbikaApp(): express.Express {
       generalNotes: order.generalNotes,
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
-      pickupCode: order.pickupCode,
+      // NOTE: pickupCode MUST NOT be leaked in public tracking response
       orderStatus: order.orderStatus,
       deliveryId: order.deliveryId,
+      publicTrackingToken: order.publicTrackingToken,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     });
@@ -1614,13 +1669,23 @@ export function createUbikaApp(): express.Express {
   // 5. REPORT TRANSFER FOR PICKUP (`POST /api/food/orders/public/:orderId/report-transfer`)
   app.post("/api/food/orders/public/:orderId/report-transfer", (req: Request, res: Response) => {
     const { orderId } = req.params;
+    const token = (req.query.token || req.body.token) as string;
+
     const order = db.getFoodOrderById(orderId);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
 
+    if (!token || order.publicTrackingToken !== token) {
+      return res.status(403).json({ error: "Token de seguimiento público inválido o no proporcionado" });
+    }
+
     if (order.deliveryType !== 'FOOD_PICKUP') {
       return res.status(400).json({ error: "El reporte de transferencia solo aplica a pedidos de retiro" });
+    }
+
+    if (['PICKED_UP', 'CANCELLED'].includes(order.orderStatus)) {
+      return res.status(409).json({ error: "El pedido ya no se encuentra activo para reportar pagos" });
     }
 
     const updated = db.updateFoodOrder(order.id, {
@@ -1634,7 +1699,7 @@ export function createUbikaApp(): express.Express {
       deliveryId: order.id,
       orderNumber: order.orderNumber,
       type: 'FOOD_PAYMENT_PENDING',
-      description: `El cliente informó haber realizado la transferencia bancaria por $${order.totalAmount} para el pedido #${order.orderNumber}. Pendiente de verificación por el comercio.`,
+      description: `El cliente informó haber realizado la transferencia bancaria por ${order.totalAmount} para el pedido #${order.orderNumber}. Pendiente de verificación por el comercio.`,
       timestamp: Date.now(),
       author: order.recipientName,
       actorRole: 'CLIENT',
@@ -1651,7 +1716,7 @@ export function createUbikaApp(): express.Express {
     res.json(orders);
   });
 
-  // UPDATE ORDER STATUS (`PATCH /api/food/orders/:orderId/status`)
+  // UPDATE ORDER STATUS (`PATCH /api/food/orders/:orderId/status`) - STRICT STATE MACHINE & DRIVER ISOLATION
   app.patch("/api/food/orders/:orderId/status", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { orderId } = req.params;
     const { orderStatus, paymentStatus, driverId } = req.body;
@@ -1665,8 +1730,70 @@ export function createUbikaApp(): express.Express {
       return res.status(403).json({ error: "Acceso denegado a pedido de otra empresa" });
     }
 
+    // Direct transition to PICKED_UP is forbidden via PATCH
+    if (orderStatus === 'PICKED_UP') {
+      return res.status(409).json({
+        error: "El retiro de pedidos solo puede realizarse mediante la validación del código de retiro en /api/food/orders/:orderId/pickup",
+      });
+    }
+
+    // Validate Driver Belonging to Same Company
+    if (driverId) {
+      const driver = db.getDriverById(driverId);
+      if (!driver) {
+        return res.status(404).json({ error: "Repartidor no encontrado" });
+      }
+      if (driver.companyId !== order.companyId) {
+        return res.status(403).json({ error: "El repartidor pertenece a otra empresa" });
+      }
+    }
+
+    let targetStatus = orderStatus;
+    if (targetStatus === 'READY' && order.deliveryType === 'FOOD_PICKUP') {
+      targetStatus = 'READY_FOR_PICKUP';
+    }
+
+    // Strict State Machine Validation
+    if (targetStatus && targetStatus !== order.orderStatus) {
+      const current = order.orderStatus;
+      let isValidTransition = false;
+
+      if (targetStatus === 'CANCELLED') {
+        isValidTransition = true;
+      } else {
+        switch (current) {
+          case 'PENDING':
+            isValidTransition = targetStatus === 'PREPARING';
+            break;
+          case 'PREPARING':
+            isValidTransition = order.deliveryType === 'FOOD_DELIVERY' ? targetStatus === 'READY' : targetStatus === 'READY_FOR_PICKUP';
+            break;
+          case 'READY':
+            isValidTransition = targetStatus === 'ASSIGNED' || targetStatus === 'IN_TRANSIT' || targetStatus === 'DELIVERED';
+            break;
+          case 'ASSIGNED':
+            isValidTransition = targetStatus === 'IN_TRANSIT' || targetStatus === 'DELIVERED';
+            break;
+          case 'IN_TRANSIT':
+            isValidTransition = targetStatus === 'DELIVERED';
+            break;
+          case 'READY_FOR_PICKUP':
+            isValidTransition = false; // Only via /pickup
+            break;
+          default:
+            isValidTransition = false;
+        }
+      }
+
+      if (!isValidTransition) {
+        return res.status(409).json({
+          error: `Transición de estado no válida desde [${current}] hacia [${targetStatus}]`,
+        });
+      }
+    }
+
     const updates: Partial<FoodOrder> = {};
-    if (orderStatus) updates.orderStatus = orderStatus;
+    if (targetStatus) updates.orderStatus = targetStatus;
     if (paymentStatus) updates.paymentStatus = paymentStatus;
 
     if (orderStatus === 'PREPARING') {
@@ -1705,7 +1832,7 @@ export function createUbikaApp(): express.Express {
             recipientName: order.recipientName,
             description: `🍔 Pedido Food #${order.orderNumber}: ${itemsSummary}`,
             instructions: order.generalNotes || 'Entregar en dirección del cliente',
-            amount: `$${order.totalAmount}`,
+            amount: `${order.totalAmount}`,
             paymentMethod: order.paymentMethod === 'TRANSFER' ? 'Transferencia / MP' : 'Efectivo',
             priority: 'normal',
             sessionToken,
@@ -1768,23 +1895,6 @@ export function createUbikaApp(): express.Express {
       }
     }
 
-    if (orderStatus === 'PICKED_UP') {
-      updates.orderStatus = 'PICKED_UP';
-      updates.paymentStatus = 'APPROVED';
-      db.createEvent({
-        id: `ev_pdone_${Date.now()}`,
-        companyId: order.companyId,
-        deliveryId: order.id,
-        orderNumber: order.orderNumber,
-        type: 'FOOD_ORDER_PICKED_UP',
-        description: `Pedido #${order.orderNumber} retirado por el cliente con código [${order.pickupCode}].`,
-        timestamp: Date.now(),
-        author: req.user!.email,
-        actorId: req.user!.userId,
-        actorRole: req.user!.role,
-      });
-    }
-
     if (paymentStatus === 'APPROVED') {
       db.createEvent({
         id: `ev_pappr_${Date.now()}`,
@@ -1804,9 +1914,62 @@ export function createUbikaApp(): express.Express {
     res.json(updated);
   });
 
-  // GET / UPDATE STORE CONFIG, CATEGORIES, PRODUCTS, RATES
+  // DEDICATED PICKUP VERIFICATION (`POST /api/food/orders/:orderId/pickup`)
+  app.post("/api/food/orders/:orderId/pickup", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const { orderId } = req.params;
+    const { pickupCode } = req.body;
+
+    const order = db.getFoodOrderById(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    if (order.companyId !== req.user!.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a pedido de otra empresa" });
+    }
+
+    if (order.deliveryType !== 'FOOD_PICKUP') {
+      return res.status(409).json({ error: "El pedido no es de tipo retiro en local" });
+    }
+
+    if (order.orderStatus !== 'READY_FOR_PICKUP') {
+      return res.status(409).json({ error: "El pedido no se encuentra en estado listo para retiro" });
+    }
+
+    if (!pickupCode || typeof pickupCode !== 'string' || pickupCode.trim().toUpperCase() !== (order.pickupCode || '').toUpperCase()) {
+      return res.status(400).json({ error: "Código de retiro incorrecto o inválido" });
+    }
+
+    const updated = db.updateFoodOrder(order.id, {
+      orderStatus: 'PICKED_UP',
+      pickedUpAt: Date.now(),
+    });
+
+    db.createEvent({
+      id: `ev_pdone_${Date.now()}`,
+      companyId: order.companyId,
+      deliveryId: order.id,
+      orderNumber: order.orderNumber,
+      type: 'FOOD_ORDER_PICKED_UP',
+      description: `Pedido #${order.orderNumber} retirado por el cliente con código validado [${order.pickupCode}].`,
+      timestamp: Date.now(),
+      author: req.user!.email,
+      actorId: req.user!.userId,
+      actorRole: req.user!.role,
+    });
+
+    res.json(updated);
+  });
+
+  // GET MERCHANT STORE CONFIG (`GET /api/food/store/config`)
   app.get("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
+
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Empresa no autorizada para operar módulo FOOD" });
+    }
+
     const store = db.getFoodStoreByCompanyId(companyId);
     const categories = db.getFoodCategoriesByCompanyId(companyId);
     const products = db.getFoodProductsByCompanyId(companyId);
@@ -1820,19 +1983,25 @@ export function createUbikaApp(): express.Express {
     });
   });
 
+  // UPDATE MERCHANT STORE CONFIG (`PUT /api/food/store/config`)
   app.put("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const companyId = req.user!.companyId;
     const company = db.getCompanyById(companyId);
+
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Empresa de logística no autorizada para operar o configurar tienda gastronómica" });
+    }
+
     const { name, description, address, phone, whatsappNumber, isOpenManual, schedule, bankInfo, foodEnabled } = req.body;
 
     const existing = db.getFoodStoreByCompanyId(companyId);
     const updatedStore = db.upsertFoodStore({
       companyId,
       foodEnabled: foodEnabled !== undefined ? Boolean(foodEnabled) : true,
-      name: name || company?.name || 'Comercio Food',
+      name: name || company.name || 'Comercio Food',
       description: description || 'Tienda gastronómica',
-      address: address || company?.address || '',
-      phone: phone || company?.phone || '',
+      address: address || company.address || '',
+      phone: phone || company.phone || '',
       whatsappNumber: whatsappNumber || phone || '',
       isOpenManual: isOpenManual !== undefined ? Boolean(isOpenManual) : true,
       schedule: Array.isArray(schedule) ? schedule : existing?.schedule || [],
@@ -1847,6 +2016,11 @@ export function createUbikaApp(): express.Express {
   // CATEGORIES CRUD
   app.post("/api/food/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado para administrar menú gastronómico" });
+    }
+
     const { name, description, displayOrder } = req.body;
     if (!name) return res.status(400).json({ error: "El nombre de categoría es obligatorio" });
 
@@ -1864,24 +2038,38 @@ export function createUbikaApp(): express.Express {
 
   app.put("/api/food/categories/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
+    const existing = db.getFoodCategoriesByCompanyId(req.user!.companyId).find((c) => c.id === id);
+    if (!existing) return res.status(404).json({ error: "Categoría no encontrada o no pertenece a su empresa" });
+
     const updated = db.updateFoodCategory(id, req.body);
-    if (!updated) return res.status(404).json({ error: "Categoría no encontrada" });
     res.json(updated);
   });
 
   app.delete("/api/food/categories/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const deleted = db.deleteFoodCategory(id);
-    if (!deleted) return res.status(404).json({ error: "Categoría no encontrada" });
+    const existing = db.getFoodCategoriesByCompanyId(req.user!.companyId).find((c) => c.id === id);
+    if (!existing) return res.status(404).json({ error: "Categoría no encontrada o no pertenece a su empresa" });
+
+    db.deleteFoodCategory(id);
     res.json({ success: true });
   });
 
   // PRODUCTS CRUD
   app.post("/api/food/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado para administrar productos gastronómicos" });
+    }
+
     const { categoryId, name, description, price, imageUrl, isAvailable, displayOrder, optionGroups } = req.body;
     if (!categoryId || !name || typeof price !== 'number') {
       return res.status(400).json({ error: "categoryId, name y price numérico son obligatorios" });
+    }
+
+    const category = db.getFoodCategoriesByCompanyId(companyId).find((c) => c.id === categoryId);
+    if (!category) {
+      return res.status(400).json({ error: "Categoría no encontrada o pertenece a otra empresa" });
     }
 
     const newProd: FoodProduct = {
@@ -1903,32 +2091,52 @@ export function createUbikaApp(): express.Express {
 
   app.put("/api/food/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
+    const existing = db.getFoodProductsByCompanyId(req.user!.companyId).find((p) => p.id === id);
+    if (!existing) return res.status(404).json({ error: "Producto no encontrado o no pertenece a su empresa" });
+
     const updated = db.updateFoodProduct(id, req.body);
-    if (!updated) return res.status(404).json({ error: "Producto no encontrado" });
     res.json(updated);
   });
 
   app.delete("/api/food/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.params;
-    const deleted = db.deleteFoodProduct(id);
-    if (!deleted) return res.status(404).json({ error: "Producto no encontrado" });
+    const existing = db.getFoodProductsByCompanyId(req.user!.companyId).find((p) => p.id === id);
+    if (!existing) return res.status(404).json({ error: "Producto no encontrado o no pertenece a su empresa" });
+
+    db.deleteFoodProduct(id);
     res.json({ success: true });
   });
 
   // SHIPPING RATE CONFIG
   app.put("/api/food/shipping-rate", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado para configurar tarifas gastronómicas" });
+    }
+
     const { baseFee, includedKm, perKmFee, maxDistanceKm, freeShippingThreshold, storeLatitude, storeLongitude } = req.body;
+
+    if (
+      typeof baseFee !== 'number' || baseFee < 0 ||
+      typeof includedKm !== 'number' || includedKm < 0 ||
+      typeof perKmFee !== 'number' || perKmFee < 0 ||
+      typeof maxDistanceKm !== 'number' || maxDistanceKm <= 0 ||
+      typeof storeLatitude !== 'number' || storeLatitude < -90 || storeLatitude > 90 || !Number.isFinite(storeLatitude) ||
+      typeof storeLongitude !== 'number' || storeLongitude < -180 || storeLongitude > 180 || !Number.isFinite(storeLongitude)
+    ) {
+      return res.status(400).json({ error: "Valores numéricos de tarifa o coordenadas de la tienda inválidos" });
+    }
 
     const rate = db.upsertFoodShippingRate({
       companyId,
-      baseFee: typeof baseFee === 'number' ? Math.max(0, baseFee) : 1500,
-      includedKm: typeof includedKm === 'number' ? Math.max(0, includedKm) : 2,
-      perKmFee: typeof perKmFee === 'number' ? Math.max(0, perKmFee) : 500,
-      maxDistanceKm: typeof maxDistanceKm === 'number' ? Math.max(1, maxDistanceKm) : 15,
-      freeShippingThreshold: typeof freeShippingThreshold === 'number' ? freeShippingThreshold : null,
-      storeLatitude: typeof storeLatitude === 'number' ? storeLatitude : -34.6037,
-      storeLongitude: typeof storeLongitude === 'number' ? storeLongitude : -58.3816,
+      baseFee: Math.max(0, baseFee),
+      includedKm: Math.max(0, includedKm),
+      perKmFee: Math.max(0, perKmFee),
+      maxDistanceKm: Math.max(1, maxDistanceKm),
+      freeShippingThreshold: typeof freeShippingThreshold === 'number' && freeShippingThreshold >= 0 ? freeShippingThreshold : null,
+      storeLatitude,
+      storeLongitude,
     });
 
     res.json(rate);

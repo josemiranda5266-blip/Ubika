@@ -13,7 +13,7 @@ import { Smartphone, Globe, LayoutDashboard, Building2, Truck, Shield, Utensils 
 export default function App() {
   const [viewMode, setViewMode] = useState<'control' | 'driver' | 'customer' | 'food'>('control');
   const [customerToken, setCustomerToken] = useState<string>('tok_demo_demo842');
-  const [foodCompanyId, setFoodCompanyId] = useState<string>('comp_centro_logistico_01');
+  const [foodCompanyId, setFoodCompanyId] = useState<string>('comp_food_don_pedro_01');
   const [foodOrderId, setFoodOrderId] = useState<string | undefined>(undefined);
 
   // Detect hash changes or URL params for #track/:token, #food/company/:companyId, #food/order/:orderId

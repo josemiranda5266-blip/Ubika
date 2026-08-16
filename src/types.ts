@@ -52,12 +52,21 @@ export interface RoutePoint {
 export interface Company {
   id: string;
   name: string;
-  category: 'Restaurante / Comidas' | 'Farmacia / Salud' | 'Mensajería y Cadetería' | 'Servicios Técnicos' | 'Supermercado / Almacén' | 'Distribuidora';
+  category: 'Restaurante / Comidas' | 'Farmacia / Salud' | 'Mensajería y Cadetería' | 'Servicios Técnicos' | 'Supermercado / Almacén' | 'Distribuidora' | 'Gastronomía';
   address: string;
   phone: string;
   city: string;
   activeOrdersCount: number;
   totalDriversCount: number;
+  businessType?: 'LOGISTICS' | 'FOOD' | 'HYBRID';
+  foodEnabled?: boolean;
+}
+
+export function isFoodAuthorizedCompany(company?: Company | null): boolean {
+  if (!company) return false;
+  if (company.foodEnabled === false) return false;
+  const bType = company.businessType || (company.category === 'Gastronomía' || company.category === 'Restaurante / Comidas' ? 'FOOD' : 'LOGISTICS');
+  return bType === 'FOOD' || bType === 'HYBRID';
 }
 
 export interface Driver {
@@ -306,6 +315,10 @@ export interface FoodOrder {
   
   // Pickup Reservation Code
   pickupCode?: string; // Unique 5-char code for pickup verification e.g. "A7K29"
+  pickedUpAt?: number;
+  
+  // Security Tracking Token for public URLs
+  publicTrackingToken?: string;
   
   // Core Logistics Task Link
   deliveryId?: string | null;
