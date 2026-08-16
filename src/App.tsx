@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { DriverApp } from './components/DriverApp';
 import { CustomerWebApp } from './components/CustomerWebApp';
 import { UbikaControl } from './components/control/UbikaControl';
-import { FoodCustomerView } from './components/food/FoodCustomerView';
+import { UbikaFoodApp } from './components/food/UbikaFoodApp';
 import { Smartphone, Globe, LayoutDashboard, Building2, Truck, Shield, Utensils } from 'lucide-react';
 
 export default function App() {
@@ -16,7 +16,7 @@ export default function App() {
   const [foodCompanyId, setFoodCompanyId] = useState<string>('comp_food_don_pedro_01');
   const [foodOrderId, setFoodOrderId] = useState<string | undefined>(undefined);
 
-  // Detect hash changes or URL params for #track/:token, #food/company/:companyId, #food/order/:orderId
+  // Detect hash changes or URL params for #track/:token, #food, #food/admin, #food/company/:companyId, #food/order/:orderId
   useEffect(() => {
     const checkHash = () => {
       const hash = window.location.hash;
@@ -29,23 +29,16 @@ export default function App() {
         }
       }
 
-      if (hash.startsWith('#food/company/')) {
-        const companyId = hash.replace('#food/company/', '');
-        if (companyId) {
-          setFoodCompanyId(companyId);
-          setFoodOrderId(undefined);
-          setViewMode('food');
-          return;
+      if (hash === '#food' || hash === '#food/admin' || hash.startsWith('#food/')) {
+        setViewMode('food');
+        if (hash.startsWith('#food/company/')) {
+          const companyId = hash.replace('#food/company/', '');
+          if (companyId) setFoodCompanyId(companyId);
+        } else if (hash.startsWith('#food/order/')) {
+          const orderId = hash.replace('#food/order/', '');
+          if (orderId) setFoodOrderId(orderId);
         }
-      }
-
-      if (hash.startsWith('#food/order/')) {
-        const orderId = hash.replace('#food/order/', '');
-        if (orderId) {
-          setFoodOrderId(orderId);
-          setViewMode('food');
-          return;
-        }
+        return;
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -149,7 +142,7 @@ export default function App() {
             id="app-mode-food"
             type="button"
             onClick={() => {
-              window.location.hash = `#food/company/${foodCompanyId}`;
+              window.location.hash = '#food/admin';
               setViewMode('food');
             }}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
@@ -172,10 +165,11 @@ export default function App() {
           <CustomerWebApp token={customerToken} onBackToDriver={handleBackToDriver} />
         )}
         {viewMode === 'food' && (
-          <FoodCustomerView
-            companyId={foodCompanyId}
-            orderIdParam={foodOrderId}
-            onBackToApp={handleBackToControl}
+          <UbikaFoodApp
+            initialCompanyId={foodCompanyId}
+            initialOrderId={foodOrderId}
+            initialViewMode="merchant"
+            onBackToControl={handleBackToControl}
           />
         )}
       </div>

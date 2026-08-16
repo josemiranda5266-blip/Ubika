@@ -210,8 +210,14 @@ export interface FoodCategory {
   companyId: string;
   name: string;
   description?: string;
+  imageUrl?: string;
+  icon?: string;
   displayOrder: number;
+  sortOrder?: number;
   active: boolean;
+  isActive?: boolean;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface FoodOption {

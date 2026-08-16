@@ -824,6 +824,26 @@ function runFoodMigration(db: DatabaseSchema): boolean {
     changed = true;
   }
 
+  // Ensure driver for comp_food_don_pedro_01 exists
+  if (!db.drivers.some((d) => d.id === 'drv_don_pedro_01')) {
+    db.drivers.push({
+      id: 'drv_don_pedro_01',
+      companyId: 'comp_food_don_pedro_01',
+      name: 'Cadete Pedro Jr',
+      phone: '+54 9 11 8888-9999',
+      email: 'pedrojr@ubikafood.com',
+      internalId: 'DP-01',
+      vehicle: 'moto',
+      status: 'disponible',
+      createdAt: Date.now() - 5 * 86400000,
+      totalDeliveries: 15,
+      rating: 5.0,
+      lastActiveAt: Date.now(),
+      speedKmH: 0,
+    });
+    changed = true;
+  }
+
   // 2. Ensure logistics companies are businessType: 'LOGISTICS' and foodEnabled: false
   for (const c of db.companies) {
     if (!c.businessType) {
@@ -926,6 +946,39 @@ function runFoodMigration(db: DatabaseSchema): boolean {
   }
   if (!db.food_shipping_rates.some((r) => r.companyId === 'comp_food_don_pedro_01') && seedShippingRates.length > 0) {
     db.food_shipping_rates.push(...seedShippingRates);
+    changed = true;
+  }
+
+  // Ensure Order #1075 exists for comp_food_don_pedro_01
+  if (!db.food_orders.some((o) => o.orderNumber === 1075)) {
+    db.food_orders.push({
+      id: 'forder_1075_dp_seed',
+      orderNumber: 1075,
+      companyId: 'comp_food_don_pedro_01',
+      deliveryType: 'FOOD_PICKUP',
+      items: [
+        {
+          productId: 'prod_burg_clasica',
+          productName: 'Hamburguesa Clásica',
+          quantity: 1,
+          unitPrice: 8000,
+          selectedOptions: [],
+          totalPrice: 8000,
+        },
+      ],
+      subtotal: 8000,
+      shippingCost: 0,
+      totalAmount: 8000,
+      recipientName: 'Lucas Morales',
+      recipientPhone: '+54 9 11 5555-1075',
+      paymentMethod: 'CASH',
+      paymentStatus: 'PENDING',
+      pickupCode: 'DP107',
+      publicTrackingToken: 'tr_food_demo_1075_don_pedro',
+      orderStatus: 'PENDING',
+      createdAt: Date.now() - 3600000,
+      updatedAt: Date.now() - 3600000,
+    });
     changed = true;
   }
 
@@ -1240,19 +1293,35 @@ export const db = {
   getFoodCategoriesByCompanyId: (companyId: string): FoodCategory[] => {
     return (dbState.food_categories || [])
       .filter((c) => c.companyId === companyId)
-      .sort((a, b) => a.displayOrder - b.displayOrder);
+      .sort((a, b) => {
+        const orderA = a.displayOrder ?? a.sortOrder ?? 999;
+        const orderB = b.displayOrder ?? b.sortOrder ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      });
   },
   createFoodCategory: (category: FoodCategory): FoodCategory => {
     if (!dbState.food_categories) dbState.food_categories = [];
-    dbState.food_categories.push(category);
+    const newCategory: FoodCategory = {
+      ...category,
+      displayOrder: category.displayOrder ?? category.sortOrder ?? 1,
+      active: category.active !== undefined ? category.active : (category.isActive !== undefined ? category.isActive : true),
+      createdAt: category.createdAt || Date.now(),
+      updatedAt: Date.now(),
+    };
+    dbState.food_categories.push(newCategory);
     saveDatabaseSync();
-    return category;
+    return newCategory;
   },
   updateFoodCategory: (id: string, updates: Partial<FoodCategory>): FoodCategory | null => {
     if (!dbState.food_categories) return null;
     const idx = dbState.food_categories.findIndex((c) => c.id === id);
     if (idx === -1) return null;
-    dbState.food_categories[idx] = { ...dbState.food_categories[idx], ...updates };
+    dbState.food_categories[idx] = {
+      ...dbState.food_categories[idx],
+      ...updates,
+      updatedAt: Date.now(),
+    };
     saveDatabaseSync();
     return dbState.food_categories[idx];
   },

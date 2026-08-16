@@ -236,8 +236,17 @@ export function createUbikaApp(): express.Express {
       return res.status(403).json({ error: "Sesiones demo deshabilitadas en producción" });
     }
     const role = (req.body.role || 'COMPANY_ADMIN') as UserRole;
+    const requestedCompanyId = req.body.companyId as string | undefined;
     const users = db.getRawState().users || [];
-    const user = users.find((u) => u.role === role && u.active) || users.find((u) => u.active);
+    
+    let user = requestedCompanyId
+      ? users.find((u) => u.active && u.companyId === requestedCompanyId && u.role === role) ||
+        users.find((u) => u.active && u.companyId === requestedCompanyId)
+      : undefined;
+
+    if (!user) {
+      user = users.find((u) => u.role === role && u.active) || users.find((u) => u.active);
+    }
 
     if (!user) {
       return res.status(404).json({ error: "Usuario de prueba no encontrado" });
@@ -1342,6 +1351,81 @@ export function createUbikaApp(): express.Express {
     return { ok: true, status: 200, company, store };
   }
 
+  // 0. LIST ALL AVAILABLE FOOD STORES (`GET /api/food/stores`)
+  app.get("/api/food/stores", (_req: Request, res: Response) => {
+    const companies = db.getAllCompanies().filter((c) => isFoodAuthorizedCompany(c) && c.foodEnabled !== false);
+    const stores = companies.map((c) => {
+      const store = db.getFoodStoreByCompanyId(c.id);
+      return {
+        companyId: c.id,
+        name: store?.name || c.name,
+        description: store?.description || '',
+        address: store?.address || c.address,
+        phone: store?.phone || c.phone,
+        whatsappNumber: store?.whatsappNumber || store?.phone || c.phone,
+        isOpenManual: store ? store.isOpenManual : true,
+        category: c.category || 'Gastronomía',
+      };
+    });
+    res.json(stores);
+  });
+
+  // GET MERCHANT STORE CONFIG (`GET /api/food/store/config`) - MUST BE DEFINED BEFORE :companyId
+  app.get("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
+
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Empresa no autorizada para operar módulo FOOD" });
+    }
+
+    const store = db.getFoodStoreByCompanyId(companyId);
+    const categories = db.getFoodCategoriesByCompanyId(companyId);
+    const products = db.getFoodProductsByCompanyId(companyId);
+    const shippingRate = db.getFoodShippingRateByCompanyId(companyId);
+
+    res.json({
+      store: store || null,
+      categories,
+      products,
+      shippingRate: shippingRate || null,
+    });
+  });
+
+  // UPDATE MERCHANT STORE CONFIG (`PUT /api/food/store/config`) - MUST BE DEFINED BEFORE :companyId
+  app.put("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (!isAuthorizedFoodAdmin(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para administrar la tienda" });
+    }
+
+    const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
+
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Empresa de logística no autorizada para operar o configurar tienda gastronómica" });
+    }
+
+    const { name, description, address, phone, whatsappNumber, isOpenManual, schedule, bankInfo, foodEnabled } = req.body;
+
+    const existing = db.getFoodStoreByCompanyId(companyId);
+    const updatedStore = db.upsertFoodStore({
+      companyId,
+      foodEnabled: foodEnabled !== undefined ? Boolean(foodEnabled) : true,
+      name: name || company.name || 'Comercio Food',
+      description: description || 'Tienda gastronómica',
+      address: address || company.address || '',
+      phone: phone || company.phone || '',
+      whatsappNumber: whatsappNumber || phone || '',
+      isOpenManual: isOpenManual !== undefined ? Boolean(isOpenManual) : true,
+      schedule: Array.isArray(schedule) ? schedule : existing?.schedule || [],
+      bankInfo: bankInfo || existing?.bankInfo || { bankName: '', alias: '', cbu: '', holderName: '' },
+      createdAt: existing ? existing.createdAt : Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    res.json(updatedStore);
+  });
+
   // 1. PUBLIC STORE DETAILS & MENU (`GET /api/food/store/:companyId`) - STRICT READ-ONLY
   app.get("/api/food/store/:companyId", (req: Request, res: Response) => {
     const { companyId } = req.params;
@@ -2108,63 +2192,33 @@ export function createUbikaApp(): express.Express {
     res.json(updated);
   });
 
-  // GET MERCHANT STORE CONFIG (`GET /api/food/store/config`)
-  app.get("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+  // CATEGORIES CRUD - DYNAMIC MULTI-TENANT CATEGORIES
+  app.get("/api/food/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (!isAuthorizedFoodOrderStatusMerchant(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para consultar categorías" });
+    }
     const companyId = req.user!.companyId;
     const company = db.getCompanyById(companyId);
-
     if (!company || !isFoodAuthorizedCompany(company)) {
-      return res.status(403).json({ error: "Empresa no autorizada para operar módulo FOOD" });
+      return res.status(403).json({ error: "Comercio no autorizado para operar módulo gastronómico" });
     }
-
-    const store = db.getFoodStoreByCompanyId(companyId);
     const categories = db.getFoodCategoriesByCompanyId(companyId);
-    const products = db.getFoodProductsByCompanyId(companyId);
-    const shippingRate = db.getFoodShippingRateByCompanyId(companyId);
-
-    res.json({
-      store: store || null,
-      categories,
-      products,
-      shippingRate: shippingRate || null,
-    });
+    res.json(categories);
   });
 
-  // UPDATE MERCHANT STORE CONFIG (`PUT /api/food/store/config`)
-  app.put("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodAdmin(req)) {
-      return res.status(403).json({ error: "Rol no autorizado para administrar la tienda" });
+  app.get("/api/food/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (!isAuthorizedFoodOrderStatusMerchant(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para consultar productos" });
     }
-
     const companyId = req.user!.companyId;
     const company = db.getCompanyById(companyId);
-
     if (!company || !isFoodAuthorizedCompany(company)) {
-      return res.status(403).json({ error: "Empresa de logística no autorizada para operar o configurar tienda gastronómica" });
+      return res.status(403).json({ error: "Comercio no autorizado para operar módulo gastronómico" });
     }
-
-    const { name, description, address, phone, whatsappNumber, isOpenManual, schedule, bankInfo, foodEnabled } = req.body;
-
-    const existing = db.getFoodStoreByCompanyId(companyId);
-    const updatedStore = db.upsertFoodStore({
-      companyId,
-      foodEnabled: foodEnabled !== undefined ? Boolean(foodEnabled) : true,
-      name: name || company.name || 'Comercio Food',
-      description: description || 'Tienda gastronómica',
-      address: address || company.address || '',
-      phone: phone || company.phone || '',
-      whatsappNumber: whatsappNumber || phone || '',
-      isOpenManual: isOpenManual !== undefined ? Boolean(isOpenManual) : true,
-      schedule: Array.isArray(schedule) ? schedule : existing?.schedule || [],
-      bankInfo: bankInfo || existing?.bankInfo || { bankName: '', alias: '', cbu: '', holderName: '' },
-      createdAt: existing ? existing.createdAt : Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    res.json(updatedStore);
+    const products = db.getFoodProductsByCompanyId(companyId);
+    res.json(products);
   });
 
-  // CATEGORIES CRUD
   app.post("/api/food/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar categorías" });
@@ -2175,17 +2229,35 @@ export function createUbikaApp(): express.Express {
       return res.status(403).json({ error: "Comercio no autorizado para administrar menú gastronómico" });
     }
 
-    const { name, description, displayOrder } = req.body;
-    if (!name) return res.status(400).json({ error: "El nombre de categoría es obligatorio" });
+    const { name, description, imageUrl, icon, displayOrder, sortOrder, active, isActive } = req.body;
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+    if (!trimmedName) {
+      return res.status(400).json({ error: "El nombre de la categoría es obligatorio" });
+    }
+
+    // Tenant-isolated unique category name validation
+    const existingCats = db.getFoodCategoriesByCompanyId(companyId);
+    const isDuplicate = existingCats.some((c) => c.name.trim().toLowerCase() === trimmedName.toLowerCase());
+    if (isDuplicate) {
+      return res.status(400).json({ error: `Ya existe una categoría con el nombre "${trimmedName}" en este comercio` });
+    }
+
+    const effectiveOrder = typeof displayOrder === 'number' ? displayOrder : (typeof sortOrder === 'number' ? sortOrder : existingCats.length + 1);
+    const effectiveActive = active !== undefined ? Boolean(active) : (isActive !== undefined ? Boolean(isActive) : true);
 
     const newCat: FoodCategory = {
       id: `fcat_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       companyId,
-      name,
-      description,
-      displayOrder: typeof displayOrder === 'number' ? displayOrder : 1,
-      active: true,
+      name: trimmedName,
+      description: typeof description === 'string' ? description.trim() : '',
+      imageUrl: typeof imageUrl === 'string' ? imageUrl.trim() : undefined,
+      icon: typeof icon === 'string' ? icon.trim() : undefined,
+      displayOrder: effectiveOrder,
+      active: effectiveActive,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
+
     db.createFoodCategory(newCat);
     res.status(201).json(newCat);
   });
@@ -2194,16 +2266,56 @@ export function createUbikaApp(): express.Express {
     if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar categorías" });
     }
-    const company = db.getCompanyById(req.user!.companyId);
+    const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
     if (!company || !isFoodAuthorizedCompany(company)) {
       return res.status(403).json({ error: "Comercio no autorizado para administrar menú gastronómico" });
     }
 
     const { id } = req.params;
-    const existing = db.getFoodCategoriesByCompanyId(req.user!.companyId).find((c) => c.id === id);
-    if (!existing) return res.status(404).json({ error: "Categoría no encontrada o no pertenece a su empresa" });
+    const existingCats = db.getFoodCategoriesByCompanyId(companyId);
+    const existing = existingCats.find((c) => c.id === id);
+    if (!existing) {
+      return res.status(404).json({ error: "Categoría no encontrada o no pertenece a su empresa" });
+    }
 
-    const updated = db.updateFoodCategory(id, req.body);
+    const updates: Partial<FoodCategory> = {};
+
+    if (req.body.name !== undefined) {
+      const trimmedName = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+      if (!trimmedName) {
+        return res.status(400).json({ error: "El nombre de la categoría no puede estar vacío" });
+      }
+      const isDuplicate = existingCats.some(
+        (c) => c.id !== id && c.name.trim().toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (isDuplicate) {
+        return res.status(400).json({ error: `Ya existe otra categoría con el nombre "${trimmedName}" en este comercio` });
+      }
+      updates.name = trimmedName;
+    }
+
+    if (req.body.description !== undefined) {
+      updates.description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
+    }
+    if (req.body.imageUrl !== undefined) {
+      updates.imageUrl = req.body.imageUrl;
+    }
+    if (req.body.icon !== undefined) {
+      updates.icon = req.body.icon;
+    }
+    if (req.body.displayOrder !== undefined) {
+      updates.displayOrder = typeof req.body.displayOrder === 'number' ? req.body.displayOrder : existing.displayOrder;
+    } else if (req.body.sortOrder !== undefined) {
+      updates.displayOrder = typeof req.body.sortOrder === 'number' ? req.body.sortOrder : existing.displayOrder;
+    }
+    if (req.body.active !== undefined) {
+      updates.active = Boolean(req.body.active);
+    } else if (req.body.isActive !== undefined) {
+      updates.active = Boolean(req.body.isActive);
+    }
+
+    const updated = db.updateFoodCategory(id, updates);
     res.json(updated);
   });
 
@@ -2211,20 +2323,32 @@ export function createUbikaApp(): express.Express {
     if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar categorías" });
     }
-    const company = db.getCompanyById(req.user!.companyId);
+    const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
     if (!company || !isFoodAuthorizedCompany(company)) {
       return res.status(403).json({ error: "Comercio no autorizado para administrar menú gastronómico" });
     }
 
     const { id } = req.params;
-    const existing = db.getFoodCategoriesByCompanyId(req.user!.companyId).find((c) => c.id === id);
-    if (!existing) return res.status(404).json({ error: "Categoría no encontrada o no pertenece a su empresa" });
+    const existing = db.getFoodCategoriesByCompanyId(companyId).find((c) => c.id === id);
+    if (!existing) {
+      return res.status(404).json({ error: "Categoría no encontrada o no pertenece a su empresa" });
+    }
+
+    // Safe deletion check: prevent deleting if products are associated
+    const associatedProducts = db.getFoodProductsByCompanyId(companyId).filter((p) => p.categoryId === id);
+    if (associatedProducts.length > 0) {
+      return res.status(400).json({
+        error: `No se puede eliminar esta categoría porque tiene ${associatedProducts.length} producto(s) asociado(s). Podés desactivarla para ocultarla del menú.`,
+        associatedProductsCount: associatedProducts.length,
+      });
+    }
 
     db.deleteFoodCategory(id);
-    res.json({ success: true });
+    res.json({ success: true, message: "Categoría eliminada exitosamente" });
   });
 
-  // PRODUCTS CRUD
+  // PRODUCTS CRUD - DYNAMIC MULTI-TENANT PRODUCTS
   app.post("/api/food/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
@@ -2236,21 +2360,23 @@ export function createUbikaApp(): express.Express {
     }
 
     const { categoryId, name, description, price, imageUrl, isAvailable, displayOrder, optionGroups } = req.body;
-    if (!categoryId || !name || typeof price !== 'number') {
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+    if (!categoryId || !trimmedName || typeof price !== 'number') {
       return res.status(400).json({ error: "categoryId, name y price numérico son obligatorios" });
     }
 
+    // Strict tenant isolation on category
     const category = db.getFoodCategoriesByCompanyId(companyId).find((c) => c.id === categoryId);
     if (!category) {
-      return res.status(400).json({ error: "Categoría no encontrada o pertenece a otra empresa" });
+      return res.status(400).json({ error: "La categoría seleccionada no existe o no pertenece a su comercio" });
     }
 
     const newProd: FoodProduct = {
       id: `fprod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       companyId,
       categoryId,
-      name,
-      description: description || '',
+      name: trimmedName,
+      description: typeof description === 'string' ? description.trim() : '',
       price: Math.max(0, price),
       imageUrl,
       isAvailable: isAvailable !== undefined ? Boolean(isAvailable) : true,
@@ -2266,14 +2392,25 @@ export function createUbikaApp(): express.Express {
     if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
     }
-    const company = db.getCompanyById(req.user!.companyId);
+    const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
     if (!company || !isFoodAuthorizedCompany(company)) {
       return res.status(403).json({ error: "Comercio no autorizado para administrar productos gastronómicos" });
     }
 
     const { id } = req.params;
-    const existing = db.getFoodProductsByCompanyId(req.user!.companyId).find((p) => p.id === id);
-    if (!existing) return res.status(404).json({ error: "Producto no encontrado o no pertenece a su empresa" });
+    const existing = db.getFoodProductsByCompanyId(companyId).find((p) => p.id === id);
+    if (!existing) {
+      return res.status(404).json({ error: "Producto no encontrado o no pertenece a su empresa" });
+    }
+
+    // If updating categoryId, ensure it belongs to this company
+    if (req.body.categoryId && req.body.categoryId !== existing.categoryId) {
+      const category = db.getFoodCategoriesByCompanyId(companyId).find((c) => c.id === req.body.categoryId);
+      if (!category) {
+        return res.status(400).json({ error: "La categoría seleccionada no existe o no pertenece a su comercio" });
+      }
+    }
 
     const updated = db.updateFoodProduct(id, req.body);
     res.json(updated);
