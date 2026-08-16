@@ -23,6 +23,14 @@ import type {
   DeliveryEvent,
   DashboardMetrics,
   RoutePoint,
+  FoodStore,
+  FoodCategory,
+  FoodProduct,
+  FoodShippingRate,
+  FoodOrder,
+  FoodOrderItem,
+  FoodOrderItemSelection,
+  LocationCoords,
 } from "./src/types";
 
 // Haversine distance calculator
@@ -39,6 +47,22 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return Math.round(R * c);
+}
+
+// Distance in KM
+function calculateHaversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const meters = calculateDistanceMeters(lat1, lon1, lat2, lon2);
+  return Math.round((meters / 1000) * 100) / 100;
+}
+
+// Generate 5-character uppercase pickup code (e.g., A7K29)
+function generatePickupCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 5; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
 }
 
 // Estimate ETA in minutes
@@ -1256,6 +1280,658 @@ export function createUbikaApp(): express.Express {
 
     db.updateSession(session.id, { status: 'CANCELLED', endedAt: Date.now() });
     res.json({ success: true, message: "Ubicación rechazada" });
+  });
+
+  // ======================================================
+  // --- UBIKA FOOD ENDPOINTS ---
+  // ======================================================
+
+  // 1. PUBLIC STORE DETAILS & MENU (`/api/food/store/:companyId`)
+  app.get("/api/food/store/:companyId", (req: Request, res: Response) => {
+    const { companyId } = req.params;
+    const company = db.getCompanyById(companyId);
+    if (!company) {
+      return res.status(404).json({ error: "Comercio no encontrado" });
+    }
+
+    let store = db.getFoodStoreByCompanyId(companyId);
+    if (!store) {
+      store = db.upsertFoodStore({
+        companyId,
+        foodEnabled: true,
+        name: company.name,
+        description: `${company.category} - Tienda Oficial Ubika Food`,
+        address: company.address,
+        phone: company.phone,
+        whatsappNumber: company.phone.replace(/[^0-9]/g, ''),
+        isOpenManual: true,
+        schedule: [
+          { dayOfWeek: 0, openTime: '11:00', closeTime: '01:00', isOpen: true },
+          { dayOfWeek: 1, openTime: '11:00', closeTime: '01:00', isOpen: true },
+          { dayOfWeek: 2, openTime: '11:00', closeTime: '01:00', isOpen: true },
+          { dayOfWeek: 3, openTime: '11:00', closeTime: '01:00', isOpen: true },
+          { dayOfWeek: 4, openTime: '11:00', closeTime: '01:00', isOpen: true },
+          { dayOfWeek: 5, openTime: '11:00', closeTime: '02:00', isOpen: true },
+          { dayOfWeek: 6, openTime: '11:00', closeTime: '02:00', isOpen: true },
+        ],
+        bankInfo: {
+          bankName: 'Mercado Pago / Banco',
+          alias: `${company.name.toUpperCase().replace(/\s+/g, '.')}.UBIKA`,
+          cbu: '0000000000000000000000',
+          holderName: company.name,
+        },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
+
+    if (!store.foodEnabled) {
+      return res.status(403).json({ error: "El comercio no tiene habilitada la venta de comida pública" });
+    }
+
+    const categories = db.getFoodCategoriesByCompanyId(companyId);
+    const products = db.getFoodProductsByCompanyId(companyId);
+    let shippingRate = db.getFoodShippingRateByCompanyId(companyId);
+
+    if (!shippingRate) {
+      shippingRate = db.upsertFoodShippingRate({
+        companyId,
+        baseFee: 1500,
+        includedKm: 2,
+        perKmFee: 500,
+        maxDistanceKm: 12,
+        storeLatitude: -34.6037,
+        storeLongitude: -58.3816,
+      });
+    }
+
+    const now = new Date();
+    const currentDay = now.getDay();
+    const daySchedule = store.schedule.find((s) => s.dayOfWeek === currentDay);
+    const isOpenSchedule = daySchedule ? daySchedule.isOpen : true;
+    const isCurrentlyOpen = store.isOpenManual && isOpenSchedule;
+
+    res.json({
+      store: {
+        ...store,
+        isOpen: isCurrentlyOpen,
+      },
+      categories: categories.filter((c) => c.active),
+      products: products.filter((p) => p.isAvailable),
+      shippingRate,
+    });
+  });
+
+  // 2. SHIPPING CALCULATOR (`POST /api/food/calculate-shipping`)
+  app.post("/api/food/calculate-shipping", (req: Request, res: Response) => {
+    const { companyId, latitude, longitude } = req.body;
+    if (!companyId || typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ error: "Se requieren companyId, latitude y longitude válidos" });
+    }
+
+    const rate = db.getFoodShippingRateByCompanyId(companyId);
+    if (!rate) {
+      return res.status(404).json({ error: "Tarifa de envío no configurada para este comercio" });
+    }
+
+    const distanceKm = calculateHaversineDistanceKm(
+      rate.storeLatitude,
+      rate.storeLongitude,
+      latitude,
+      longitude
+    );
+
+    if (rate.maxDistanceKm && distanceKm > rate.maxDistanceKm) {
+      return res.status(400).json({
+        error: `La ubicación está a ${distanceKm} km, superando el límite máximo de entrega de ${rate.maxDistanceKm} km`,
+        outOfRange: true,
+        distanceKm,
+      });
+    }
+
+    let shippingCost = rate.baseFee;
+    if (distanceKm > rate.includedKm) {
+      const extraKm = Math.ceil(distanceKm - rate.includedKm);
+      shippingCost += extraKm * rate.perKmFee;
+    }
+
+    res.json({
+      distanceKm,
+      shippingCost,
+      baseFee: rate.baseFee,
+      includedKm: rate.includedKm,
+      perKmFee: rate.perKmFee,
+    });
+  });
+
+  // 3. CREATE FOOD ORDER (`POST /api/food/orders`) - STRICT BACKEND RECALCULATION & PAYMENT CHECKS
+  app.post("/api/food/orders", (req: Request, res: Response) => {
+    const {
+      companyId,
+      deliveryType,
+      items,
+      recipientName,
+      recipientPhone,
+      generalNotes,
+      deliveryAddress,
+      recipientLocation,
+      paymentMethod,
+    } = req.body;
+
+    if (!companyId || !deliveryType || !Array.isArray(items) || items.length === 0 || !recipientName || !recipientPhone) {
+      return res.status(400).json({ error: "Faltan datos obligatorios para crear el pedido" });
+    }
+
+    if (deliveryType !== 'FOOD_DELIVERY' && deliveryType !== 'FOOD_PICKUP') {
+      return res.status(400).json({ error: "Tipo de entrega no válido (debe ser FOOD_DELIVERY o FOOD_PICKUP)" });
+    }
+
+    // STRICT PAYMENT RULE: Transfer is NOT allowed for FOOD_DELIVERY
+    if (deliveryType === 'FOOD_DELIVERY' && paymentMethod === 'TRANSFER') {
+      return res.status(400).json({ error: "El pago por transferencia bancaria solo está disponible para pedidos de RETIRO EN LOCAL" });
+    }
+
+    const company = db.getCompanyById(companyId);
+    const store = db.getFoodStoreByCompanyId(companyId);
+    if (!company || !store) {
+      return res.status(404).json({ error: "Comercio no encontrado" });
+    }
+
+    // BACKEND PRICE RECALCULATION & OPTION VALIDATION
+    let calculatedSubtotal = 0;
+    const processedItems: FoodOrderItem[] = [];
+
+    for (const rawItem of items) {
+      const product = db.getFoodProductById(rawItem.productId);
+      if (!product || product.companyId !== companyId) {
+        return res.status(400).json({ error: `Producto no encontrado o no disponible: ${rawItem.productId}` });
+      }
+
+      const quantity = Math.max(1, parseInt(rawItem.quantity || 1, 10));
+      let unitPrice = product.price;
+      const selectedSelections: FoodOrderItemSelection[] = [];
+
+      // Validate selected options against product optionGroups
+      if (Array.isArray(rawItem.selectedOptions) && product.optionGroups) {
+        for (const selOption of rawItem.selectedOptions) {
+          for (const grp of product.optionGroups) {
+            const matchedOpt = grp.options.find((o) => o.id === (selOption.optionId || selOption));
+            if (matchedOpt) {
+              selectedSelections.push({
+                optionGroupId: grp.id,
+                optionGroupName: grp.name,
+                optionId: matchedOpt.id,
+                optionName: matchedOpt.name,
+                price: matchedOpt.price,
+              });
+              unitPrice += matchedOpt.price;
+            }
+          }
+        }
+      }
+
+      const itemTotal = unitPrice * quantity;
+      calculatedSubtotal += itemTotal;
+
+      processedItems.push({
+        productId: product.id,
+        productName: product.name,
+        quantity,
+        unitPrice: product.price,
+        selectedOptions: selectedSelections,
+        itemNotes: rawItem.itemNotes ? String(rawItem.itemNotes).slice(0, 200) : undefined,
+        totalPrice: itemTotal,
+      });
+    }
+
+    let calculatedShippingCost = 0;
+    let validatedCoords: LocationCoords | null = null;
+
+    if (deliveryType === 'FOOD_DELIVERY') {
+      if (!recipientLocation || typeof recipientLocation.latitude !== 'number' || typeof recipientLocation.longitude !== 'number') {
+        return res.status(400).json({ error: "Se requiere la ubicación GPS para pedidos de Delivery" });
+      }
+
+      validatedCoords = {
+        latitude: recipientLocation.latitude,
+        longitude: recipientLocation.longitude,
+        accuracy: recipientLocation.accuracy || 10,
+        updatedAt: Date.now(),
+        addressHint: deliveryAddress || 'Ubicación seleccionada en mapa',
+      };
+
+      const rate = db.getFoodShippingRateByCompanyId(companyId);
+      if (rate) {
+        const distanceKm = calculateHaversineDistanceKm(
+          rate.storeLatitude,
+          rate.storeLongitude,
+          validatedCoords.latitude,
+          validatedCoords.longitude
+        );
+
+        if (rate.freeShippingThreshold && calculatedSubtotal >= rate.freeShippingThreshold) {
+          calculatedShippingCost = 0;
+        } else if (distanceKm <= rate.includedKm) {
+          calculatedShippingCost = rate.baseFee;
+        } else {
+          const extraKm = Math.ceil(distanceKm - rate.includedKm);
+          calculatedShippingCost = rate.baseFee + extraKm * rate.perKmFee;
+        }
+      } else {
+        calculatedShippingCost = 1500;
+      }
+    }
+
+    const calculatedTotal = calculatedSubtotal + calculatedShippingCost;
+
+    // Incremental Order Number
+    const existingOrders = db.getFoodOrdersByCompanyId(companyId);
+    const nextOrderNum = existingOrders.length > 0 ? Math.max(...existingOrders.map((o) => o.orderNumber)) + 1 : 1001;
+
+    // Pickup Code generation for FOOD_PICKUP
+    const pickupCode = deliveryType === 'FOOD_PICKUP' ? generatePickupCode() : undefined;
+
+    const newOrder: FoodOrder = {
+      id: `forder_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      orderNumber: nextOrderNum,
+      companyId,
+      deliveryType,
+      items: processedItems,
+      subtotal: calculatedSubtotal,
+      shippingCost: calculatedShippingCost,
+      totalAmount: calculatedTotal,
+      recipientName,
+      recipientPhone,
+      generalNotes,
+      deliveryAddress,
+      recipientLocation: validatedCoords,
+      paymentMethod: paymentMethod || (deliveryType === 'FOOD_PICKUP' ? 'TRANSFER' : 'CASH'),
+      paymentStatus: 'PENDING',
+      pickupCode,
+      orderStatus: 'PENDING',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    db.createFoodOrder(newOrder);
+
+    // Audit Event
+    db.createEvent({
+      id: `ev_food_${Date.now()}`,
+      companyId,
+      deliveryId: newOrder.id,
+      orderNumber: newOrder.orderNumber,
+      type: 'FOOD_ORDER_CREATED',
+      description: `Nuevo pedido gastronómico #${newOrder.orderNumber} (${deliveryType === 'FOOD_DELIVERY' ? '🛵 Delivery' : '🏪 Retiro'}). Total: $${calculatedTotal}`,
+      timestamp: Date.now(),
+      author: recipientName,
+      actorRole: 'CLIENT',
+    });
+
+    res.status(201).json({
+      order: newOrder,
+      storeBankInfo: deliveryType === 'FOOD_PICKUP' ? store.bankInfo : null,
+    });
+  });
+
+  // 4. PUBLIC ORDER STATUS CHECK (`GET /api/food/orders/public/:orderId`)
+  app.get("/api/food/orders/public/:orderId", (req: Request, res: Response) => {
+    const { orderId } = req.params;
+    const order = db.getFoodOrderById(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    const store = db.getFoodStoreByCompanyId(order.companyId);
+    const maskedPhone = order.recipientPhone.replace(/(\d{3})\d{4}(\d{2})/, "$1****$2");
+
+    res.json({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      companyId: order.companyId,
+      storeName: store?.name || 'Comercio Ubika',
+      storeAddress: store?.address || '',
+      storePhone: store?.phone || '',
+      storeBankInfo: order.deliveryType === 'FOOD_PICKUP' ? store?.bankInfo : null,
+      deliveryType: order.deliveryType,
+      items: order.items,
+      subtotal: order.subtotal,
+      shippingCost: order.shippingCost,
+      totalAmount: order.totalAmount,
+      recipientName: order.recipientName,
+      recipientPhoneMasked: maskedPhone,
+      generalNotes: order.generalNotes,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      pickupCode: order.pickupCode,
+      orderStatus: order.orderStatus,
+      deliveryId: order.deliveryId,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+    });
+  });
+
+  // 5. REPORT TRANSFER FOR PICKUP (`POST /api/food/orders/public/:orderId/report-transfer`)
+  app.post("/api/food/orders/public/:orderId/report-transfer", (req: Request, res: Response) => {
+    const { orderId } = req.params;
+    const order = db.getFoodOrderById(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    if (order.deliveryType !== 'FOOD_PICKUP') {
+      return res.status(400).json({ error: "El reporte de transferencia solo aplica a pedidos de retiro" });
+    }
+
+    const updated = db.updateFoodOrder(order.id, {
+      paymentStatus: 'PROCESSING',
+      bankTransferReportedAt: Date.now(),
+    });
+
+    db.createEvent({
+      id: `ev_pay_${Date.now()}`,
+      companyId: order.companyId,
+      deliveryId: order.id,
+      orderNumber: order.orderNumber,
+      type: 'FOOD_PAYMENT_PENDING',
+      description: `El cliente informó haber realizado la transferencia bancaria por $${order.totalAmount} para el pedido #${order.orderNumber}. Pendiente de verificación por el comercio.`,
+      timestamp: Date.now(),
+      author: order.recipientName,
+      actorRole: 'CLIENT',
+    });
+
+    res.json({ success: true, order: updated });
+  });
+
+  // --- MERCHANT AUTHENTICATED FOOD ENDPOINTS ---
+
+  // GET MERCHANT ORDERS (`GET /api/food/orders`)
+  app.get("/api/food/orders", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const orders = db.getFoodOrdersByCompanyId(req.user!.companyId);
+    res.json(orders);
+  });
+
+  // UPDATE ORDER STATUS (`PATCH /api/food/orders/:orderId/status`)
+  app.patch("/api/food/orders/:orderId/status", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const { orderId } = req.params;
+    const { orderStatus, paymentStatus, driverId } = req.body;
+
+    const order = db.getFoodOrderById(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    if (order.companyId !== req.user!.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a pedido de otra empresa" });
+    }
+
+    const updates: Partial<FoodOrder> = {};
+    if (orderStatus) updates.orderStatus = orderStatus;
+    if (paymentStatus) updates.paymentStatus = paymentStatus;
+
+    if (orderStatus === 'PREPARING') {
+      db.createEvent({
+        id: `ev_prep_${Date.now()}`,
+        companyId: order.companyId,
+        deliveryId: order.id,
+        orderNumber: order.orderNumber,
+        type: 'FOOD_ORDER_PREPARING',
+        description: `Pedido #${order.orderNumber} puesto en preparación por la cocina.`,
+        timestamp: Date.now(),
+        author: req.user!.email,
+        actorId: req.user!.userId,
+        actorRole: req.user!.role,
+      });
+    }
+
+    if (orderStatus === 'READY') {
+      if (order.deliveryType === 'FOOD_DELIVERY') {
+        let driver = driverId ? db.getDriverById(driverId) : undefined;
+        let coreDelivery = order.deliveryId ? db.getDeliveryById(order.deliveryId) : undefined;
+
+        if (!coreDelivery) {
+          const sessionToken = `tok_food_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+          const itemsSummary = order.items.map((i) => `${i.quantity}x ${i.productName}`).join(', ');
+
+          coreDelivery = db.createDelivery({
+            id: `del_food_${order.orderNumber}_${Date.now()}`,
+            orderNumber: order.orderNumber,
+            companyId: order.companyId,
+            driverId: driver ? driver.id : '',
+            driverName: driver ? driver.name : 'Sin asignar',
+            driverPhone: driver ? driver.phone : '',
+            driverVehicle: driver ? driver.vehicle : 'moto',
+            recipientPhone: order.recipientPhone,
+            recipientName: order.recipientName,
+            description: `🍔 Pedido Food #${order.orderNumber}: ${itemsSummary}`,
+            instructions: order.generalNotes || 'Entregar en dirección del cliente',
+            amount: `$${order.totalAmount}`,
+            paymentMethod: order.paymentMethod === 'TRANSFER' ? 'Transferencia / MP' : 'Efectivo',
+            priority: 'normal',
+            sessionToken,
+            status: driver ? 'asignado' : 'esperando_autorizacion',
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 4 * 3600000,
+            recipientLocation: order.recipientLocation,
+            taskType: 'FOOD_DELIVERY',
+            foodOrderId: order.id,
+            itemsSummary,
+          });
+
+          db.createLocationSession({
+            id: `sess_food_${coreDelivery.id}`,
+            deliveryId: coreDelivery.id,
+            companyId: order.companyId,
+            sessionTokenHash: hashToken(sessionToken),
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 4 * 3600000,
+            status: 'ACTIVE',
+            recipientLocation: order.recipientLocation,
+          });
+
+          updates.deliveryId = coreDelivery.id;
+        }
+
+        if (driver) {
+          updates.driverId = driver.id;
+          updates.driverName = driver.name;
+          updates.driverPhone = driver.phone;
+          updates.orderStatus = 'ASSIGNED';
+        }
+
+        db.createEvent({
+          id: `ev_ready_${Date.now()}`,
+          companyId: order.companyId,
+          deliveryId: order.id,
+          orderNumber: order.orderNumber,
+          type: 'FOOD_ORDER_READY',
+          description: `Pedido #${order.orderNumber} listo para despacho. Cadete asignado: ${driver ? driver.name : 'Pendiente'}`,
+          timestamp: Date.now(),
+          author: req.user!.email,
+          actorId: req.user!.userId,
+          actorRole: req.user!.role,
+        });
+      } else {
+        updates.orderStatus = 'READY_FOR_PICKUP';
+        db.createEvent({
+          id: `ev_pready_${Date.now()}`,
+          companyId: order.companyId,
+          deliveryId: order.id,
+          orderNumber: order.orderNumber,
+          type: 'FOOD_ORDER_PICKUP_READY',
+          description: `Pedido #${order.orderNumber} listo para ser retirado en local con código [${order.pickupCode}].`,
+          timestamp: Date.now(),
+          author: req.user!.email,
+          actorId: req.user!.userId,
+          actorRole: req.user!.role,
+        });
+      }
+    }
+
+    if (orderStatus === 'PICKED_UP') {
+      updates.orderStatus = 'PICKED_UP';
+      updates.paymentStatus = 'APPROVED';
+      db.createEvent({
+        id: `ev_pdone_${Date.now()}`,
+        companyId: order.companyId,
+        deliveryId: order.id,
+        orderNumber: order.orderNumber,
+        type: 'FOOD_ORDER_PICKED_UP',
+        description: `Pedido #${order.orderNumber} retirado por el cliente con código [${order.pickupCode}].`,
+        timestamp: Date.now(),
+        author: req.user!.email,
+        actorId: req.user!.userId,
+        actorRole: req.user!.role,
+      });
+    }
+
+    if (paymentStatus === 'APPROVED') {
+      db.createEvent({
+        id: `ev_pappr_${Date.now()}`,
+        companyId: order.companyId,
+        deliveryId: order.id,
+        orderNumber: order.orderNumber,
+        type: 'FOOD_PAYMENT_APPROVED',
+        description: `Pago del pedido #${order.orderNumber} APROBADO y confirmado por el comercio.`,
+        timestamp: Date.now(),
+        author: req.user!.email,
+        actorId: req.user!.userId,
+        actorRole: req.user!.role,
+      });
+    }
+
+    const updated = db.updateFoodOrder(order.id, updates);
+    res.json(updated);
+  });
+
+  // GET / UPDATE STORE CONFIG, CATEGORIES, PRODUCTS, RATES
+  app.get("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const companyId = req.user!.companyId;
+    const store = db.getFoodStoreByCompanyId(companyId);
+    const categories = db.getFoodCategoriesByCompanyId(companyId);
+    const products = db.getFoodProductsByCompanyId(companyId);
+    const shippingRate = db.getFoodShippingRateByCompanyId(companyId);
+
+    res.json({
+      store: store || null,
+      categories,
+      products,
+      shippingRate: shippingRate || null,
+    });
+  });
+
+  app.put("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
+    const { name, description, address, phone, whatsappNumber, isOpenManual, schedule, bankInfo, foodEnabled } = req.body;
+
+    const existing = db.getFoodStoreByCompanyId(companyId);
+    const updatedStore = db.upsertFoodStore({
+      companyId,
+      foodEnabled: foodEnabled !== undefined ? Boolean(foodEnabled) : true,
+      name: name || company?.name || 'Comercio Food',
+      description: description || 'Tienda gastronómica',
+      address: address || company?.address || '',
+      phone: phone || company?.phone || '',
+      whatsappNumber: whatsappNumber || phone || '',
+      isOpenManual: isOpenManual !== undefined ? Boolean(isOpenManual) : true,
+      schedule: Array.isArray(schedule) ? schedule : existing?.schedule || [],
+      bankInfo: bankInfo || existing?.bankInfo || { bankName: '', alias: '', cbu: '', holderName: '' },
+      createdAt: existing ? existing.createdAt : Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    res.json(updatedStore);
+  });
+
+  // CATEGORIES CRUD
+  app.post("/api/food/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const companyId = req.user!.companyId;
+    const { name, description, displayOrder } = req.body;
+    if (!name) return res.status(400).json({ error: "El nombre de categoría es obligatorio" });
+
+    const newCat: FoodCategory = {
+      id: `fcat_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      companyId,
+      name,
+      description,
+      displayOrder: typeof displayOrder === 'number' ? displayOrder : 1,
+      active: true,
+    };
+    db.createFoodCategory(newCat);
+    res.status(201).json(newCat);
+  });
+
+  app.put("/api/food/categories/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const updated = db.updateFoodCategory(id, req.body);
+    if (!updated) return res.status(404).json({ error: "Categoría no encontrada" });
+    res.json(updated);
+  });
+
+  app.delete("/api/food/categories/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const deleted = db.deleteFoodCategory(id);
+    if (!deleted) return res.status(404).json({ error: "Categoría no encontrada" });
+    res.json({ success: true });
+  });
+
+  // PRODUCTS CRUD
+  app.post("/api/food/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const companyId = req.user!.companyId;
+    const { categoryId, name, description, price, imageUrl, isAvailable, displayOrder, optionGroups } = req.body;
+    if (!categoryId || !name || typeof price !== 'number') {
+      return res.status(400).json({ error: "categoryId, name y price numérico son obligatorios" });
+    }
+
+    const newProd: FoodProduct = {
+      id: `fprod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      companyId,
+      categoryId,
+      name,
+      description: description || '',
+      price: Math.max(0, price),
+      imageUrl,
+      isAvailable: isAvailable !== undefined ? Boolean(isAvailable) : true,
+      displayOrder: typeof displayOrder === 'number' ? displayOrder : 1,
+      optionGroups: Array.isArray(optionGroups) ? optionGroups : [],
+    };
+
+    db.createFoodProduct(newProd);
+    res.status(201).json(newProd);
+  });
+
+  app.put("/api/food/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const updated = db.updateFoodProduct(id, req.body);
+    if (!updated) return res.status(404).json({ error: "Producto no encontrado" });
+    res.json(updated);
+  });
+
+  app.delete("/api/food/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const deleted = db.deleteFoodProduct(id);
+    if (!deleted) return res.status(404).json({ error: "Producto no encontrado" });
+    res.json({ success: true });
+  });
+
+  // SHIPPING RATE CONFIG
+  app.put("/api/food/shipping-rate", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const companyId = req.user!.companyId;
+    const { baseFee, includedKm, perKmFee, maxDistanceKm, freeShippingThreshold, storeLatitude, storeLongitude } = req.body;
+
+    const rate = db.upsertFoodShippingRate({
+      companyId,
+      baseFee: typeof baseFee === 'number' ? Math.max(0, baseFee) : 1500,
+      includedKm: typeof includedKm === 'number' ? Math.max(0, includedKm) : 2,
+      perKmFee: typeof perKmFee === 'number' ? Math.max(0, perKmFee) : 500,
+      maxDistanceKm: typeof maxDistanceKm === 'number' ? Math.max(1, maxDistanceKm) : 15,
+      freeShippingThreshold: typeof freeShippingThreshold === 'number' ? freeShippingThreshold : null,
+      storeLatitude: typeof storeLatitude === 'number' ? storeLatitude : -34.6037,
+      storeLongitude: typeof storeLongitude === 'number' ? storeLongitude : -58.3816,
+    });
+
+    res.json(rate);
   });
 
   // Admin Backup Trigger (Protected: SUPER_ADMIN only)

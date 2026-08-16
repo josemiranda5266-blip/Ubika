@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Package,
+  Utensils,
 } from 'lucide-react';
 import { Company, DashboardMetrics, Delivery, Driver, DeliveryEvent } from '../../types';
 import { apiFetch, getStoredToken, setStoredAuth } from '../../utils/api';
@@ -29,12 +30,13 @@ import { DeliveriesHistoryView } from './DeliveriesHistoryView';
 import { RouteHistoryView } from './RouteHistoryView';
 import { AuditEventsView } from './AuditEventsView';
 import { NewTaskModal } from './NewTaskModal';
+import { FoodMerchantPanel } from '../food/FoodMerchantPanel';
 
 interface UbikaControlProps {
   onOpenCustomerLink?: (token: string) => void;
 }
 
-export type ControlTab = 'dashboard' | 'map' | 'drivers' | 'history' | 'routes' | 'audit';
+export type ControlTab = 'dashboard' | 'history' | 'food' | 'map' | 'drivers' | 'routes' | 'audit';
 
 export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }) => {
   const [currentTab, setCurrentTab] = useState<ControlTab>('dashboard');
@@ -151,6 +153,7 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
     { id: 'history', label: 'Tareas / Despacho', icon: Package, badge: metrics.inProgressDeliveries > 0 ? metrics.inProgressDeliveries : null },
+    { id: 'food', label: 'UBIKA Food 🍔', icon: Utensils, badge: null },
     { id: 'map', label: 'Mapa de Flota', icon: Map, badge: drivers.filter((d) => d.status === 'disponible').length },
     { id: 'drivers', label: 'Repartidores', icon: Users, badge: drivers.length },
     { id: 'routes', label: 'Recorridos', icon: Route, badge: null },
@@ -306,6 +309,10 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
             drivers={drivers}
             onOpenNewTask={() => setIsNewTaskModalOpen(true)}
           />
+        )}
+
+        {currentTab === 'food' && (
+          <FoodMerchantPanel token={getStoredToken() || ''} drivers={drivers} />
         )}
 
         {currentTab === 'routes' && <RouteHistoryView drivers={drivers} deliveries={deliveries} />}

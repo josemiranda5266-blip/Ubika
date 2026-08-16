@@ -7,13 +7,16 @@ import React, { useState, useEffect } from 'react';
 import { DriverApp } from './components/DriverApp';
 import { CustomerWebApp } from './components/CustomerWebApp';
 import { UbikaControl } from './components/control/UbikaControl';
-import { Smartphone, Globe, LayoutDashboard, Building2, Truck, Shield } from 'lucide-react';
+import { FoodCustomerView } from './components/food/FoodCustomerView';
+import { Smartphone, Globe, LayoutDashboard, Building2, Truck, Shield, Utensils } from 'lucide-react';
 
 export default function App() {
-  const [viewMode, setViewMode] = useState<'control' | 'driver' | 'customer'>('control');
+  const [viewMode, setViewMode] = useState<'control' | 'driver' | 'customer' | 'food'>('control');
   const [customerToken, setCustomerToken] = useState<string>('tok_demo_demo842');
+  const [foodCompanyId, setFoodCompanyId] = useState<string>('comp_centro_logistico_01');
+  const [foodOrderId, setFoodOrderId] = useState<string | undefined>(undefined);
 
-  // Detect hash changes or URL params for #track/:token
+  // Detect hash changes or URL params for #track/:token, #food/company/:companyId, #food/order/:orderId
   useEffect(() => {
     const checkHash = () => {
       const hash = window.location.hash;
@@ -22,6 +25,25 @@ export default function App() {
         if (token) {
           setCustomerToken(token);
           setViewMode('customer');
+          return;
+        }
+      }
+
+      if (hash.startsWith('#food/company/')) {
+        const companyId = hash.replace('#food/company/', '');
+        if (companyId) {
+          setFoodCompanyId(companyId);
+          setFoodOrderId(undefined);
+          setViewMode('food');
+          return;
+        }
+      }
+
+      if (hash.startsWith('#food/order/')) {
+        const orderId = hash.replace('#food/order/', '');
+        if (orderId) {
+          setFoodOrderId(orderId);
+          setViewMode('food');
           return;
         }
       }
@@ -57,7 +79,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
-      {/* Top Experience Switcher Bar (Vibrant Palette Design) */}
+      {/* Top Experience Switcher Bar */}
       <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 z-50 shadow-xs">
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
           <div className="flex items-center gap-3">
@@ -74,12 +96,12 @@ export default function App() {
                   PLATFORM
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">Coordinación y Trazabilidad de Entregas</p>
+              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">Coordinación Logística y Gastronomía</p>
             </div>
           </div>
         </div>
 
-        {/* 3-Way Experience Switcher */}
+        {/* 4-Way Experience Switcher */}
         <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 shadow-inner w-full sm:w-auto justify-center overflow-x-auto">
           <button
             id="app-mode-control"
@@ -92,7 +114,7 @@ export default function App() {
             }`}
           >
             <LayoutDashboard className="w-3.5 h-3.5 text-orange-400" />
-            <span>UBIKA CONTROL (Admin)</span>
+            <span>UBIKA CONTROL</span>
           </button>
 
           <button
@@ -106,7 +128,7 @@ export default function App() {
             }`}
           >
             <Truck className="w-3.5 h-3.5" />
-            <span>UBIKA DRIVER (App)</span>
+            <span>UBIKA DRIVER</span>
           </button>
 
           <button
@@ -120,7 +142,24 @@ export default function App() {
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
-            <span>CLIENTE (Web)</span>
+            <span>UBIKA CLIENT</span>
+          </button>
+
+          <button
+            id="app-mode-food"
+            type="button"
+            onClick={() => {
+              window.location.hash = `#food/company/${foodCompanyId}`;
+              setViewMode('food');
+            }}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
+              viewMode === 'food'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-200'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Utensils className="w-3.5 h-3.5" />
+            <span>UBIKA FOOD 🍔</span>
           </button>
         </div>
       </header>
@@ -131,6 +170,13 @@ export default function App() {
         {viewMode === 'driver' && <DriverApp onOpenCustomerLink={handleOpenCustomerLink} />}
         {viewMode === 'customer' && (
           <CustomerWebApp token={customerToken} onBackToDriver={handleBackToDriver} />
+        )}
+        {viewMode === 'food' && (
+          <FoodCustomerView
+            companyId={foodCompanyId}
+            orderIdParam={foodOrderId}
+            onBackToApp={handleBackToControl}
+          />
         )}
       </div>
     </div>

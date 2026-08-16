@@ -10,6 +10,11 @@ import {
   DriverLocation,
   LocationCoords,
   RoutePoint,
+  FoodStore,
+  FoodCategory,
+  FoodProduct,
+  FoodShippingRate,
+  FoodOrder,
 } from '../src/types';
 
 export type UserRole = 'SUPER_ADMIN' | 'COMPANY_ADMIN' | 'DISPATCHER' | 'DRIVER' | 'CLIENT';
@@ -59,6 +64,11 @@ export interface DatabaseSchema {
     speed?: number | null;
     timestamp: number;
   }[];
+  food_stores?: FoodStore[];
+  food_categories?: FoodCategory[];
+  food_products?: FoodProduct[];
+  food_shipping_rates?: FoodShippingRate[];
+  food_orders?: FoodOrder[];
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -575,6 +585,166 @@ function createInitialSeedData(): DatabaseSchema {
     },
   ];
 
+  const initialFoodStores: FoodStore[] = [
+    {
+      companyId: 'comp_centro_logistico_01',
+      foodEnabled: true,
+      name: 'Hamburguesería Don Pedro',
+      description: 'Las mejores hamburguesas artesanales con carne 100% novillo y papas fritas caseras.',
+      address: 'Av. Belgrano 1234, CABA',
+      phone: '+54 9 11 4555-8800',
+      whatsappNumber: '5491145558800',
+      logoUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=300&auto=format&fit=crop&q=80',
+      coverImageUrl: 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d?w=1000&auto=format&fit=crop&q=80',
+      isOpenManual: true,
+      schedule: [
+        { dayOfWeek: 0, openTime: '19:00', closeTime: '01:00', isOpen: true },
+        { dayOfWeek: 1, openTime: '19:00', closeTime: '01:00', isOpen: true },
+        { dayOfWeek: 2, openTime: '19:00', closeTime: '01:00', isOpen: true },
+        { dayOfWeek: 3, openTime: '19:00', closeTime: '01:00', isOpen: true },
+        { dayOfWeek: 4, openTime: '19:00', closeTime: '01:00', isOpen: true },
+        { dayOfWeek: 5, openTime: '19:00', closeTime: '02:00', isOpen: true },
+        { dayOfWeek: 6, openTime: '19:00', closeTime: '02:00', isOpen: true },
+      ],
+      bankInfo: {
+        bankName: 'Banco Galicia',
+        alias: 'DON.PEDRO.BURGER',
+        cbu: '0070123400000012345678',
+        holderName: 'Hamburguesería Don Pedro S.R.L.',
+        cuit: '30-71234567-8',
+      },
+      createdAt: Date.now() - 30 * 86400000,
+      updatedAt: Date.now(),
+    },
+    {
+      companyId: 'comp_ubika_piloto',
+      foodEnabled: true,
+      name: 'Pizzería Ubika Piloto',
+      description: 'Pizzas a la piedra y empanadas tradicionales.',
+      address: 'Calle Corrientes 500, CABA',
+      phone: '+54 9 11 9999-0000',
+      whatsappNumber: '5491199990000',
+      isOpenManual: true,
+      schedule: [
+        { dayOfWeek: 0, openTime: '12:00', closeTime: '00:00', isOpen: true },
+        { dayOfWeek: 1, openTime: '12:00', closeTime: '00:00', isOpen: true },
+        { dayOfWeek: 2, openTime: '12:00', closeTime: '00:00', isOpen: true },
+        { dayOfWeek: 3, openTime: '12:00', closeTime: '00:00', isOpen: true },
+        { dayOfWeek: 4, openTime: '12:00', closeTime: '00:00', isOpen: true },
+        { dayOfWeek: 5, openTime: '12:00', closeTime: '01:00', isOpen: true },
+        { dayOfWeek: 6, openTime: '12:00', closeTime: '01:00', isOpen: true },
+      ],
+      bankInfo: {
+        bankName: 'Mercado Pago',
+        alias: 'PIZZA.UBIKA.MP',
+        cbu: '0000003100088887776655',
+        holderName: 'Pizzería Ubika Demo',
+      },
+      createdAt: Date.now() - 30 * 86400000,
+      updatedAt: Date.now(),
+    },
+  ];
+
+  const initialFoodCategories: FoodCategory[] = [
+    { id: 'cat_burgers', companyId: 'comp_centro_logistico_01', name: 'HAMBURGUESAS', description: 'Incluyen papas fritas', displayOrder: 1, active: true },
+    { id: 'cat_papas', companyId: 'comp_centro_logistico_01', name: 'PAPAS FRITAS', description: 'Papas caseras corte bastón', displayOrder: 2, active: true },
+    { id: 'cat_bebidas', companyId: 'comp_centro_logistico_01', name: 'BEBIDAS', description: 'Bebidas frías 500ml', displayOrder: 3, active: true },
+  ];
+
+  const initialFoodProducts: FoodProduct[] = [
+    {
+      id: 'prod_burg_clasica',
+      companyId: 'comp_centro_logistico_01',
+      categoryId: 'cat_burgers',
+      name: 'Hamburguesa Clásica',
+      description: '180g de medallón novillo, queso cheddar, lechuga, tomate y salsa especial Don Pedro.',
+      price: 8000,
+      imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop&q=80',
+      isAvailable: true,
+      displayOrder: 1,
+      optionGroups: [
+        {
+          id: 'optgrp_add',
+          name: 'Adicionales',
+          required: false,
+          maxSelections: 3,
+          options: [
+            { id: 'opt_queso', name: 'Queso Cheddar Extra', price: 500 },
+            { id: 'opt_huevo', name: 'Huevo frito', price: 500 },
+            { id: 'opt_panceta', name: 'Panceta crocante', price: 1000 },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'prod_burg_completa',
+      companyId: 'comp_centro_logistico_01',
+      categoryId: 'cat_burgers',
+      name: 'Hamburguesa Completa',
+      description: 'Doble medallón 360g, cuádruple cheddar, panceta ahumada, huevo frito y cebolla caramelizada.',
+      price: 9500,
+      imageUrl: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=500&auto=format&fit=crop&q=80',
+      isAvailable: true,
+      displayOrder: 2,
+      optionGroups: [
+        {
+          id: 'optgrp_add_c',
+          name: 'Adicionales',
+          required: false,
+          maxSelections: 3,
+          options: [
+            { id: 'opt_c_queso', name: 'Queso Cheddar Extra', price: 500 },
+            { id: 'opt_c_huevo', name: 'Huevo frito', price: 500 },
+            { id: 'opt_c_panceta', name: 'Panceta crocante', price: 1000 },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'prod_papas_clasicas',
+      companyId: 'comp_centro_logistico_01',
+      categoryId: 'cat_papas',
+      name: 'Papas Clásicas',
+      description: 'Porción generosa de papas bastón crocantes.',
+      price: 3000,
+      imageUrl: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=80',
+      isAvailable: true,
+      displayOrder: 1,
+    },
+    {
+      id: 'prod_gaseosa',
+      companyId: 'comp_centro_logistico_01',
+      categoryId: 'cat_bebidas',
+      name: 'Gaseosa 500ml',
+      description: 'Coca-Cola, Sprite o Fanta bien fría.',
+      price: 2000,
+      isAvailable: true,
+      displayOrder: 1,
+    },
+  ];
+
+  const initialShippingRates: FoodShippingRate[] = [
+    {
+      companyId: 'comp_centro_logistico_01',
+      baseFee: 1500,
+      includedKm: 2,
+      perKmFee: 500,
+      maxDistanceKm: 12,
+      freeShippingThreshold: 30000,
+      storeLatitude: -34.6037,
+      storeLongitude: -58.3816,
+    },
+    {
+      companyId: 'comp_ubika_piloto',
+      baseFee: 1200,
+      includedKm: 2,
+      perKmFee: 400,
+      maxDistanceKm: 10,
+      storeLatitude: -34.6080,
+      storeLongitude: -58.3700,
+    },
+  ];
+
   return {
     version: 1,
     companies: [pilotoCompany, initialCompany, initialCompany2],
@@ -584,6 +754,11 @@ function createInitialSeedData(): DatabaseSchema {
     location_sessions: initialSessions,
     events: initialEvents,
     driver_locations: [],
+    food_stores: initialFoodStores,
+    food_categories: initialFoodCategories,
+    food_products: initialFoodProducts,
+    food_shipping_rates: initialShippingRates,
+    food_orders: [],
   };
 }
 
@@ -624,10 +799,53 @@ export function loadDatabase(): DatabaseSchema {
             changed = true;
           }
         }
+        if (seed.food_stores) {
+          if (!dbState.food_stores) dbState.food_stores = [];
+          for (const fsItem of seed.food_stores) {
+            if (!dbState.food_stores.some((s) => s.companyId === fsItem.companyId)) {
+              dbState.food_stores.push(fsItem);
+              changed = true;
+            }
+          }
+        }
+        if (seed.food_categories) {
+          if (!dbState.food_categories) dbState.food_categories = [];
+          for (const fc of seed.food_categories) {
+            if (!dbState.food_categories.some((c) => c.id === fc.id)) {
+              dbState.food_categories.push(fc);
+              changed = true;
+            }
+          }
+        }
+        if (seed.food_products) {
+          if (!dbState.food_products) dbState.food_products = [];
+          for (const fp of seed.food_products) {
+            if (!dbState.food_products.some((p) => p.id === fp.id)) {
+              dbState.food_products.push(fp);
+              changed = true;
+            }
+          }
+        }
+        if (seed.food_shipping_rates) {
+          if (!dbState.food_shipping_rates) dbState.food_shipping_rates = [];
+          for (const sr of seed.food_shipping_rates) {
+            if (!dbState.food_shipping_rates.some((r) => r.companyId === sr.companyId)) {
+              dbState.food_shipping_rates.push(sr);
+              changed = true;
+            }
+          }
+        }
         if (changed) {
           saveDatabaseSync();
         }
       }
+
+      // Ensure all arrays are initialized
+      dbState.food_stores = dbState.food_stores || [];
+      dbState.food_categories = dbState.food_categories || [];
+      dbState.food_products = dbState.food_products || [];
+      dbState.food_shipping_rates = dbState.food_shipping_rates || [];
+      dbState.food_orders = dbState.food_orders || [];
 
       console.log(`[DB] Base de datos persistente cargada con éxito desde ${DB_FILE}`);
       return dbState;
@@ -807,6 +1025,122 @@ export const db = {
     return dbState.driver_locations
       .filter((l) => l.driverId === driverId && (!since || l.timestamp >= since))
       .sort((a, b) => a.timestamp - b.timestamp);
+  },
+
+  // --- UBIKA FOOD DAO METHODS ---
+  getFoodStoreByCompanyId: (companyId: string): FoodStore | undefined => {
+    return (dbState.food_stores || []).find((s) => s.companyId === companyId);
+  },
+  upsertFoodStore: (store: FoodStore): FoodStore => {
+    if (!dbState.food_stores) dbState.food_stores = [];
+    const idx = dbState.food_stores.findIndex((s) => s.companyId === store.companyId);
+    if (idx === -1) {
+      dbState.food_stores.push(store);
+    } else {
+      dbState.food_stores[idx] = { ...dbState.food_stores[idx], ...store, updatedAt: Date.now() };
+    }
+    saveDatabaseSync();
+    return store;
+  },
+
+  getFoodCategoriesByCompanyId: (companyId: string): FoodCategory[] => {
+    return (dbState.food_categories || [])
+      .filter((c) => c.companyId === companyId)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+  createFoodCategory: (category: FoodCategory): FoodCategory => {
+    if (!dbState.food_categories) dbState.food_categories = [];
+    dbState.food_categories.push(category);
+    saveDatabaseSync();
+    return category;
+  },
+  updateFoodCategory: (id: string, updates: Partial<FoodCategory>): FoodCategory | null => {
+    if (!dbState.food_categories) return null;
+    const idx = dbState.food_categories.findIndex((c) => c.id === id);
+    if (idx === -1) return null;
+    dbState.food_categories[idx] = { ...dbState.food_categories[idx], ...updates };
+    saveDatabaseSync();
+    return dbState.food_categories[idx];
+  },
+  deleteFoodCategory: (id: string): boolean => {
+    if (!dbState.food_categories) return false;
+    const initialLen = dbState.food_categories.length;
+    dbState.food_categories = dbState.food_categories.filter((c) => c.id !== id);
+    const deleted = dbState.food_categories.length < initialLen;
+    if (deleted) saveDatabaseSync();
+    return deleted;
+  },
+
+  getFoodProductsByCompanyId: (companyId: string): FoodProduct[] => {
+    return (dbState.food_products || [])
+      .filter((p) => p.companyId === companyId)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+  getFoodProductById: (productId: string): FoodProduct | undefined => {
+    return (dbState.food_products || []).find((p) => p.id === productId);
+  },
+  createFoodProduct: (product: FoodProduct): FoodProduct => {
+    if (!dbState.food_products) dbState.food_products = [];
+    dbState.food_products.push(product);
+    saveDatabaseSync();
+    return product;
+  },
+  updateFoodProduct: (productId: string, updates: Partial<FoodProduct>): FoodProduct | null => {
+    if (!dbState.food_products) return null;
+    const idx = dbState.food_products.findIndex((p) => p.id === productId);
+    if (idx === -1) return null;
+    dbState.food_products[idx] = { ...dbState.food_products[idx], ...updates };
+    saveDatabaseSync();
+    return dbState.food_products[idx];
+  },
+  deleteFoodProduct: (productId: string): boolean => {
+    if (!dbState.food_products) return false;
+    const initialLen = dbState.food_products.length;
+    dbState.food_products = dbState.food_products.filter((p) => p.id !== productId);
+    const deleted = dbState.food_products.length < initialLen;
+    if (deleted) saveDatabaseSync();
+    return deleted;
+  },
+
+  getFoodShippingRateByCompanyId: (companyId: string): FoodShippingRate | undefined => {
+    return (dbState.food_shipping_rates || []).find((r) => r.companyId === companyId);
+  },
+  upsertFoodShippingRate: (rate: FoodShippingRate): FoodShippingRate => {
+    if (!dbState.food_shipping_rates) dbState.food_shipping_rates = [];
+    const idx = dbState.food_shipping_rates.findIndex((r) => r.companyId === rate.companyId);
+    if (idx === -1) {
+      dbState.food_shipping_rates.push(rate);
+    } else {
+      dbState.food_shipping_rates[idx] = { ...dbState.food_shipping_rates[idx], ...rate };
+    }
+    saveDatabaseSync();
+    return rate;
+  },
+
+  getFoodOrdersByCompanyId: (companyId: string): FoodOrder[] => {
+    return (dbState.food_orders || [])
+      .filter((o) => o.companyId === companyId)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  },
+  getFoodOrderById: (orderId: string): FoodOrder | undefined => {
+    return (dbState.food_orders || []).find((o) => o.id === orderId);
+  },
+  getFoodOrderByPickupCode: (pickupCode: string): FoodOrder | undefined => {
+    return (dbState.food_orders || []).find((o) => o.pickupCode === pickupCode);
+  },
+  createFoodOrder: (order: FoodOrder): FoodOrder => {
+    if (!dbState.food_orders) dbState.food_orders = [];
+    dbState.food_orders.unshift(order);
+    saveDatabaseSync();
+    return order;
+  },
+  updateFoodOrder: (orderId: string, updates: Partial<FoodOrder>): FoodOrder | null => {
+    if (!dbState.food_orders) return null;
+    const idx = dbState.food_orders.findIndex((o) => o.id === orderId);
+    if (idx === -1) return null;
+    dbState.food_orders[idx] = { ...dbState.food_orders[idx], ...updates, updatedAt: Date.now() };
+    saveDatabaseSync();
+    return dbState.food_orders[idx];
   },
 
   // Raw Export for backup or tests

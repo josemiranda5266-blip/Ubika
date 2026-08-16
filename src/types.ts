@@ -114,31 +114,210 @@ export interface Delivery {
   distanceMeters?: number;
   etaMinutes?: number;
   privacyPolicyPurged?: boolean;
+  
+  // Logistics Task Type & Food Integration
+  taskType?: 'FOOD_DELIVERY' | 'FOOD_PICKUP' | 'PARCEL' | 'DOCUMENT';
+  foodOrderId?: string | null;
+  itemsSummary?: string;
 }
+
+export type EventType =
+  | 'DELIVERY_CREATED'
+  | 'DRIVER_ASSIGNED'
+  | 'DRIVER_ACCEPTED'
+  | 'DRIVER_REJECTED'
+  | 'DELIVERY_STARTED'
+  | 'LOCATION_REQUESTED'
+  | 'LOCATION_SHARED'
+  | 'DRIVER_ARRIVED'
+  | 'DELIVERY_COMPLETED'
+  | 'DELIVERY_CANCELLED'
+  | 'LOCATION_PURGED'
+  | 'FOOD_ORDER_CREATED'
+  | 'FOOD_ORDER_ACCEPTED'
+  | 'FOOD_ORDER_CANCELLED'
+  | 'FOOD_ORDER_PREPARING'
+  | 'FOOD_ORDER_READY'
+  | 'FOOD_DELIVERY_ASSIGNED'
+  | 'FOOD_ORDER_PICKUP_READY'
+  | 'FOOD_ORDER_PICKED_UP'
+  | 'FOOD_PAYMENT_PENDING'
+  | 'FOOD_PAYMENT_APPROVED'
+  | 'FOOD_PAYMENT_REJECTED'
+  | 'FOOD_DELIVERY_STARTED'
+  | 'FOOD_DELIVERY_COMPLETED';
 
 export interface DeliveryEvent {
   id: string;
   companyId?: string;
   deliveryId: string;
   orderNumber: number;
-  type:
-    | 'DELIVERY_CREATED'
-    | 'DRIVER_ASSIGNED'
-    | 'DRIVER_ACCEPTED'
-    | 'DRIVER_REJECTED'
-    | 'DELIVERY_STARTED'
-    | 'LOCATION_REQUESTED'
-    | 'LOCATION_SHARED'
-    | 'DRIVER_ARRIVED'
-    | 'DELIVERY_COMPLETED'
-    | 'DELIVERY_CANCELLED'
-    | 'LOCATION_PURGED';
+  type: EventType;
   description: string;
   timestamp: number;
   author: string;
   actorId?: string;
   actorRole?: string;
   metadata?: Record<string, any>;
+}
+
+// ==========================================
+// UBIKA FOOD - GASTRONOMIC PLATFORM MODELS
+// ==========================================
+
+export interface FoodSchedule {
+  dayOfWeek: number; // 0=Sunday, 1=Monday... 6=Saturday
+  openTime: string; // e.g. "12:00"
+  closeTime: string; // e.g. "23:00"
+  isOpen: boolean;
+}
+
+export interface FoodBankInfo {
+  bankName: string;
+  alias: string;
+  cbu: string;
+  holderName: string;
+  cuit?: string;
+}
+
+export interface FoodStore {
+  companyId: string;
+  foodEnabled: boolean;
+  name: string;
+  description: string;
+  address: string;
+  phone: string;
+  whatsappNumber: string;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  isOpenManual: boolean; // Merchant toggle: Force Open / Closed
+  schedule: FoodSchedule[];
+  bankInfo: FoodBankInfo;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface FoodCategory {
+  id: string;
+  companyId: string;
+  name: string;
+  description?: string;
+  displayOrder: number;
+  active: boolean;
+}
+
+export interface FoodOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export interface FoodOptionGroup {
+  id: string;
+  name: string; // e.g. "Adicionales", "Salsa", "Cocción"
+  required: boolean;
+  minSelections?: number;
+  maxSelections?: number;
+  options: FoodOption[];
+}
+
+export interface FoodProduct {
+  id: string;
+  companyId: string;
+  categoryId: string;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl?: string;
+  isAvailable: boolean;
+  displayOrder: number;
+  optionGroups?: FoodOptionGroup[];
+}
+
+export interface FoodShippingRate {
+  companyId: string;
+  baseFee: number;
+  includedKm: number; // e.g. 2 km included in baseFee
+  perKmFee: number; // e.g. $500 per km above includedKm
+  maxDistanceKm: number; // e.g. 15 km max delivery radius
+  freeShippingThreshold?: number | null; // Optional free shipping above amount
+  storeLatitude: number;
+  storeLongitude: number;
+}
+
+export interface FoodOrderItemSelection {
+  optionGroupId: string;
+  optionGroupName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+}
+
+export interface FoodOrderItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  selectedOptions: FoodOrderItemSelection[];
+  itemNotes?: string;
+  totalPrice: number;
+}
+
+export type FoodDeliveryType = 'FOOD_DELIVERY' | 'FOOD_PICKUP';
+export type FoodPaymentMethod = 'TRANSFER' | 'MERCADOPAGO' | 'CASH';
+export type FoodPaymentStatus = 'PENDING' | 'PROCESSING' | 'APPROVED' | 'REJECTED' | 'REFUNDED';
+export type FoodOrderStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'PREPARING'
+  | 'READY'
+  | 'ASSIGNED'
+  | 'DRIVER_ACCEPTED'
+  | 'IN_TRANSIT'
+  | 'NEAR_DESTINATION'
+  | 'DELIVERED'
+  | 'READY_FOR_PICKUP'
+  | 'PICKED_UP'
+  | 'CANCELLED';
+
+export interface FoodOrder {
+  id: string;
+  orderNumber: number;
+  companyId: string;
+  deliveryType: FoodDeliveryType;
+  items: FoodOrderItem[];
+  subtotal: number;
+  shippingCost: number;
+  totalAmount: number;
+  
+  // Customer
+  recipientName: string;
+  recipientPhone: string;
+  generalNotes?: string;
+  
+  // Location & Address
+  deliveryAddress?: string;
+  recipientLocation?: LocationCoords | null;
+  
+  // Payment
+  paymentMethod: FoodPaymentMethod;
+  paymentStatus: FoodPaymentStatus;
+  bankTransferReportedAt?: number;
+  
+  // Pickup Reservation Code
+  pickupCode?: string; // Unique 5-char code for pickup verification e.g. "A7K29"
+  
+  // Core Logistics Task Link
+  deliveryId?: string | null;
+  driverId?: string | null;
+  driverName?: string | null;
+  driverPhone?: string | null;
+  
+  // Timestamps & Audit
+  orderStatus: FoodOrderStatus;
+  createdAt: number;
+  updatedAt: number;
+  privacyPolicyPurged?: boolean;
 }
 
 export interface PublicSessionData {
