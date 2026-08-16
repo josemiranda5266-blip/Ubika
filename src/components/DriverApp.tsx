@@ -83,13 +83,10 @@ export const DriverApp: React.FC<DriverAppProps> = ({ onOpenCustomerLink }) => {
   const ensureDriverAuth = async () => {
     if (!getStoredToken()) {
       try {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch('/api/auth/demo-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: 'driver@ubikapiloto.com',
-            password: 'UbikaDriverSecure2026!',
-          }),
+          body: JSON.stringify({ role: 'DRIVER' }),
         });
         if (res.ok) {
           const data = await res.json();

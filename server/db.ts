@@ -31,7 +31,6 @@ export interface LocationSessionRecord {
   id: string;
   deliveryId: string;
   companyId: string;
-  rawToken: string; // Stored securely
   sessionTokenHash: string; // SHA-256 for fast/safe lookup
   createdAt: number;
   expiresAt: number;
@@ -113,8 +112,7 @@ export function createBackup(): string | null {
  * Initialize Default Seed Data if DB file is fresh or demo seed requested
  */
 function createInitialSeedData(): DatabaseSchema {
-  const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production';
-  const shouldSeedDemo = process.env.SEED_DEMO_DATA === 'true' || (isDev && process.env.SEED_DEMO_DATA !== 'false');
+  const shouldSeedDemo = process.env.SEED_DEMO_DATA === 'true';
 
   if (!shouldSeedDemo) {
     return {
@@ -129,10 +127,23 @@ function createInitialSeedData(): DatabaseSchema {
     };
   }
 
-  const salt = bcrypt.genSaltSync(10);
-  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'UbikaAdminSecure2026!';
-  const driverPassword = process.env.INITIAL_DRIVER_PASSWORD || 'UbikaDriverSecure2026!';
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  const driverPassword = process.env.INITIAL_DRIVER_PASSWORD;
 
+  if (!adminPassword || !driverPassword) {
+    return {
+      version: 1,
+      companies: [],
+      users: [],
+      drivers: [],
+      deliveries: [],
+      location_sessions: [],
+      events: [],
+      driver_locations: [],
+    };
+  }
+
+  const salt = bcrypt.genSaltSync(10);
   const adminPasswordHash = bcrypt.hashSync(adminPassword, salt);
   const driverPasswordHash = bcrypt.hashSync(driverPassword, salt);
 
@@ -240,7 +251,7 @@ function createInitialSeedData(): DatabaseSchema {
       createdAt: Date.now() - 10 * 86400000,
       active: true,
     },
-    // Company 2 user for multi-tenant isolation testing
+    // Company 2 users for multi-tenant isolation testing
     {
       id: 'usr_admin_farma_02',
       email: 'admin@farmanorte.com',
@@ -249,6 +260,18 @@ function createInitialSeedData(): DatabaseSchema {
       role: 'COMPANY_ADMIN',
       companyId: 'comp_farma_norte_02',
       phone: '+54 9 11 4780-9901',
+      createdAt: Date.now() - 10 * 86400000,
+      active: true,
+    },
+    {
+      id: 'usr_driver_farma_02',
+      email: 'driver@farmanorte.com',
+      passwordHash: driverPasswordHash,
+      name: 'Roberto Farma Driver',
+      role: 'DRIVER',
+      companyId: 'comp_farma_norte_02',
+      driverId: 'drv_farma_01',
+      phone: '+54 9 11 4780-9902',
       createdAt: Date.now() - 10 * 86400000,
       active: true,
     },
@@ -465,7 +488,6 @@ function createInitialSeedData(): DatabaseSchema {
       id: 'sess_del_1001',
       deliveryId: 'del_1001',
       companyId: 'comp_centro_logistico_01',
-      rawToken: demoToken1,
       sessionTokenHash: hashToken(demoToken1),
       createdAt: now - 25 * 60000,
       expiresAt: now + 3 * 3600000,
@@ -484,7 +506,6 @@ function createInitialSeedData(): DatabaseSchema {
       id: 'sess_del_1002',
       deliveryId: 'del_1002',
       companyId: 'comp_centro_logistico_01',
-      rawToken: demoToken2,
       sessionTokenHash: hashToken(demoToken2),
       createdAt: now - 10 * 60000,
       expiresAt: now + 4 * 3600000,
@@ -577,8 +598,7 @@ export function loadDatabase(): DatabaseSchema {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
       dbState = JSON.parse(raw);
       
-      const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production';
-      const shouldSeedDemo = process.env.SEED_DEMO_DATA === 'true' || (isDev && process.env.SEED_DEMO_DATA !== 'false');
+      const shouldSeedDemo = process.env.SEED_DEMO_DATA === 'true';
 
       if (shouldSeedDemo) {
         // Ensure piloto test company & drivers exist in development/demo mode
@@ -673,6 +693,9 @@ export const db = {
   getUserById: (userId: string): UserRecord | undefined => {
     return dbState.users.find((u) => u.id === userId);
   },
+  getUsersByCompany: (companyId: string): UserRecord[] => {
+    return dbState.users.filter((u) => u.companyId === companyId);
+  },
   createUser: (user: UserRecord): UserRecord => {
     dbState.users.push(user);
     saveDatabaseSync();
@@ -730,7 +753,7 @@ export const db = {
   },
   getSessionByToken: (token: string): LocationSessionRecord | undefined => {
     const hash = hashToken(token);
-    return dbState.location_sessions.find((s) => s.sessionTokenHash === hash || s.rawToken === token);
+    return dbState.location_sessions.find((s) => s.sessionTokenHash === hash);
   },
   updateSession: (id: string, updates: Partial<LocationSessionRecord>): LocationSessionRecord | null => {
     const idx = dbState.location_sessions.findIndex((s) => s.id === id);

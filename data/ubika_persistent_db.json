@@ -36,7 +36,7 @@
     {
       "id": "usr_admin_01",
       "email": "admin@logisticaexpress.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe0Me5AbkAtlG.VLpKMHlzrMaJHDKO/ni",
+      "passwordHash": "$2b$10$Tsk.5/pUrYuEny7K95CvjuV5DCqQ6GsZr9Nd5EYfd0yR6jcsIdqMW",
       "name": "Martín Rodríguez (Admin)",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_centro_logistico_01",
@@ -47,7 +47,7 @@
     {
       "id": "usr_dispatcher_01",
       "email": "despacho@logisticaexpress.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe0Me5AbkAtlG.VLpKMHlzrMaJHDKO/ni",
+      "passwordHash": "$2b$10$Tsk.5/pUrYuEny7K95CvjuV5DCqQ6GsZr9Nd5EYfd0yR6jcsIdqMW",
       "name": "Carla Méndez (Despachadora)",
       "role": "DISPATCHER",
       "companyId": "comp_centro_logistico_01",
@@ -58,7 +58,7 @@
     {
       "id": "usr_driver_01",
       "email": "driver1@logisticaexpress.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe8SFXgSXxjy7jq1QkbKJP3l.3hxncUfa",
+      "passwordHash": "$2b$10$Tsk.5/pUrYuEny7K95CvjucoCOU3V7ovhtuhdp.qGE8vRS6OrgUUe",
       "name": "Carlos Mendoza",
       "role": "DRIVER",
       "companyId": "comp_centro_logistico_01",
@@ -70,7 +70,7 @@
     {
       "id": "usr_driver_02",
       "email": "driver2@logisticaexpress.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe8SFXgSXxjy7jq1QkbKJP3l.3hxncUfa",
+      "passwordHash": "$2b$10$Tsk.5/pUrYuEny7K95CvjucoCOU3V7ovhtuhdp.qGE8vRS6OrgUUe",
       "name": "Gonzalo Silva",
       "role": "DRIVER",
       "companyId": "comp_centro_logistico_01",
@@ -82,7 +82,7 @@
     {
       "id": "usr_admin_farma_02",
       "email": "admin@farmanorte.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe0Me5AbkAtlG.VLpKMHlzrMaJHDKO/ni",
+      "passwordHash": "$2b$10$Tsk.5/pUrYuEny7K95CvjuV5DCqQ6GsZr9Nd5EYfd0yR6jcsIdqMW",
       "name": "Dra. Silvina Ramos",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_farma_norte_02",
@@ -93,7 +93,7 @@
     {
       "id": "usr_admin_piloto",
       "email": "admin@ubikapiloto.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe0Me5AbkAtlG.VLpKMHlzrMaJHDKO/ni",
+      "passwordHash": "$2b$10$Tsk.5/pUrYuEny7K95CvjuV5DCqQ6GsZr9Nd5EYfd0yR6jcsIdqMW",
       "name": "ADMIN PILOTO",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_ubika_piloto",
@@ -104,13 +104,25 @@
     {
       "id": "usr_driver_piloto",
       "email": "driver@ubikapiloto.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe8SFXgSXxjy7jq1QkbKJP3l.3hxncUfa",
+      "passwordHash": "$2b$10$Tsk.5/pUrYuEny7K95CvjucoCOU3V7ovhtuhdp.qGE8vRS6OrgUUe",
       "name": "DRIVER PILOTO",
       "role": "DRIVER",
       "companyId": "comp_ubika_piloto",
       "driverId": "drv_piloto",
       "phone": "+54 9 385 555-0101",
       "createdAt": 1785114757362,
+      "active": true
+    },
+    {
+      "id": "usr_driver_farma_02",
+      "email": "driver@farmanorte.com",
+      "passwordHash": "$2b$10$Tsk.5/pUrYuEny7K95CvjucoCOU3V7ovhtuhdp.qGE8vRS6OrgUUe",
+      "name": "Roberto Farma Driver",
+      "role": "DRIVER",
+      "companyId": "comp_farma_norte_02",
+      "driverId": "drv_farma_01",
+      "phone": "+54 9 11 4780-9902",
+      "createdAt": 1785982175875,
       "active": true
     }
   ],
@@ -123,9 +135,9 @@
       "email": "carlos.mendoza@ubika.app",
       "internalId": "R-01",
       "vehicle": "moto",
-      "status": "en_tarea",
+      "status": "disponible",
       "createdAt": 1785545899821,
-      "totalDeliveries": 142,
+      "totalDeliveries": 144,
       "rating": 4.9,
       "lastActiveAt": 1786841899821,
       "speedKmH": 28,
@@ -136,7 +148,8 @@
         "updatedAt": 1786841899821,
         "speed": 28,
         "heading": 145
-      }
+      },
+      "activeDeliveryId": null
     },
     {
       "id": "drv_02",
@@ -241,6 +254,253 @@
     }
   ],
   "deliveries": [
+    {
+      "id": "del_1786846397840",
+      "orderNumber": 1015,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 3333-2222",
+      "description": "Paquete para validación real de purgado",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_9efb22aa4067aceadf9d0b7d6c61c477",
+      "status": "entregado",
+      "createdAt": 1786846397840,
+      "assignedAt": 1786846397840,
+      "expiresAt": 1786860797840,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786841899821,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786846397840,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": true,
+      "recipientLocation": null,
+      "authorizedAt": 1786846397846,
+      "distanceMeters": 0,
+      "etaMinutes": 0,
+      "endedAt": 1786846397854
+    },
+    {
+      "id": "del_1786846397833",
+      "orderNumber": 1014,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 8888-7777",
+      "description": "Entrega de prueba aislamiento inyección",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_80a4bda1f5d8962588dfb145775a85c5",
+      "status": "asignado",
+      "createdAt": 1786846397833,
+      "assignedAt": 1786846397833,
+      "expiresAt": 1786860797833,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786841899821,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786846397833,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": false
+    },
+    {
+      "id": "del_1786846259805",
+      "orderNumber": 1013,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 3333-2222",
+      "description": "Paquete para validación real de purgado",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_1289ed02e60839742598dcf6713fb7e9",
+      "status": "entregado",
+      "createdAt": 1786846259805,
+      "assignedAt": 1786846259805,
+      "expiresAt": 1786860659805,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786841899821,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786846259805,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": true,
+      "recipientLocation": null,
+      "authorizedAt": 1786846259809,
+      "distanceMeters": 0,
+      "etaMinutes": 0,
+      "endedAt": 1786846259816
+    },
+    {
+      "id": "del_1786846259800",
+      "orderNumber": 1012,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 8888-7777",
+      "description": "Entrega de prueba aislamiento inyección",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_a0a68554cc1fc4768435c566416349bd",
+      "status": "asignado",
+      "createdAt": 1786846259801,
+      "assignedAt": 1786846259801,
+      "expiresAt": 1786860659801,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786841899821,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786846259801,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": false
+    },
+    {
+      "id": "del_1786846197586",
+      "orderNumber": 1011,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 3333-2222",
+      "description": "Paquete para validación real de purgado",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_44037539862f35aeccad999c1e7a7326",
+      "status": "ubicacion_compartida",
+      "createdAt": 1786846197586,
+      "assignedAt": 1786846197586,
+      "expiresAt": 1786860597586,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786841899821,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786846197586,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": false,
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786846197811,
+        "addressHint": "Av. Corrientes 1234"
+      },
+      "authorizedAt": 1786846197811,
+      "distanceMeters": 0,
+      "etaMinutes": 0
+    },
+    {
+      "id": "del_1786846197579",
+      "orderNumber": 1010,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 8888-7777",
+      "description": "Entrega de prueba aislamiento inyección",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_9d0efdd53cdd9f8a0a11a4477feb40c8",
+      "status": "asignado",
+      "createdAt": 1786846197579,
+      "assignedAt": 1786846197579,
+      "expiresAt": 1786860597579,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786841899821,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786846197579,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": false
+    },
+    {
+      "id": "del_farma_test_999",
+      "orderNumber": 777,
+      "companyId": "comp_farma_norte_02",
+      "driverId": "drv_farma_01",
+      "driverName": "Roberto Farma Driver",
+      "driverPhone": "+54 9 11 4780-9902",
+      "driverVehicle": "auto",
+      "recipientPhone": "+54 9 11 1111-2222",
+      "description": "Medicamentos urgentes Farma Norte",
+      "priority": "alta",
+      "sessionToken": "tok_farma_test_777",
+      "status": "en_camino",
+      "createdAt": 1786846197528,
+      "expiresAt": 1786849797528,
+      "privacyPolicyPurged": false
+    },
     {
       "id": "del_test_purge_1786845475447",
       "orderNumber": 9999,
@@ -554,9 +814,318 @@
       "createdAt": 1786827475447,
       "expiresAt": 1786845474447,
       "status": "EXPIRED"
+    },
+    {
+      "id": "sess_del_1786846197579",
+      "deliveryId": "del_1786846197579",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "2a422affba9e8a8ab511b3e5043f019783a5473255348f85b98b8dbdba7e494c",
+      "createdAt": 1786846197579,
+      "expiresAt": 1786860597579,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sess_del_1786846197586",
+      "deliveryId": "del_1786846197586",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "54d3cd82a0c326f8105e20758f8f1e40caf28d2ae9adcc09a93eefae4b4a30c4",
+      "createdAt": 1786846197586,
+      "expiresAt": 1786860597586,
+      "status": "ACTIVE",
+      "authorizedAt": 1786846197811,
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786846197811,
+        "addressHint": "Av. Corrientes 1234"
+      }
+    },
+    {
+      "id": "sess_del_1786846259800",
+      "deliveryId": "del_1786846259800",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "f738aa94f618c8db088cec21bf501216af4bea5071df482984e40a590b19450f",
+      "createdAt": 1786846259801,
+      "expiresAt": 1786860659801,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sess_del_1786846259805",
+      "deliveryId": "del_1786846259805",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "7b5babfb748bb7711c47682572d2ba0f76ca3eec37a9eff0cd699c7217e6f3b9",
+      "createdAt": 1786846259805,
+      "expiresAt": 1786860659805,
+      "status": "PURGED",
+      "authorizedAt": 1786846259809,
+      "recipientLocation": null,
+      "endedAt": 1786846259816
+    },
+    {
+      "id": "sess_expired_test",
+      "deliveryId": "del_1786846259805",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "949015eb8417a50fbea69108a6de080b289b35f0c624d2e63d9cc6ed7d8d5842",
+      "createdAt": 1786846249835,
+      "expiresAt": 1786846258835,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "sess_del_1786846397833",
+      "deliveryId": "del_1786846397833",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "88d691dfd6d30924e12038c5891768bdfa9bf806171a997ef11c04215696225a",
+      "createdAt": 1786846397833,
+      "expiresAt": 1786860797833,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sess_del_1786846397840",
+      "deliveryId": "del_1786846397840",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "77bf72b4d75a7b0f014533aadb2217723fb50430d2c428f2bfb8252565a5d967",
+      "createdAt": 1786846397840,
+      "expiresAt": 1786860797840,
+      "status": "PURGED",
+      "authorizedAt": 1786846397846,
+      "recipientLocation": null,
+      "endedAt": 1786846397854
+    },
+    {
+      "id": "sess_expired_test",
+      "deliveryId": "del_1786846397840",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "565764f0d98656c76c52de6ca868069606e4b13efbe4b3483c4abb8b934b99ed",
+      "createdAt": 1786846387876,
+      "expiresAt": 1786846396877,
+      "status": "EXPIRED"
     }
   ],
   "events": [
+    {
+      "id": "ev_1786846397855_o38vz",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846397840",
+      "orderNumber": 1015,
+      "type": "DELIVERY_COMPLETED",
+      "description": "Entrega #1015 finalizada con éxito por Carlos Mendoza.",
+      "timestamp": 1786846397855,
+      "author": "Carlos Mendoza",
+      "actorId": "drv_01",
+      "actorRole": "DRIVER"
+    },
+    {
+      "id": "ev_1786846397854_687mo",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846397840",
+      "orderNumber": 1015,
+      "type": "LOCATION_PURGED",
+      "description": "Coordenadas exactas del destinatario purgadas según política de retención de privacidad.",
+      "timestamp": 1786846397854,
+      "author": "Sistema UBIKA",
+      "actorRole": "SYSTEM"
+    },
+    {
+      "id": "ev_1786846397847_z4ag2",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846397840",
+      "orderNumber": 1015,
+      "type": "LOCATION_SHARED",
+      "description": "El destinatario autorizó y compartió su posición GPS precisa (Av. Corrientes 1234).",
+      "timestamp": 1786846397847,
+      "author": "Destinatario",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_1786846397841_328rn",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846397840",
+      "orderNumber": 1015,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786846397841,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846397840_xsqwg",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846397840",
+      "orderNumber": 1015,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1015 creada desde UBIKA CONTROL.",
+      "timestamp": 1786846397840,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846397834_hnb9w",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846397833",
+      "orderNumber": 1014,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786846397834,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846397834_45yeg",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846397833",
+      "orderNumber": 1014,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1014 creada desde UBIKA CONTROL.",
+      "timestamp": 1786846397834,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846259817_835b5",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846259805",
+      "orderNumber": 1013,
+      "type": "DELIVERY_COMPLETED",
+      "description": "Entrega #1013 finalizada con éxito por Carlos Mendoza.",
+      "timestamp": 1786846259817,
+      "author": "Carlos Mendoza",
+      "actorId": "drv_01",
+      "actorRole": "DRIVER"
+    },
+    {
+      "id": "ev_1786846259816_m929j",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846259805",
+      "orderNumber": 1013,
+      "type": "LOCATION_PURGED",
+      "description": "Coordenadas exactas del destinatario purgadas según política de retención de privacidad.",
+      "timestamp": 1786846259816,
+      "author": "Sistema UBIKA",
+      "actorRole": "SYSTEM"
+    },
+    {
+      "id": "ev_1786846259810_a31rn",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846259805",
+      "orderNumber": 1013,
+      "type": "LOCATION_SHARED",
+      "description": "El destinatario autorizó y compartió su posición GPS precisa (Av. Corrientes 1234).",
+      "timestamp": 1786846259810,
+      "author": "Destinatario",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_1786846259806_4m1x0",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846259805",
+      "orderNumber": 1013,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786846259806,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846259806_iuqsm",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846259805",
+      "orderNumber": 1013,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1013 creada desde UBIKA CONTROL.",
+      "timestamp": 1786846259806,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846259802_u0vby",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846259800",
+      "orderNumber": 1012,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786846259802,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846259801_22sb5",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846259800",
+      "orderNumber": 1012,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1012 creada desde UBIKA CONTROL.",
+      "timestamp": 1786846259801,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846197812_qkt2x",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846197586",
+      "orderNumber": 1011,
+      "type": "LOCATION_SHARED",
+      "description": "El destinatario autorizó y compartió su posición GPS precisa (Av. Corrientes 1234).",
+      "timestamp": 1786846197812,
+      "author": "Destinatario",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_1786846197587_7gbie",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846197586",
+      "orderNumber": 1011,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786846197587,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846197587_2dvhw",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846197586",
+      "orderNumber": 1011,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1011 creada desde UBIKA CONTROL.",
+      "timestamp": 1786846197587,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846197580_uq6gt",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846197579",
+      "orderNumber": 1010,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786846197580,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786846197579_85441",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786846197579",
+      "orderNumber": 1010,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1010 creada desde UBIKA CONTROL.",
+      "timestamp": 1786846197579,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
     {
       "id": "ev_01",
       "companyId": "comp_centro_logistico_01",

@@ -77,13 +77,10 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
   const ensureAuth = async () => {
     if (!getStoredToken()) {
       try {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch('/api/auth/demo-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: 'admin@ubikapiloto.com',
-            password: 'UbikaAdminSecure2026!',
-          }),
+          body: JSON.stringify({ role: 'COMPANY_ADMIN' }),
         });
         if (res.ok) {
           const data = await res.json();

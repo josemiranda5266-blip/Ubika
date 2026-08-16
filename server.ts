@@ -3,7 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
-import { db, hashToken } from "./server/db";
+import { db, hashToken, UserRole } from "./server/db";
 import {
   authenticateUser,
   requireRole,
@@ -118,9 +118,8 @@ function purgeCoordinatesIfFinished(delivery: Delivery): Delivery {
   return delivery;
 }
 
-async function startServer() {
+export function createUbikaApp(): express.Express {
   const app = express();
-  const PORT = 3000;
 
   // Security & CORS configuration
   app.use((req, res, next) => {
@@ -163,6 +162,36 @@ async function startServer() {
     const passwordMatches = bcrypt.compareSync(password, user.passwordHash);
     if (!passwordMatches) {
       return res.status(401).json({ error: "Credenciales inválidas" });
+    }
+
+    const token = generateAuthToken(user);
+    const company = db.getCompanyById(user.companyId);
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        companyId: user.companyId,
+        driverId: user.driverId,
+        phone: user.phone,
+      },
+      company: company || null,
+    });
+  });
+
+  app.post("/api/auth/demo-session", rateLimit(60000, 20), (req: Request, res: Response) => {
+    if (process.env.SEED_DEMO_DATA !== 'true') {
+      return res.status(403).json({ error: "Sesiones demo deshabilitadas en producción" });
+    }
+    const role = (req.body.role || 'COMPANY_ADMIN') as UserRole;
+    const users = db.getRawState().users || [];
+    const user = users.find((u) => u.role === role && u.active) || users.find((u) => u.active);
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuario de prueba no encontrado" });
     }
 
     const token = generateAuthToken(user);
@@ -251,7 +280,8 @@ async function startServer() {
         return acc + parseInt(cleaned, 10);
       }, 0);
 
-    const metrics: DashboardMetrics = {
+    const metrics: DashboardMetrics & { companyId: string } = {
+      companyId,
       activeDrivers,
       availableDrivers,
       pendingDeliveries,
@@ -576,7 +606,6 @@ async function startServer() {
       id: `sess_${deliveryId}`,
       deliveryId,
       companyId: cid,
-      rawToken: sessionToken,
       sessionTokenHash: hashToken(sessionToken),
       createdAt: now,
       expiresAt,
@@ -1244,6 +1273,13 @@ async function startServer() {
     });
   });
 
+    return app;
+}
+
+async function startServer() {
+  const PORT = 3000;
+  const app = createUbikaApp();
+
   // --- Vite / Static Files Middleware ---
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -1264,4 +1300,6 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
