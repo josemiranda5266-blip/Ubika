@@ -689,6 +689,211 @@ async function runFoodSecurityAndFlowTests() {
       assert(resFakeOpt.status === 400, `optionId inexistente debió responder 400 pero dio ${resFakeOpt.status}`);
     });
 
+    console.log('\n--- 9. AUDITORÍA FINAL: SEPARACIÓN DE ROLES, TRANSICIONES DE CADETE Y PAGO ESTRICTO ---');
+
+    const dispatcherFoodUser = db.getUserById('usr_dispatcher_food_01') || db.createUser({
+      id: 'usr_dispatcher_food_01',
+      email: 'despacho@donpedro.com',
+      passwordHash: 'hash',
+      name: 'Despachador Don Pedro',
+      role: 'DISPATCHER',
+      companyId: 'comp_food_don_pedro_01',
+      createdAt: Date.now(),
+      active: true,
+    });
+    const tokenDispatcherFood = generateAuthToken(dispatcherFoodUser);
+
+    const otherCompanyAdminUser = db.getUsersByCompany('comp_farma_norte_02').find((u) => u.role === 'COMPANY_ADMIN')!;
+    const tokenOtherCompanyAdmin = generateAuthToken(otherCompanyAdminUser);
+
+    await test('41. DISPATCHER no puede crear productos ni categorías ni modificar configuración (403)', async () => {
+      const resCat = await fetch(`${BASE_URL}/api/food/categories`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenDispatcherFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Cat Dispatched' }),
+      });
+      assert(resCat.status === 403, `DISPATCHER debió recibir 403 en POST /categories pero recibió ${resCat.status}`);
+
+      const resProd = await fetch(`${BASE_URL}/api/food/products`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenDispatcherFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: 'cat_test', name: 'Prod Dispatched', price: 500 }),
+      });
+      assert(resProd.status === 403, `DISPATCHER debió recibir 403 en POST /products pero recibió ${resProd.status}`);
+
+      const resConfig = await fetch(`${BASE_URL}/api/food/store/config`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${tokenDispatcherFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'New Name' }),
+      });
+      assert(resConfig.status === 403, `DISPATCHER debió recibir 403 en PUT /store/config pero recibió ${resConfig.status}`);
+    });
+
+    await test('42. DISPATCHER no puede validar retiro en local ni aprobar pagos (403)', async () => {
+      const resPickup = await fetch(`${BASE_URL}/api/food/orders/${createdPickupOrder.id}/pickup`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenDispatcherFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pickupCode: 'ABCDE' }),
+      });
+      assert(resPickup.status === 403, `DISPATCHER debió recibir 403 en /pickup pero recibió ${resPickup.status}`);
+
+      const resApprove = await fetch(`${BASE_URL}/api/food/orders/${createdPickupOrder.id}/payment/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenDispatcherFood}` },
+      });
+      assert(resApprove.status === 403, `DISPATCHER debió recibir 403 en /payment/approve pero recibió ${resApprove.status}`);
+    });
+
+    await test('43. DISPATCHER sí puede consultar pedidos (GET /orders) y gestionar estados de pedido', async () => {
+      const resOrders = await fetch(`${BASE_URL}/api/food/orders`, {
+        headers: { Authorization: `Bearer ${tokenDispatcherFood}` },
+      });
+      assert(resOrders.status === 200, `DISPATCHER debió poder consultar pedidos (status 200) pero recibió ${resOrders.status}`);
+    });
+
+    await test('44. Flujo estricto de pago TRANSFER: PENDING -> APPROVED directamente es rechazado con 409', async () => {
+      const burgerProd = foodProducts[0];
+      const resCreate = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'TRANSFER',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Transfer User',
+          recipientPhone: '+5491199998888',
+        }),
+      });
+      assert(resCreate.status === 201, `Creación de pedido transfer debió responder 201 pero dio ${resCreate.status}`);
+      const createData = await resCreate.json();
+      const transferOrder = createData.order;
+      assert(transferOrder.paymentStatus === 'PENDING', 'Estado de pago inicial debe ser PENDING');
+
+      // Intentar aprobar directamente sin haber informado el comprobante (PENDING -> APPROVED) -> debe fallar con 409
+      const resDirectApprove = await fetch(`${BASE_URL}/api/food/orders/${transferOrder.id}/payment/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenAdminFood}` },
+      });
+      assert(resDirectApprove.status === 409, `PENDING -> APPROVED directo debió responder 409 pero dio ${resDirectApprove.status}`);
+
+      // Simular que el cliente informa el pago (transición a PROCESSING)
+      db.updateFoodOrder(transferOrder.id, { paymentStatus: 'PROCESSING' });
+
+      // Ahora el admin sí puede aprobar el pago (PROCESSING -> APPROVED) -> 200
+      const resApproveOk = await fetch(`${BASE_URL}/api/food/orders/${transferOrder.id}/payment/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenAdminFood}` },
+      });
+      assert(resApproveOk.status === 200, `PROCESSING -> APPROVED debió responder 200 pero dio ${resApproveOk.status}`);
+      const approvedOrder = await resApproveOk.json();
+      assert(approvedOrder.paymentStatus === 'APPROVED', 'El estado del pago debe ser APPROVED');
+      assert(approvedOrder.orderStatus === transferOrder.orderStatus, 'orderStatus no debe haber sido modificado por /payment/approve');
+
+      // Intentar re-aprobar un pago ya APPROVED -> debe fallar con 409
+      const resReApprove = await fetch(`${BASE_URL}/api/food/orders/${transferOrder.id}/payment/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenAdminFood}` },
+      });
+      assert(resReApprove.status === 409, `Re-aprobar pago ya APPROVED debió responder 409 pero dio ${resReApprove.status}`);
+
+      // Intentar aprobar con admin de otra empresa -> debe fallar con 403
+      const resOtherComp = await fetch(`${BASE_URL}/api/food/orders/${transferOrder.id}/payment/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenOtherCompanyAdmin}` },
+      });
+      assert(resOtherComp.status === 403, `Admin de otra empresa debió ser rechazado con 403 pero dio ${resOtherComp.status}`);
+    });
+
+    await test('45. Flujo estricto de Delivery: Transición directa ASSIGNED -> DELIVERED está prohibida (409)', async () => {
+      const burgerProd = foodProducts[0];
+      const resCreate = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_DELIVERY',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Delivery Sequence User',
+          recipientPhone: '+5491199998888',
+          deliveryAddress: 'Av. Corrientes 1000',
+          recipientLocation: { latitude: -34.6037, longitude: -58.3816 },
+        }),
+      });
+      assert(resCreate.status === 201, 'Creación de pedido delivery falló');
+      const createData = await resCreate.json();
+      const order = createData.order;
+
+      // PENDING -> PREPARING
+      const resPrep = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenAdminFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+      assert(resPrep.status === 200, `PENDING -> PREPARING falló con ${resPrep.status}`);
+
+      // PREPARING -> READY
+      const resReady = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenAdminFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'READY' }),
+      });
+      assert(resReady.status === 200, `PREPARING -> READY falló con ${resReady.status}`);
+
+      // READY -> ASSIGNED (con cadete)
+      let donPedroDriver = db.getDriversByCompany('comp_food_don_pedro_01')[0];
+      if (!donPedroDriver) {
+        donPedroDriver = db.createDriver({
+          id: 'drv_dp_seq_01',
+          internalId: 'DP-SEQ-01',
+          companyId: 'comp_food_don_pedro_01',
+          name: 'Cadete Secuencia',
+          phone: '+5491177778888',
+          email: 'cadete.seq@donpedro.com',
+          vehicle: 'moto',
+          status: 'disponible',
+          createdAt: Date.now(),
+          lastActiveAt: Date.now(),
+          totalDeliveries: 0,
+          rating: 5.0,
+        });
+      }
+
+      const resAssign = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenAdminFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'ASSIGNED', driverId: donPedroDriver.id }),
+      });
+      assert(resAssign.status === 200, `READY -> ASSIGNED falló con ${resAssign.status}`);
+
+      // INTENTO PROHIBIDO: ASSIGNED -> DELIVERED directamente -> 409
+      const resDirectDelivered = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenAdminFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'DELIVERED' }),
+      });
+      assert(resDirectDelivered.status === 409, `ASSIGNED -> DELIVERED debió responder 409 pero dio ${resDirectDelivered.status}`);
+
+      // SECUENCIA VÁLIDA: ASSIGNED -> IN_TRANSIT -> 200
+      const resInTransit = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenAdminFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'IN_TRANSIT' }),
+      });
+      assert(resInTransit.status === 200, `ASSIGNED -> IN_TRANSIT debió responder 200 pero dio ${resInTransit.status}`);
+
+      // IN_TRANSIT -> DELIVERED -> 200
+      const resDeliveredOk = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenAdminFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'DELIVERED' }),
+      });
+      assert(resDeliveredOk.status === 200, `IN_TRANSIT -> DELIVERED debió responder 200 pero dio ${resDeliveredOk.status}`);
+      const finalOrder = await resDeliveredOk.json();
+      assert(finalOrder.orderStatus === 'DELIVERED', 'Estado final debe ser DELIVERED');
+    });
+
     console.log('\n====================================================');
     console.log(`📊 RESULTADO DE SUITE: PASARON ${passed} / ${passed + failed} PRUEBAS`);
     console.log('====================================================\n');

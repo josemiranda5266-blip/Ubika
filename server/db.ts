@@ -779,27 +779,29 @@ function runFoodMigration(db: DatabaseSchema): boolean {
   }
 
   // Ensure admin user for comp_food_don_pedro_01 exists
-  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'Ubika2026!Admin';
-  const pwdHash = bcrypt.hashSync(adminPassword, 10);
-  let donPedroUser = db.users.find((u) => u.companyId === 'comp_food_don_pedro_01' || u.email === 'donpedro@ubikafood.com');
-  if (!donPedroUser) {
-    db.users.push({
-      id: 'usr_don_pedro_01',
-      companyId: 'comp_food_don_pedro_01',
-      name: 'Admin Don Pedro',
-      email: 'donpedro@ubikafood.com',
-      passwordHash: pwdHash,
-      role: 'COMPANY_ADMIN',
-      createdAt: Date.now(),
-      active: true,
-    });
-    changed = true;
-  } else {
-    donPedroUser.passwordHash = pwdHash;
-    donPedroUser.role = 'COMPANY_ADMIN';
-    donPedroUser.companyId = 'comp_food_don_pedro_01';
-    donPedroUser.active = true;
-    changed = true;
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  if (adminPassword) {
+    const pwdHash = bcrypt.hashSync(adminPassword, 10);
+    let donPedroUser = db.users.find((u) => u.companyId === 'comp_food_don_pedro_01' || u.email === 'donpedro@ubikafood.com');
+    if (!donPedroUser) {
+      db.users.push({
+        id: 'usr_don_pedro_01',
+        companyId: 'comp_food_don_pedro_01',
+        name: 'Admin Don Pedro',
+        email: 'donpedro@ubikafood.com',
+        passwordHash: pwdHash,
+        role: 'COMPANY_ADMIN',
+        createdAt: Date.now(),
+        active: true,
+      });
+      changed = true;
+    } else {
+      donPedroUser.passwordHash = pwdHash;
+      donPedroUser.role = 'COMPANY_ADMIN';
+      donPedroUser.companyId = 'comp_food_don_pedro_01';
+      donPedroUser.active = true;
+      changed = true;
+    }
   }
 
   // Ensure driver for comp_farma_norte_02 exists

@@ -59,7 +59,7 @@
       "role": "COMPANY_ADMIN",
       "createdAt": 1786912565543,
       "active": true,
-      "passwordHash": "$2b$10$XBWWqn536FLfxd1lp91NoeNYGiwDa.r/Pnu/u8x5Oy9QYF0e1vgnK"
+      "passwordHash": "$2b$10$QURSL7jyYnehq166/ymN6eaLGopPAHYkrRjHkk9H21d4IdwlA7xdm"
     },
     {
       "id": "usr_admin_piloto",
@@ -326,36 +326,6 @@
     }
   ],
   "deliveries": [
-    {
-      "id": "del_food_1073_1786917308743",
-      "orderNumber": 1073,
-      "companyId": "comp_food_don_pedro_01",
-      "driverId": "drv_don_pedro_01",
-      "driverName": "Cadete Pedro Jr",
-      "driverPhone": "+5491188889999",
-      "driverVehicle": "moto",
-      "recipientPhone": "+5491177778888",
-      "recipientName": "Gonzalo Higuaín",
-      "description": "🍔 Pedido Food #1073: 2x Hamburguesa Clásica",
-      "instructions": "Entregar en dirección del cliente",
-      "amount": "17500",
-      "paymentMethod": "Efectivo",
-      "priority": "normal",
-      "sessionToken": "tok_food_1786917308743_jhddju",
-      "status": "asignado",
-      "createdAt": 1786917308743,
-      "expiresAt": 1786931708743,
-      "recipientLocation": {
-        "latitude": -34.6037,
-        "longitude": -58.3816,
-        "accuracy": 10,
-        "updatedAt": 1786917308719,
-        "addressHint": "Av. Libertador 2000"
-      },
-      "taskType": "FOOD_DELIVERY",
-      "foodOrderId": "forder_1786917308719_go638",
-      "itemsSummary": "2x Hamburguesa Clásica"
-    },
     {
       "id": "del_food_1072_1786917306874",
       "orderNumber": 1072,
@@ -1582,142 +1552,9 @@
         "updatedAt": 1786917306860,
         "addressHint": "Av. Corrientes 1000"
       }
-    },
-    {
-      "id": "sess_food_del_food_1073_1786917308743",
-      "deliveryId": "del_food_1073_1786917308743",
-      "companyId": "comp_food_don_pedro_01",
-      "sessionTokenHash": "d53e4f479d42ea143c427e247b00a819a5eecee56b48a4ea63db935d6ad516b5",
-      "createdAt": 1786917308745,
-      "expiresAt": 1786931708745,
-      "status": "ACTIVE",
-      "recipientLocation": {
-        "latitude": -34.6037,
-        "longitude": -58.3816,
-        "accuracy": 10,
-        "updatedAt": 1786917308719,
-        "addressHint": "Av. Libertador 2000"
-      }
     }
   ],
   "events": [
-    {
-      "id": "ev_pdone_1786917308821",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308779_ny3fe",
-      "orderNumber": 1074,
-      "type": "FOOD_ORDER_PICKED_UP",
-      "description": "Pedido #1074 retirado por el cliente con código validado.",
-      "timestamp": 1786917308821,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_pready_1786917308812",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308779_ny3fe",
-      "orderNumber": 1074,
-      "type": "FOOD_ORDER_PICKUP_READY",
-      "description": "Pedido #1074 listo para ser retirado en local.",
-      "timestamp": 1786917308812,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_prep_1786917308804",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308779_ny3fe",
-      "orderNumber": 1074,
-      "type": "FOOD_ORDER_PREPARING",
-      "description": "Pedido #1074 puesto en preparación por la cocina.",
-      "timestamp": 1786917308804,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_pappr_1786917308798",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308779_ny3fe",
-      "orderNumber": 1074,
-      "type": "FOOD_PAYMENT_APPROVED",
-      "description": "Pago del pedido #1074 APROBADO y confirmado por el comercio.",
-      "timestamp": 1786917308798,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_pay_1786917308789",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308779_ny3fe",
-      "orderNumber": 1074,
-      "type": "FOOD_PAYMENT_PENDING",
-      "description": "El cliente informó haber realizado la transferencia bancaria por 8000 para el pedido #1074. Pendiente de verificación por el comercio.",
-      "timestamp": 1786917308789,
-      "author": "Lionel Messi",
-      "actorRole": "CLIENT"
-    },
-    {
-      "id": "ev_food_1786917308781",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308779_ny3fe",
-      "orderNumber": 1074,
-      "type": "FOOD_ORDER_CREATED",
-      "description": "Nuevo pedido gastronómico #1074 (🏪 Retiro). Total: 8000",
-      "timestamp": 1786917308781,
-      "author": "Lionel Messi",
-      "actorRole": "CLIENT"
-    },
-    {
-      "id": "ev_pappr_1786917308771",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308719_go638",
-      "orderNumber": 1073,
-      "type": "FOOD_PAYMENT_APPROVED",
-      "description": "Pago del pedido #1073 APROBADO y confirmado por el comercio.",
-      "timestamp": 1786917308771,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_ready_1786917308747",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308719_go638",
-      "orderNumber": 1073,
-      "type": "FOOD_ORDER_READY",
-      "description": "Pedido #1073 listo para despacho. Cadete asignado: Cadete Pedro Jr",
-      "timestamp": 1786917308747,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_prep_1786917308735",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308719_go638",
-      "orderNumber": 1073,
-      "type": "FOOD_ORDER_PREPARING",
-      "description": "Pedido #1073 puesto en preparación por la cocina.",
-      "timestamp": 1786917308735,
-      "author": "donpedro@ubikafood.com",
-      "actorId": "usr_don_pedro_01",
-      "actorRole": "COMPANY_ADMIN"
-    },
-    {
-      "id": "ev_food_1786917308721",
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryId": "forder_1786917308719_go638",
-      "orderNumber": 1073,
-      "type": "FOOD_ORDER_CREATED",
-      "description": "Nuevo pedido gastronómico #1073 (🛵 Delivery). Total: 17500",
-      "timestamp": 1786917308721,
-      "author": "Gonzalo Higuaín",
-      "actorRole": "CLIENT"
-    },
     {
       "id": "ev_ready_1786917306878",
       "companyId": "comp_food_don_pedro_01",
@@ -5231,77 +5068,6 @@
     }
   ],
   "food_orders": [
-    {
-      "id": "forder_1786917308779_ny3fe",
-      "orderNumber": 1074,
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryType": "FOOD_PICKUP",
-      "items": [
-        {
-          "productId": "prod_burg_clasica",
-          "productName": "Hamburguesa Clásica",
-          "quantity": 1,
-          "unitPrice": 8000,
-          "selectedOptions": [],
-          "totalPrice": 8000
-        }
-      ],
-      "subtotal": 8000,
-      "shippingCost": 0,
-      "totalAmount": 8000,
-      "recipientName": "Lionel Messi",
-      "recipientPhone": "+5491110101010",
-      "recipientLocation": null,
-      "paymentMethod": "TRANSFER",
-      "paymentStatus": "APPROVED",
-      "pickupCode": "RGPQF",
-      "publicTrackingToken": "tr_food_1786917308779_5f24a81e8ffdda44",
-      "orderStatus": "PICKED_UP",
-      "createdAt": 1786917308779,
-      "updatedAt": 1786917308820,
-      "bankTransferReportedAt": 1786917308787,
-      "pickedUpAt": 1786917308820,
-      "pickupCodeUsedAt": 1786917308820
-    },
-    {
-      "id": "forder_1786917308719_go638",
-      "orderNumber": 1073,
-      "companyId": "comp_food_don_pedro_01",
-      "deliveryType": "FOOD_DELIVERY",
-      "items": [
-        {
-          "productId": "prod_burg_clasica",
-          "productName": "Hamburguesa Clásica",
-          "quantity": 2,
-          "unitPrice": 8000,
-          "selectedOptions": [],
-          "totalPrice": 16000
-        }
-      ],
-      "subtotal": 16000,
-      "shippingCost": 1500,
-      "totalAmount": 17500,
-      "recipientName": "Gonzalo Higuaín",
-      "recipientPhone": "+5491177778888",
-      "deliveryAddress": "Av. Libertador 2000",
-      "recipientLocation": {
-        "latitude": -34.6037,
-        "longitude": -58.3816,
-        "accuracy": 10,
-        "updatedAt": 1786917308719,
-        "addressHint": "Av. Libertador 2000"
-      },
-      "paymentMethod": "CASH",
-      "paymentStatus": "APPROVED",
-      "publicTrackingToken": "tr_food_1786917308719_23c9456ea0f66113",
-      "orderStatus": "DELIVERED",
-      "createdAt": 1786917308719,
-      "updatedAt": 1786917308769,
-      "deliveryId": "del_food_1073_1786917308743",
-      "driverId": "drv_don_pedro_01",
-      "driverName": "Cadete Pedro Jr",
-      "driverPhone": "+5491188889999"
-    },
     {
       "id": "forder_1786917306860_uczbz",
       "orderNumber": 1072,

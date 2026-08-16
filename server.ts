@@ -36,10 +36,25 @@ import type {
 } from "./src/types";
 import { isFoodAuthorizedCompany } from "./src/types";
 
-const AUTHORIZED_FOOD_ROLES: UserRole[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'DISPATCHER'];
+const FOOD_ADMIN_ROLES: (UserRole | string)[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'OPERATOR'];
+const FOOD_PICKUP_ROLES: (UserRole | string)[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'OPERATOR'];
+const FOOD_PAYMENT_ROLES: (UserRole | string)[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'OPERATOR'];
+const FOOD_ORDER_STATUS_MERCHANT_ROLES: (UserRole | string)[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'DISPATCHER', 'OPERATOR'];
 
-function isAuthorizedFoodMerchant(req: AuthenticatedRequest): boolean {
-  return !!req.user && AUTHORIZED_FOOD_ROLES.includes(req.user.role);
+function isAuthorizedFoodAdmin(req: AuthenticatedRequest): boolean {
+  return !!req.user && FOOD_ADMIN_ROLES.includes(req.user.role);
+}
+
+function isAuthorizedFoodPickup(req: AuthenticatedRequest): boolean {
+  return !!req.user && FOOD_PICKUP_ROLES.includes(req.user.role);
+}
+
+function isAuthorizedFoodPayment(req: AuthenticatedRequest): boolean {
+  return !!req.user && FOOD_PAYMENT_ROLES.includes(req.user.role);
+}
+
+function isAuthorizedFoodOrderStatusMerchant(req: AuthenticatedRequest): boolean {
+  return !!req.user && FOOD_ORDER_STATUS_MERCHANT_ROLES.includes(req.user.role);
 }
 
 // Haversine distance calculator
@@ -64,12 +79,13 @@ function calculateHaversineDistanceKm(lat1: number, lon1: number, lat2: number, 
   return Math.round((meters / 1000) * 100) / 100;
 }
 
-// Generate 5-character uppercase pickup code (e.g., A7K29)
+// Generate 5-character uppercase pickup code (e.g., A7K29) using cryptographically secure random bytes
 function generatePickupCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const randomBytes = crypto.randomBytes(5);
   let code = '';
   for (let i = 0; i < 5; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += chars.charAt(randomBytes[i] % chars.length);
   }
   return code;
 }
@@ -1296,7 +1312,7 @@ export function createUbikaApp(): express.Express {
   // ======================================================
 
   function generatePublicTrackingToken(): string {
-    return `tr_food_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+    return `tr_food_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
   }
 
   function getAuthorizedFoodMerchant(companyId: string): {
@@ -1747,6 +1763,9 @@ export function createUbikaApp(): express.Express {
 
   // GET MERCHANT ORDERS (`GET /api/food/orders`)
   app.get("/api/food/orders", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (!isAuthorizedFoodOrderStatusMerchant(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para consultar pedidos del comercio" });
+    }
     const orders = db.getFoodOrdersByCompanyId(req.user!.companyId);
     res.json(orders);
   });
@@ -1769,15 +1788,21 @@ export function createUbikaApp(): express.Express {
       return res.status(403).json({ error: "Acceso denegado a pedido de otra empresa" });
     }
 
-    const isMerchant = isAuthorizedFoodMerchant(req);
-    const isAssignedDriver = req.user!.role === 'DRIVER' && !!req.user!.driverId && order.driverId === req.user!.driverId;
+    const isMerchant = isAuthorizedFoodOrderStatusMerchant(req);
+    const isDriver = req.user!.role === 'DRIVER';
+    const isAssignedDriver = isDriver && !!req.user!.driverId && order.driverId === req.user!.driverId;
 
     if (!isMerchant && !isAssignedDriver) {
       return res.status(403).json({ error: "Rol no autorizado para modificar el estado del pedido" });
     }
 
-    if (isAssignedDriver && !['IN_TRANSIT', 'DELIVERED'].includes(orderStatus)) {
-      return res.status(403).json({ error: "El repartidor solo puede cambiar estado a IN_TRANSIT o DELIVERED" });
+    if (isDriver) {
+      if (!isAssignedDriver) {
+        return res.status(403).json({ error: "El repartidor no está asignado a este pedido" });
+      }
+      if (!['IN_TRANSIT', 'DELIVERED'].includes(orderStatus)) {
+        return res.status(403).json({ error: "El repartidor solo puede cambiar estado a IN_TRANSIT o DELIVERED" });
+      }
     }
 
     // Direct transition to PICKED_UP is forbidden via PATCH
@@ -1819,10 +1844,10 @@ export function createUbikaApp(): express.Express {
             isValidTransition = order.deliveryType === 'FOOD_DELIVERY' ? targetStatus === 'READY' : targetStatus === 'READY_FOR_PICKUP';
             break;
           case 'READY':
-            isValidTransition = targetStatus === 'ASSIGNED' || targetStatus === 'IN_TRANSIT' || targetStatus === 'DELIVERED';
+            isValidTransition = targetStatus === 'ASSIGNED' || targetStatus === 'IN_TRANSIT';
             break;
           case 'ASSIGNED':
-            isValidTransition = targetStatus === 'IN_TRANSIT' || targetStatus === 'DELIVERED';
+            isValidTransition = targetStatus === 'IN_TRANSIT'; // ASSIGNED -> DELIVERED is strictly FORBIDDEN
             break;
           case 'IN_TRANSIT':
             isValidTransition = targetStatus === 'DELIVERED';
@@ -1966,7 +1991,7 @@ export function createUbikaApp(): express.Express {
 
   // DEDICATED PICKUP VERIFICATION (`POST /api/food/orders/:orderId/pickup`)
   app.post("/api/food/orders/:orderId/pickup", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodPickup(req)) {
       return res.status(403).json({ error: "Rol no autorizado para validar retiros en local" });
     }
 
@@ -1984,6 +2009,10 @@ export function createUbikaApp(): express.Express {
 
     if (order.deliveryType !== 'FOOD_PICKUP') {
       return res.status(409).json({ error: "El pedido no es de tipo retiro en local" });
+    }
+
+    if (order.pickupCodeUsedAt) {
+      return res.status(409).json({ error: "El código de retiro ya fue utilizado previamente" });
     }
 
     if (order.orderStatus !== 'READY_FOR_PICKUP') {
@@ -2017,9 +2046,9 @@ export function createUbikaApp(): express.Express {
     res.json(updated);
   });
 
-  // APPROVE PAYMENT (`POST /api/food/orders/:orderId/payment/approve`)
+  // APPROVE PAYMENT (`POST /api/food/orders/:orderId/payment/approve`) - STRICT STATE MACHINE & FINANCIAL ISOLATION
   app.post("/api/food/orders/:orderId/payment/approve", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodPayment(req)) {
       return res.status(403).json({ error: "Rol no autorizado para aprobar pagos de pedidos" });
     }
 
@@ -2031,6 +2060,34 @@ export function createUbikaApp(): express.Express {
 
     if (order.companyId !== req.user!.companyId) {
       return res.status(403).json({ error: "Acceso denegado a pedido de otra empresa" });
+    }
+
+    if (order.orderStatus === 'CANCELLED') {
+      return res.status(409).json({ error: "No se puede aprobar el pago de un pedido cancelado" });
+    }
+
+    if (order.paymentStatus === 'APPROVED') {
+      return res.status(409).json({ error: "El pago ya se encuentra aprobado" });
+    }
+
+    // Strict Payment Method Transition Verification
+    if (order.paymentMethod === 'TRANSFER') {
+      if (order.paymentStatus === 'PENDING') {
+        return res.status(409).json({
+          error: "Para pagos por transferencia bancaria, el comprobante debe ser informado previamente (estado PROCESSING) antes de su aprobación definitiva",
+        });
+      }
+      if (order.paymentStatus !== 'PROCESSING') {
+        return res.status(409).json({ error: `Estado de pago no válido para aprobación: ${order.paymentStatus}` });
+      }
+    } else if (order.paymentMethod === 'CASH') {
+      if (!['PENDING', 'PROCESSING'].includes(order.paymentStatus)) {
+        return res.status(409).json({ error: `Estado de pago no válido para aprobación: ${order.paymentStatus}` });
+      }
+    } else {
+      if (!['PENDING', 'PROCESSING'].includes(order.paymentStatus)) {
+        return res.status(409).json({ error: `Estado de pago no válido para aprobación: ${order.paymentStatus}` });
+      }
     }
 
     const updated = db.updateFoodOrder(order.id, { paymentStatus: 'APPROVED' });
@@ -2075,7 +2132,7 @@ export function createUbikaApp(): express.Express {
 
   // UPDATE MERCHANT STORE CONFIG (`PUT /api/food/store/config`)
   app.put("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar la tienda" });
     }
 
@@ -2109,7 +2166,7 @@ export function createUbikaApp(): express.Express {
 
   // CATEGORIES CRUD
   app.post("/api/food/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar categorías" });
     }
     const companyId = req.user!.companyId;
@@ -2134,7 +2191,7 @@ export function createUbikaApp(): express.Express {
   });
 
   app.put("/api/food/categories/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar categorías" });
     }
     const company = db.getCompanyById(req.user!.companyId);
@@ -2151,7 +2208,7 @@ export function createUbikaApp(): express.Express {
   });
 
   app.delete("/api/food/categories/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar categorías" });
     }
     const company = db.getCompanyById(req.user!.companyId);
@@ -2169,7 +2226,7 @@ export function createUbikaApp(): express.Express {
 
   // PRODUCTS CRUD
   app.post("/api/food/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
     }
     const companyId = req.user!.companyId;
@@ -2206,7 +2263,7 @@ export function createUbikaApp(): express.Express {
   });
 
   app.put("/api/food/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
     }
     const company = db.getCompanyById(req.user!.companyId);
@@ -2223,7 +2280,7 @@ export function createUbikaApp(): express.Express {
   });
 
   app.delete("/api/food/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
     }
     const company = db.getCompanyById(req.user!.companyId);
@@ -2241,7 +2298,7 @@ export function createUbikaApp(): express.Express {
 
   // SHIPPING RATE CONFIG
   app.put("/api/food/shipping-rate", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodMerchant(req)) {
+    if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar tarifas" });
     }
     const companyId = req.user!.companyId;
