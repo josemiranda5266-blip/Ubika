@@ -221,22 +221,45 @@ async function runFoodSecurityAndFlowTests() {
     });
 
     await test('14. Pedido omitiendo grupo de opciones obligatorio (required minSelections) responde 400', async () => {
-      const productWithOptions = foodProducts.find((p) => p.optionGroups && p.optionGroups.some((g: any) => g.required));
-      if (productWithOptions) {
-        const res = await fetch(`${BASE_URL}/api/food/orders`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            companyId: 'comp_food_don_pedro_01',
-            deliveryType: 'FOOD_PICKUP',
-            paymentMethod: 'TRANSFER',
-            items: [{ productId: productWithOptions.id, quantity: 1, selectedOptions: [] }],
-            recipientName: 'María Rossi',
-            recipientPhone: '+5491144445555',
-          }),
+      let productWithOptions = foodProducts.find((p: any) => p.optionGroups && p.optionGroups.some((g: any) => g.required || (g.minSelections && g.minSelections > 0)));
+      if (!productWithOptions) {
+        const cat = db.getFoodCategoriesByCompanyId('comp_food_don_pedro_01')[0];
+        productWithOptions = db.createFoodProduct({
+          id: `fprod_req_mandatory_${Date.now()}`,
+          companyId: 'comp_food_don_pedro_01',
+          categoryId: cat ? cat.id : 'fcat_don_pedro_01',
+          name: 'Producto Con Opciones Requeridas Obligatorio',
+          description: 'Testing required option groups',
+          price: 5000,
+          isAvailable: true,
+          displayOrder: 1,
+          optionGroups: [
+            {
+              id: 'grp_req_test_mandatory',
+              name: 'Opción Obligatoria',
+              required: true,
+              minSelections: 1,
+              maxSelections: 1,
+              options: [{ id: 'opt_req_mandatory_1', name: 'Opción 1', price: 0 }],
+            },
+          ],
         });
-        assert(res.status === 400, `Respondió con status ${res.status}`);
       }
+      assert(productWithOptions, 'Debe existir un producto con opciones requeridas');
+
+      const res = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'TRANSFER',
+          items: [{ productId: productWithOptions.id, quantity: 1, selectedOptions: [] }],
+          recipientName: 'María Rossi',
+          recipientPhone: '+5491144445555',
+        }),
+      });
+      assert.strictEqual(res.status, 400, `Respondió con status ${res.status} al omitir opción obligatoria`);
     });
 
     let createdDeliveryOrder: any = null;

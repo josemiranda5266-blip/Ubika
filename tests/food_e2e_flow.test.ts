@@ -155,10 +155,12 @@ async function runFoodE2EFlowTests() {
       assert(updated.deliveryId, 'Debe haber creado un delivery en el motor core de logística');
     });
 
+    const tokenDriver = generateAuthToken(donPedroDriverUser!);
+
     await test('Etapa 7: Cadete pasa pedido a IN_TRANSIT', async () => {
       const res = await fetch(`${BASE_URL}/api/food/orders/${deliveryOrder.id}/status`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${tokenDonPedro}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${tokenDriver}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderStatus: 'IN_TRANSIT' }),
       });
       assert.strictEqual(res.status, 200);
@@ -169,7 +171,7 @@ async function runFoodE2EFlowTests() {
     await test('Etapa 8: Cadete entrega pedido al cliente (DELIVERED)', async () => {
       const res = await fetch(`${BASE_URL}/api/food/orders/${deliveryOrder.id}/status`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${tokenDonPedro}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${tokenDriver}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderStatus: 'DELIVERED' }),
       });
       assert.strictEqual(res.status, 200);
