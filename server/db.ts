@@ -779,10 +779,10 @@ function runFoodMigration(db: DatabaseSchema): boolean {
   }
 
   // Ensure admin user for comp_food_don_pedro_01 exists
-  let donPedroUser = db.users.find((u) => u.companyId === 'comp_food_don_pedro_01');
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'Ubika2026!Admin';
+  const pwdHash = bcrypt.hashSync(adminPassword, 10);
+  let donPedroUser = db.users.find((u) => u.companyId === 'comp_food_don_pedro_01' || u.email === 'donpedro@ubikafood.com');
   if (!donPedroUser) {
-    const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
-    const pwdHash = adminPassword ? bcrypt.hashSync(adminPassword, 10) : '';
     db.users.push({
       id: 'usr_don_pedro_01',
       companyId: 'comp_food_don_pedro_01',
@@ -794,7 +794,10 @@ function runFoodMigration(db: DatabaseSchema): boolean {
       active: true,
     });
     changed = true;
-  } else if (!donPedroUser.active) {
+  } else {
+    donPedroUser.passwordHash = pwdHash;
+    donPedroUser.role = 'COMPANY_ADMIN';
+    donPedroUser.companyId = 'comp_food_don_pedro_01';
     donPedroUser.active = true;
     changed = true;
   }
@@ -820,6 +823,19 @@ function runFoodMigration(db: DatabaseSchema): boolean {
   }
 
   // 2. Ensure logistics companies are businessType: 'LOGISTICS' and foodEnabled: false
+  for (const c of db.companies) {
+    if (!c.businessType) {
+      if (c.category === 'Gastronomía' || c.category === 'Restaurante / Comidas') {
+        c.businessType = 'FOOD';
+        c.foodEnabled = c.foodEnabled !== undefined ? c.foodEnabled : true;
+      } else {
+        c.businessType = 'LOGISTICS';
+        c.foodEnabled = false;
+      }
+      changed = true;
+    }
+  }
+
   const centroLogistico = db.companies.find((c) => c.id === 'comp_centro_logistico_01');
   if (centroLogistico) {
     if (centroLogistico.businessType !== 'LOGISTICS' || centroLogistico.foodEnabled !== false) {

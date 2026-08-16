@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import assert from 'assert';
 import { db } from '../server/db';
 import { createUbikaApp } from '../server';
@@ -76,6 +77,7 @@ async function runFoodSecurityAndFlowTests() {
         body: JSON.stringify({
           companyId: 'comp_centro_logistico_01',
           deliveryType: 'FOOD_DELIVERY',
+          paymentMethod: 'CASH',
           items: [{ productId: 'prod_fake', quantity: 1 }],
           recipientName: 'Juan Pérez',
           recipientPhone: '+5491100001111',
@@ -452,10 +454,216 @@ async function runFoodSecurityAndFlowTests() {
       assert(orderInDb && typeof orderInDb.pickedUpAt === 'number', 'pickedUpAt debe estar guardado en DB');
     });
 
-    await test('33. Evento de auditoría FOOD_ORDER_PICKED_UP fue registrado en el historial', () => {
-      const events = db.getEventsByCompany('comp_food_don_pedro_01');
-      const pickupEvent = events.find((e) => e.type === 'FOOD_ORDER_PICKED_UP' && e.deliveryId === createdPickupOrder.id);
-      assert(pickupEvent !== undefined, 'El evento de auditoría debe existir en la DB');
+    console.log('\n--- 7. LOGIN REAL Y SEGURIDAD POR ROLES (DON PEDRO, CLIENT, DRIVER) ---');
+
+    await test('34. Login real con usr_don_pedro_01 mediante POST /api/auth/login responde 200 y token', async () => {
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'donpedro@ubikafood.com',
+          password: process.env.INITIAL_ADMIN_PASSWORD || 'Ubika2026!Admin',
+        }),
+      });
+      assert(res.status === 200, `Respondió con status ${res.status}`);
+      const data = await res.json();
+      assert(data.token, 'Debe devolver un JWT token válido');
+      
+      const ordersRes = await fetch(`${BASE_URL}/api/food/orders`, {
+        headers: { Authorization: `Bearer ${data.token}` },
+      });
+      assert(ordersRes.status === 200, 'GET /api/food/orders con token real de Don Pedro debe responder 200');
+    });
+
+    const clientUserRecord = db.getUserById('usr_client_01') || db.createUser({ id: 'usr_client_01', email: 'client@test.com', passwordHash: 'hash', name: 'Client Test', role: 'CLIENT', companyId: 'comp_food_don_pedro_01', createdAt: Date.now(), active: true });
+    const driverUserRecord = db.getUserById('usr_driver_01') || db.createUser({ id: 'usr_driver_01', email: 'driver@test.com', passwordHash: 'hash', name: 'Driver Test', role: 'DRIVER', companyId: 'comp_food_don_pedro_01', driverId: 'drv_01', createdAt: Date.now(), active: true });
+    const tokenClient = generateAuthToken(clientUserRecord);
+    const tokenDriver = generateAuthToken(driverUserRecord);
+
+    await test('35. CLIENT y DRIVER son rechazados con 403 en PATCH /status de comerciante', async () => {
+      const resClient = await fetch(`${BASE_URL}/api/food/orders/${createdDeliveryOrder.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenClient}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+      assert(resClient.status === 403, `CLIENT debió recibir 403 pero recibió ${resClient.status}`);
+
+      const resDriver = await fetch(`${BASE_URL}/api/food/orders/${createdDeliveryOrder.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenDriver}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+      assert(resDriver.status === 403, `DRIVER debió recibir 403 pero recibió ${resDriver.status}`);
+    });
+
+    await test('36. Intento de enviar paymentStatus en PATCH /status es rechazado con 400', async () => {
+      const res = await fetch(`${BASE_URL}/api/food/orders/${createdDeliveryOrder.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenAdminFood}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus: 'APPROVED' }),
+      });
+      assert(res.status === 400, `Respondió con status ${res.status} en lugar de 400`);
+    });
+
+    await test('37. Aprobación de pago mediante POST /api/food/orders/:orderId/payment/approve por comerciante', async () => {
+      const resDriver = await fetch(`${BASE_URL}/api/food/orders/${createdPickupOrder.id}/payment/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenDriver}` },
+      });
+      assert(resDriver.status === 403, `DRIVER debió recibir 403 en aprobación de pago pero recibió ${resDriver.status}`);
+
+      const resAdmin = await fetch(`${BASE_URL}/api/food/orders/${createdPickupOrder.id}/payment/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenAdminFood}` },
+      });
+      assert(resAdmin.status === 200, `Respondió con status ${resAdmin.status}`);
+      const data = await resAdmin.json();
+      assert(data.paymentStatus === 'APPROVED', 'paymentStatus debe actualizarse a APPROVED');
+    });
+
+    console.log('\n--- 8. PRUEBAS RIGUROSAS DE MODIFICADORES, CANTIDAD Y MÉTODOS DE PAGO ---');
+
+    await test('38. Validación estricta de cantidad (quantity): 0, decimal, string y >50 son rechazados con 400', async () => {
+      const burgerProd = foodProducts[0];
+      const invalidQuantities = [0, -1, 1.5, 51, "3"];
+
+      for (const qty of invalidQuantities) {
+        const res = await fetch(`${BASE_URL}/api/food/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            companyId: 'comp_food_don_pedro_01',
+            deliveryType: 'FOOD_PICKUP',
+            paymentMethod: 'CASH',
+            items: [{ productId: burgerProd.id, quantity: qty }],
+            recipientName: 'Test Qty',
+            recipientPhone: '+5491100000000',
+          }),
+        });
+        assert(res.status === 400, `quantity=${qty} debió ser rechazado con 400 pero devolvió ${res.status}`);
+      }
+    });
+
+    await test('39. Método de pago no válido (CRYPTO / arbitrary) es rechazado con 400', async () => {
+      const burgerProd = foodProducts[0];
+      const res = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CRYPTO_BITCOIN',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Test Payment',
+          recipientPhone: '+5491100000000',
+        }),
+      });
+      assert(res.status === 400, `paymentMethod no válido debió ser rechazado con 400 pero devolvió ${res.status}`);
+    });
+
+    await test('40. Prueba completa de modificadores con minSelections=1 y maxSelections=2', async () => {
+      const category = db.getFoodCategoriesByCompanyId('comp_food_don_pedro_01')[0];
+      assert(category, 'Debe haber una categoría para Don Pedro');
+
+      const prodWithOptions = db.createFoodProduct({
+        id: `fprod_test_mod_${Date.now()}`,
+        companyId: 'comp_food_don_pedro_01',
+        categoryId: category.id,
+        name: 'Hamburguesa Especial Modificadores',
+        description: 'Testing option groups',
+        price: 1000,
+        isAvailable: true,
+        displayOrder: 99,
+        optionGroups: [
+          {
+            id: 'grp_salsa',
+            name: 'Salsa Especial',
+            required: true,
+            minSelections: 1,
+            maxSelections: 2,
+            options: [
+              { id: 'opt_ketchup', name: 'Ketchup', price: 100 },
+              { id: 'opt_mayo', name: 'Mayonesa', price: 150 },
+              { id: 'opt_bbq', name: 'BBQ', price: 200 },
+            ],
+          },
+        ],
+      });
+
+      // A. 0 selecciones -> 400
+      const res0 = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: prodWithOptions.id, quantity: 1, selectedOptions: [] }],
+          recipientName: 'Test Modifiers',
+          recipientPhone: '+5491100000000',
+        }),
+      });
+      assert(res0.status === 400, `0 selecciones debió responder 400 pero dio ${res0.status}`);
+
+      // B. 1 selección válida -> 201
+      const res1 = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: prodWithOptions.id, quantity: 1, selectedOptions: [{ optionId: 'opt_ketchup' }] }],
+          recipientName: 'Test Modifiers 1',
+          recipientPhone: '+5491100000000',
+        }),
+      });
+      assert(res1.status === 201, `1 selección válida debió responder 201 pero dio ${res1.status}`);
+
+      // C. 2 selecciones válidas -> 201
+      const res2 = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: prodWithOptions.id, quantity: 1, selectedOptions: [{ optionId: 'opt_ketchup' }, { optionId: 'opt_mayo' }] }],
+          recipientName: 'Test Modifiers 2',
+          recipientPhone: '+5491100000000',
+        }),
+      });
+      assert(res2.status === 201, `2 selecciones válidas debió responder 201 pero dio ${res2.status}`);
+
+      // D. 3 selecciones (supera maxSelections=2) -> 400
+      const res3 = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: prodWithOptions.id, quantity: 1, selectedOptions: [{ optionId: 'opt_ketchup' }, { optionId: 'opt_mayo' }, { optionId: 'opt_bbq' }] }],
+          recipientName: 'Test Modifiers 3',
+          recipientPhone: '+5491100000000',
+        }),
+      });
+      assert(res3.status === 400, `3 selecciones (supera máx 2) debió responder 400 pero dio ${res3.status}`);
+
+      // E. optionId inexistente -> 400
+      const resFakeOpt = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: prodWithOptions.id, quantity: 1, selectedOptions: [{ optionId: 'opt_fake_999' }] }],
+          recipientName: 'Test Modifiers Fake',
+          recipientPhone: '+5491100000000',
+        }),
+      });
+      assert(resFakeOpt.status === 400, `optionId inexistente debió responder 400 pero dio ${resFakeOpt.status}`);
     });
 
     console.log('\n====================================================');

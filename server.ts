@@ -30,6 +30,8 @@ import type {
   FoodOrder,
   FoodOrderItem,
   FoodOrderItemSelection,
+  FoodOptionGroup,
+  FoodOption,
   LocationCoords,
 } from "./src/types";
 import { isFoodAuthorizedCompany } from "./src/types";
@@ -1427,6 +1429,11 @@ export function createUbikaApp(): express.Express {
       return res.status(400).json({ error: "Tipo de entrega no válido (debe ser FOOD_DELIVERY o FOOD_PICKUP)" });
     }
 
+    const validPaymentMethods = ['CASH', 'TRANSFER', 'MERCADOPAGO'];
+    if (!paymentMethod || !validPaymentMethods.includes(paymentMethod)) {
+      return res.status(400).json({ error: "Método de pago no válido (debe ser CASH, TRANSFER o MERCADOPAGO)" });
+    }
+
     // STRICT PAYMENT RULE: Transfer is NOT allowed for FOOD_DELIVERY
     if (deliveryType === 'FOOD_DELIVERY' && paymentMethod === 'TRANSFER') {
       return res.status(400).json({ error: "El pago por transferencia bancaria solo está disponible para pedidos de RETIRO EN LOCAL" });
@@ -1455,7 +1462,13 @@ export function createUbikaApp(): express.Express {
         return res.status(400).json({ error: `La categoría del producto ${product.name} no está disponible` });
       }
 
-      const quantity = Math.max(1, parseInt(rawItem.quantity || 1, 10));
+      // Strict Quantity Validation (no coercion)
+      const rawQty = rawItem.quantity;
+      if (typeof rawQty !== 'number' || !Number.isInteger(rawQty) || rawQty < 1 || rawQty > 50) {
+        return res.status(400).json({ error: "La cantidad (quantity) debe ser un número entero válido entre 1 y 50" });
+      }
+      const quantity = rawQty;
+
       let selectedOptionsPrice = 0;
       const selectedSelections: FoodOrderItemSelection[] = [];
 
@@ -1463,22 +1476,39 @@ export function createUbikaApp(): express.Express {
       if (product.optionGroups && product.optionGroups.length > 0) {
         const rawSelections: any[] = Array.isArray(rawItem.selectedOptions) ? rawItem.selectedOptions : [];
 
+        // Build lookup map for valid options
+        const validOptionsMap = new Map<string, { group: FoodOptionGroup; option: FoodOption }>();
         for (const grp of product.optionGroups) {
-          // Find selections for this group
+          for (const opt of grp.options) {
+            validOptionsMap.set(opt.id, { group: grp, option: opt });
+          }
+        }
+
+        // 1. Verify every raw selection provided
+        for (const sel of rawSelections) {
+          const optId = typeof sel === 'string' ? sel : (sel.optionId || sel.id);
+          const match = validOptionsMap.get(optId);
+          if (!match) {
+            return res.status(400).json({ error: `Opción inexistente o no válida [${optId}] para el producto ${product.name}` });
+          }
+          const providedGrpId = typeof sel === 'object' && sel ? sel.optionGroupId : undefined;
+          if (providedGrpId && providedGrpId !== match.group.id) {
+            return res.status(400).json({ error: `La opción '${match.option.name}' no pertenece al grupo indicado` });
+          }
+        }
+
+        // 2. Validate min/max selections for each group
+        for (const grp of product.optionGroups) {
           const grpSelections = rawSelections.filter((sel) => {
             const optId = typeof sel === 'string' ? sel : (sel.optionId || sel.id);
-            return grp.options.some((o) => o.id === optId);
+            const match = validOptionsMap.get(optId);
+            return match && match.group.id === grp.id;
           });
 
-          if (grp.required && (grp.minSelections || 1) >= 1 && grpSelections.length < (grp.minSelections || 1)) {
+          const minReq = grp.required ? (grp.minSelections || 1) : (grp.minSelections || 0);
+          if (grpSelections.length < minReq) {
             return res.status(400).json({
-              error: `Debe seleccionar al menos ${grp.minSelections || 1} opción(es) en "${grp.name}" para el producto ${product.name}`,
-            });
-          }
-
-          if (grp.minSelections && grpSelections.length < grp.minSelections) {
-            return res.status(400).json({
-              error: `El grupo "${grp.name}" requiere un mínimo de ${grp.minSelections} selecciones`,
+              error: `Debe seleccionar al menos ${minReq} opción(es) en "${grp.name}" para el producto ${product.name}`,
             });
           }
 
@@ -1490,20 +1520,19 @@ export function createUbikaApp(): express.Express {
 
           for (const sel of grpSelections) {
             const optId = typeof sel === 'string' ? sel : (sel.optionId || sel.id);
-            const matchedOpt = grp.options.find((o) => o.id === optId);
-            if (!matchedOpt) {
-              return res.status(400).json({ error: `Opción no válida [${optId}] para el producto ${product.name}` });
-            }
+            const match = validOptionsMap.get(optId)!;
             selectedSelections.push({
               optionGroupId: grp.id,
               optionGroupName: grp.name,
-              optionId: matchedOpt.id,
-              optionName: matchedOpt.name,
-              price: matchedOpt.price,
+              optionId: match.option.id,
+              optionName: match.option.name,
+              price: match.option.price,
             });
-            selectedOptionsPrice += matchedOpt.price;
+            selectedOptionsPrice += match.option.price;
           }
         }
+      } else if (rawItem.selectedOptions && rawItem.selectedOptions.length > 0) {
+        return res.status(400).json({ error: `El producto ${product.name} no acepta opciones o modificadores` });
       }
 
       const itemTotalPrice = (product.price + selectedOptionsPrice) * quantity;
@@ -1718,8 +1747,16 @@ export function createUbikaApp(): express.Express {
 
   // UPDATE ORDER STATUS (`PATCH /api/food/orders/:orderId/status`) - STRICT STATE MACHINE & DRIVER ISOLATION
   app.patch("/api/food/orders/:orderId/status", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para modificar el estado del pedido" });
+    }
+
     const { orderId } = req.params;
     const { orderStatus, paymentStatus, driverId } = req.body;
+
+    if (paymentStatus) {
+      return res.status(400).json({ error: "No se permite modificar el estado de pago mediante /status. Utilice /payment/approve" });
+    }
 
     const order = db.getFoodOrderById(orderId);
     if (!order) {
@@ -1940,9 +1977,11 @@ export function createUbikaApp(): express.Express {
       return res.status(400).json({ error: "Código de retiro incorrecto o inválido" });
     }
 
+    const now = Date.now();
     const updated = db.updateFoodOrder(order.id, {
       orderStatus: 'PICKED_UP',
-      pickedUpAt: Date.now(),
+      pickedUpAt: now,
+      pickupCodeUsedAt: now,
     });
 
     db.createEvent({
@@ -1952,6 +1991,40 @@ export function createUbikaApp(): express.Express {
       orderNumber: order.orderNumber,
       type: 'FOOD_ORDER_PICKED_UP',
       description: `Pedido #${order.orderNumber} retirado por el cliente con código validado [${order.pickupCode}].`,
+      timestamp: Date.now(),
+      author: req.user!.email,
+      actorId: req.user!.userId,
+      actorRole: req.user!.role,
+    });
+
+    res.json(updated);
+  });
+
+  // APPROVE PAYMENT (`POST /api/food/orders/:orderId/payment/approve`)
+  app.post("/api/food/orders/:orderId/payment/approve", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para aprobar pagos de pedidos" });
+    }
+
+    const { orderId } = req.params;
+    const order = db.getFoodOrderById(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    if (order.companyId !== req.user!.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a pedido de otra empresa" });
+    }
+
+    const updated = db.updateFoodOrder(order.id, { paymentStatus: 'APPROVED' });
+
+    db.createEvent({
+      id: `ev_pappr_${Date.now()}`,
+      companyId: order.companyId,
+      deliveryId: order.id,
+      orderNumber: order.orderNumber,
+      type: 'FOOD_PAYMENT_APPROVED',
+      description: `Pago del pedido #${order.orderNumber} APROBADO y confirmado por el comercio.`,
       timestamp: Date.now(),
       author: req.user!.email,
       actorId: req.user!.userId,
@@ -1985,6 +2058,10 @@ export function createUbikaApp(): express.Express {
 
   // UPDATE MERCHANT STORE CONFIG (`PUT /api/food/store/config`)
   app.put("/api/food/store/config", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para administrar la tienda" });
+    }
+
     const companyId = req.user!.companyId;
     const company = db.getCompanyById(companyId);
 
@@ -2015,6 +2092,9 @@ export function createUbikaApp(): express.Express {
 
   // CATEGORIES CRUD
   app.post("/api/food/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para administrar categorías" });
+    }
     const companyId = req.user!.companyId;
     const company = db.getCompanyById(companyId);
     if (!company || !isFoodAuthorizedCompany(company)) {
@@ -2037,6 +2117,14 @@ export function createUbikaApp(): express.Express {
   });
 
   app.put("/api/food/categories/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para administrar categorías" });
+    }
+    const company = db.getCompanyById(req.user!.companyId);
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado para administrar menú gastronómico" });
+    }
+
     const { id } = req.params;
     const existing = db.getFoodCategoriesByCompanyId(req.user!.companyId).find((c) => c.id === id);
     if (!existing) return res.status(404).json({ error: "Categoría no encontrada o no pertenece a su empresa" });
@@ -2046,6 +2134,14 @@ export function createUbikaApp(): express.Express {
   });
 
   app.delete("/api/food/categories/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para administrar categorías" });
+    }
+    const company = db.getCompanyById(req.user!.companyId);
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado para administrar menú gastronómico" });
+    }
+
     const { id } = req.params;
     const existing = db.getFoodCategoriesByCompanyId(req.user!.companyId).find((c) => c.id === id);
     if (!existing) return res.status(404).json({ error: "Categoría no encontrada o no pertenece a su empresa" });
@@ -2056,6 +2152,9 @@ export function createUbikaApp(): express.Express {
 
   // PRODUCTS CRUD
   app.post("/api/food/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+    }
     const companyId = req.user!.companyId;
     const company = db.getCompanyById(companyId);
     if (!company || !isFoodAuthorizedCompany(company)) {
@@ -2090,6 +2189,14 @@ export function createUbikaApp(): express.Express {
   });
 
   app.put("/api/food/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+    }
+    const company = db.getCompanyById(req.user!.companyId);
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado para administrar productos gastronómicos" });
+    }
+
     const { id } = req.params;
     const existing = db.getFoodProductsByCompanyId(req.user!.companyId).find((p) => p.id === id);
     if (!existing) return res.status(404).json({ error: "Producto no encontrado o no pertenece a su empresa" });
@@ -2099,6 +2206,14 @@ export function createUbikaApp(): express.Express {
   });
 
   app.delete("/api/food/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+    }
+    const company = db.getCompanyById(req.user!.companyId);
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado para administrar productos gastronómicos" });
+    }
+
     const { id } = req.params;
     const existing = db.getFoodProductsByCompanyId(req.user!.companyId).find((p) => p.id === id);
     if (!existing) return res.status(404).json({ error: "Producto no encontrado o no pertenece a su empresa" });
@@ -2109,6 +2224,9 @@ export function createUbikaApp(): express.Express {
 
   // SHIPPING RATE CONFIG
   app.put("/api/food/shipping-rate", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'CLIENT' || req.user!.role === 'DRIVER') {
+      return res.status(403).json({ error: "Rol no autorizado para administrar tarifas" });
+    }
     const companyId = req.user!.companyId;
     const company = db.getCompanyById(companyId);
     if (!company || !isFoodAuthorizedCompany(company)) {

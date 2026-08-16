@@ -65,8 +65,7 @@ export interface Company {
 export function isFoodAuthorizedCompany(company?: Company | null): boolean {
   if (!company) return false;
   if (company.foodEnabled === false) return false;
-  const bType = company.businessType || (company.category === 'Gastronomía' || company.category === 'Restaurante / Comidas' ? 'FOOD' : 'LOGISTICS');
-  return bType === 'FOOD' || bType === 'HYBRID';
+  return company.businessType === 'FOOD' || company.businessType === 'HYBRID';
 }
 
 export interface Driver {
@@ -315,6 +314,7 @@ export interface FoodOrder {
   
   // Pickup Reservation Code
   pickupCode?: string; // Unique 5-char code for pickup verification e.g. "A7K29"
+  pickupCodeUsedAt?: number;
   pickedUpAt?: number;
   
   // Security Tracking Token for public URLs
