@@ -1,9 +1,14 @@
+import 'dotenv/config';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import { db, UserRecord, UserRole } from './db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'ubika_prod_secure_secret_key_849204812389';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is not configured');
+}
+
 const JWT_EXPIRES_IN = '24h';
 
 export interface AuthenticatedUserPayload {
@@ -23,6 +28,9 @@ export interface AuthenticatedRequest extends Request {
  * Generate signed JWT token
  */
 export function generateAuthToken(user: UserRecord): string {
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not configured');
+  }
   const payload: AuthenticatedUserPayload = {
     userId: user.id,
     email: user.email,
@@ -50,7 +58,7 @@ export function authenticateUser(req: AuthenticatedRequest, res: Response, next:
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as AuthenticatedUserPayload;
+    const decoded = jwt.verify(token, JWT_SECRET!) as AuthenticatedUserPayload;
     
     // Verify user still exists in database
     const userInDb = db.getUserById(decoded.userId);

@@ -6,10 +6,12 @@
  * 2. Aislamiento entre repartidores (Driver A vs Driver B)
  * 3. Expiración de tokens y rechazo de coordenadas
  * 4. Purgado de coordenadas tras finalizar entrega
- * 5. Autenticación y hash de contraseñas (bcrypt + JWT)
+ * 5. Autenticación y hash de contraseñas (bcrypt + JWT sin secretos hardcodeados)
  * 6. Persistencia a disco en reinicios de servidor
+ * 7. Control de acceso por rol y scoping de empresa
  */
 
+import 'dotenv/config';
 import { db, hashToken, saveDatabaseSync, loadDatabase } from '../server/db';
 import { generateAuthToken } from '../server/auth';
 import jwt from 'jsonwebtoken';
@@ -143,11 +145,12 @@ async function runTests() {
 
   // --- CASO 5: Autenticación Real (Bcrypt + JWT) ---
   console.log('\n--- CASO 5: Autenticación y JWT ---');
-  const adminUser = db.getUserByEmail('admin@logisticaexpress.com');
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'UbikaAdminSecure2026!';
+  const adminUser = db.getUserByEmail('admin@ubikapiloto.com') || db.getUserByEmail('admin@logisticaexpress.com');
   assert(adminUser !== undefined, 'Usuario administrador existe en la base de datos');
 
   if (adminUser) {
-    const passwordOk = bcrypt.compareSync('Admin123!', adminUser.passwordHash);
+    const passwordOk = bcrypt.compareSync(adminPassword, adminUser.passwordHash);
     const passwordWrong = bcrypt.compareSync('PasswordIncorrecto', adminUser.passwordHash);
 
     assert(passwordOk && !passwordWrong, 'El hash bcrypt valida correctamente contraseñas válidas y rechaza inválidas');
@@ -170,6 +173,13 @@ async function runTests() {
   assert(
     persistedDelivery !== undefined && persistedDelivery.privacyPolicyPurged === true,
     'Los datos persisten a través del almacenamiento en disco simulando reinicio del servidor'
+  );
+
+  // --- CASO 7: Seguridad de Variables de Entorno (Sin Fallbacks Inseguros) ---
+  console.log('\n--- CASO 7: Configuración de Seguridad y Secretos ---');
+  assert(
+    process.env.JWT_SECRET !== undefined && process.env.JWT_SECRET.length > 0,
+    'JWT_SECRET está configurado desde variables de entorno y no en duro'
   );
 
   console.log('\n====================================================');

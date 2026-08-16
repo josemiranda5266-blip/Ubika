@@ -20,6 +20,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Driver, DriverStatus, VehicleType } from '../../types';
+import { apiFetch } from '../../utils/api';
 
 interface DriversManagementViewProps {
   drivers: Driver[];
@@ -113,7 +114,7 @@ export const DriversManagementView: React.FC<DriversManagementViewProps> = ({
     setError(null);
 
     try {
-      const res = await fetch('/api/drivers', {
+      const res = await apiFetch('/api/drivers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -144,7 +145,7 @@ export const DriversManagementView: React.FC<DriversManagementViewProps> = ({
   const handleToggleDriverStatus = async (driver: Driver) => {
     const nextStatus: DriverStatus = driver.status === 'inactivo' ? 'disponible' : driver.status === 'disponible' ? 'pausado' : 'disponible';
     try {
-      await fetch(`/api/drivers/${driver.id}`, {
+      await apiFetch(`/api/drivers/${driver.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus }),

@@ -36,7 +36,7 @@
     {
       "id": "usr_admin_01",
       "email": "admin@logisticaexpress.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe0Me5AbkAtlG.VLpKMHlzrMaJHDKO/ni",
+      "passwordHash": "$2b$10$htidCqHWqSguw/1AvGBId.ys.xW3JVfz0X56C4WdS8xk4lk4d3Jr2",
       "name": "Martín Rodríguez (Admin)",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_centro_logistico_01",
@@ -47,7 +47,7 @@
     {
       "id": "usr_dispatcher_01",
       "email": "despacho@logisticaexpress.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe0Me5AbkAtlG.VLpKMHlzrMaJHDKO/ni",
+      "passwordHash": "$2b$10$htidCqHWqSguw/1AvGBId.ys.xW3JVfz0X56C4WdS8xk4lk4d3Jr2",
       "name": "Carla Méndez (Despachadora)",
       "role": "DISPATCHER",
       "companyId": "comp_centro_logistico_01",
@@ -58,7 +58,7 @@
     {
       "id": "usr_driver_01",
       "email": "driver1@logisticaexpress.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe8SFXgSXxjy7jq1QkbKJP3l.3hxncUfa",
+      "passwordHash": "$2b$10$htidCqHWqSguw/1AvGBId.ZC/OENKrGk.OHbjFFkXXkElKZbsRr2u",
       "name": "Carlos Mendoza",
       "role": "DRIVER",
       "companyId": "comp_centro_logistico_01",
@@ -70,7 +70,7 @@
     {
       "id": "usr_driver_02",
       "email": "driver2@logisticaexpress.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe8SFXgSXxjy7jq1QkbKJP3l.3hxncUfa",
+      "passwordHash": "$2b$10$htidCqHWqSguw/1AvGBId.ZC/OENKrGk.OHbjFFkXXkElKZbsRr2u",
       "name": "Gonzalo Silva",
       "role": "DRIVER",
       "companyId": "comp_centro_logistico_01",
@@ -82,7 +82,7 @@
     {
       "id": "usr_admin_farma_02",
       "email": "admin@farmanorte.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe0Me5AbkAtlG.VLpKMHlzrMaJHDKO/ni",
+      "passwordHash": "$2b$10$htidCqHWqSguw/1AvGBId.ys.xW3JVfz0X56C4WdS8xk4lk4d3Jr2",
       "name": "Dra. Silvina Ramos",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_farma_norte_02",
@@ -93,7 +93,7 @@
     {
       "id": "usr_admin_piloto",
       "email": "admin@ubikapiloto.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe0Me5AbkAtlG.VLpKMHlzrMaJHDKO/ni",
+      "passwordHash": "$2b$10$GLe//jIhi3NQ/7ZGzKLtve2dKX.Nqik0FtCYZ6u3iAHImRG3ysqEm",
       "name": "ADMIN PILOTO",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_ubika_piloto",
@@ -104,7 +104,7 @@
     {
       "id": "usr_driver_piloto",
       "email": "driver@ubikapiloto.com",
-      "passwordHash": "$2b$10$7hD8S5TDNPYvdXrLfi5cDe8SFXgSXxjy7jq1QkbKJP3l.3hxncUfa",
+      "passwordHash": "$2b$10$GLe//jIhi3NQ/7ZGzKLtvejGx9YxJgC1rK9YF.FarRT.ZpKgG4JjS",
       "name": "DRIVER PILOTO",
       "role": "DRIVER",
       "companyId": "comp_ubika_piloto",
@@ -241,42 +241,6 @@
     }
   ],
   "deliveries": [
-    {
-      "id": "del_test_purge_1786845475447",
-      "orderNumber": 9999,
-      "companyId": "comp_centro_logistico_01",
-      "driverId": "drv_01",
-      "driverName": "Carlos Mendoza",
-      "driverPhone": "+54 9 11 5555-1234",
-      "driverVehicle": "moto",
-      "recipientPhone": "+54 9 11 9999-0000",
-      "description": "Paquete de prueba para purgado",
-      "priority": "normal",
-      "sessionToken": "tok_test_purge_1786845475447",
-      "status": "entregado",
-      "createdAt": 1786845475447,
-      "expiresAt": 1786849075447,
-      "recipientLocation": null,
-      "privacyPolicyPurged": true
-    },
-    {
-      "id": "del_test_purge_1786845466431",
-      "orderNumber": 9999,
-      "companyId": "comp_centro_logistico_01",
-      "driverId": "drv_01",
-      "driverName": "Carlos Mendoza",
-      "driverPhone": "+54 9 11 5555-1234",
-      "driverVehicle": "moto",
-      "recipientPhone": "+54 9 11 9999-0000",
-      "description": "Paquete de prueba para purgado",
-      "priority": "normal",
-      "sessionToken": "tok_test_purge_1786845466431",
-      "status": "entregado",
-      "createdAt": 1786845466431,
-      "expiresAt": 1786849066431,
-      "recipientLocation": null,
-      "privacyPolicyPurged": true
-    },
     {
       "id": "del_test_purge_1786845437095",
       "orderNumber": 9999,
@@ -543,16 +507,6 @@
       "sessionTokenHash": "2740623af2dbf6dc8ba4a4d9c07fb8a8aa4cf2de5c9d4cc2d5803aedbb6f454c",
       "createdAt": 1786827466430,
       "expiresAt": 1786845465430,
-      "status": "EXPIRED"
-    },
-    {
-      "id": "sess_test_expired",
-      "deliveryId": "del_test_exp",
-      "companyId": "comp_centro_logistico_01",
-      "rawToken": "tok_test_1786845475447",
-      "sessionTokenHash": "3e9def763c00df73cfff1d6e161293869594ebe25d8eedeb956f839a175c06b1",
-      "createdAt": 1786827475447,
-      "expiresAt": 1786845474447,
       "status": "EXPIRED"
     }
   ],

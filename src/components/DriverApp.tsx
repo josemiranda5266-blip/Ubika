@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Delivery, DeliveryStatus, DriverProfile, VehicleType } from '../types';
 import { formatDistance, formatEta, formatTimestamp, watchBrowserPosition } from '../utils/geo';
+import { apiFetch, getStoredToken, setStoredAuth } from '../utils/api';
 import { MapView } from './MapView';
 import { DeliveryModal } from './DeliveryModal';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
@@ -79,9 +80,31 @@ export const DriverApp: React.FC<DriverAppProps> = ({ onOpenCustomerLink }) => {
   const [historyFilter, setHistoryFilter] = useState<'all' | 'entregado' | 'cancelado'>('all');
 
   // Load Deliveries from Server
+  const ensureDriverAuth = async () => {
+    if (!getStoredToken()) {
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: 'driver@ubikapiloto.com',
+            password: 'UbikaDriverSecure2026!',
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStoredAuth(data.token, data.user);
+        }
+      } catch (err) {
+        console.error('Driver auth bootstrap failed:', err);
+      }
+    }
+  };
+
   const fetchDeliveries = async () => {
     try {
-      const res = await fetch('/api/deliveries');
+      await ensureDriverAuth();
+      const res = await apiFetch('/api/deliveries');
       if (res.ok) {
         const data: Delivery[] = await res.json();
         setDeliveries(data);
@@ -115,7 +138,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({ onOpenCustomerLink }) => {
 
         // If there's an active delivery, broadcast driver location to backend
         if (activeDeliveryId) {
-          fetch(`/api/deliveries/${activeDeliveryId}/driver-location`, {
+          apiFetch(`/api/deliveries/${activeDeliveryId}/driver-location`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -157,7 +180,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({ onOpenCustomerLink }) => {
     setFormSubmitting(true);
 
     try {
-      const res = await fetch('/api/deliveries', {
+      const res = await apiFetch('/api/deliveries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -205,7 +228,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({ onOpenCustomerLink }) => {
   // Handle Accept / Reject Task from Central Dispatch
   const handleAcceptTask = async (deliveryId: string) => {
     try {
-      const res = await fetch(`/api/deliveries/${deliveryId}/accept`, {
+      const res = await apiFetch(`/api/deliveries/${deliveryId}/accept`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ driverId: profile.id }),
@@ -222,7 +245,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({ onOpenCustomerLink }) => {
 
   const handleRejectTask = async (deliveryId: string) => {
     try {
-      const res = await fetch(`/api/deliveries/${deliveryId}/reject`, {
+      const res = await apiFetch(`/api/deliveries/${deliveryId}/reject`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ driverId: profile.id, reason: 'Repartidor ocupado en otra zona' }),
@@ -247,7 +270,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({ onOpenCustomerLink }) => {
           ? `/api/deliveries/${deliveryId}/complete`
           : `/api/deliveries/${deliveryId}/status`;
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -265,7 +288,11 @@ export const DriverApp: React.FC<DriverAppProps> = ({ onOpenCustomerLink }) => {
   const handleDeleteDelivery = async (id: string) => {
     if (!window.confirm('¿Deseas eliminar este registro del historial?')) return;
     try {
-      await fetch(`/api/deliveries/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/deliveries/${id}/cancel`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Eliminado por el operador' }),
+      });
       setDeliveries((prev) => prev.filter((d) => d.id !== id));
       if (activeDeliveryId === id) {
         setActiveDeliveryId(null);

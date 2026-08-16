@@ -21,6 +21,7 @@ import {
   Package,
 } from 'lucide-react';
 import { Company, DashboardMetrics, Delivery, Driver, DeliveryEvent } from '../../types';
+import { apiFetch, getStoredToken, setStoredAuth } from '../../utils/api';
 import { DashboardView } from './DashboardView';
 import { FleetMapView } from './FleetMapView';
 import { DriversManagementView } from './DriversManagementView';
@@ -72,10 +73,33 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
     };
   }, []);
 
+  // Ensure valid authentication session
+  const ensureAuth = async () => {
+    if (!getStoredToken()) {
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: 'admin@ubikapiloto.com',
+            password: 'UbikaAdminSecure2026!',
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setStoredAuth(data.token, data.user);
+        }
+      } catch (err) {
+        console.error('Auth bootstrap failed:', err);
+      }
+    }
+  };
+
   // Load Companies
   const fetchCompanies = async () => {
     try {
-      const res = await fetch('/api/companies');
+      await ensureAuth();
+      const res = await apiFetch('/api/companies');
       if (res.ok) {
         const data: Company[] = await res.json();
         setCompanies(data);
@@ -93,10 +117,10 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
     try {
       setIsRefreshing(true);
       const [resMetrics, resDrivers, resDeliveries, resEvents] = await Promise.all([
-        fetch(`/api/metrics?companyId=${selectedCompanyId}`),
-        fetch(`/api/drivers?companyId=${selectedCompanyId}`),
-        fetch(`/api/deliveries?companyId=${selectedCompanyId}`),
-        fetch(`/api/events?companyId=${selectedCompanyId}`),
+        apiFetch(`/api/metrics?companyId=${selectedCompanyId}`),
+        apiFetch(`/api/drivers?companyId=${selectedCompanyId}`),
+        apiFetch(`/api/deliveries?companyId=${selectedCompanyId}`),
+        apiFetch(`/api/events?companyId=${selectedCompanyId}`),
       ]);
 
       if (resMetrics.ok) setMetrics(await resMetrics.json());

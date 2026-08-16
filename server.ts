@@ -183,34 +183,29 @@ async function startServer() {
     });
   });
 
-  app.get("/api/auth/me", (req: AuthenticatedRequest, res: Response) => {
-    // If authorization header provided, verify; otherwise return company admin profile
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        return authenticateUser(req, res, () => {
-          const user = db.getUserById(req.user!.userId);
-          const company = db.getCompanyById(req.user!.companyId);
-          return res.json({ user, company });
-        });
-      } catch {
-        // Fallback
-      }
+  app.get("/api/auth/me", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const user = db.getUserById(req.user!.userId);
+    const company = db.getCompanyById(req.user!.companyId);
+    if (!user) {
+      return res.status(401).json({ error: "Usuario no encontrado" });
     }
-
-    // Default primary admin user for immediate preview usage
-    const defaultUser = db.getUserByEmail('admin@logisticaexpress.com');
-    const company = db.getCompanyById('comp_centro_logistico_01');
-    return res.json({ user: defaultUser, company });
+    return res.json({ user, company });
   });
 
-  // --- COMPANIES ENDPOINTS ---
-  app.get("/api/companies", (_req, res) => {
-    const companies = db.getAllCompanies();
-    res.json(companies);
+  // --- COMPANIES ENDPOINTS (Multi-tenant secured) ---
+  app.get("/api/companies", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user?.role === 'SUPER_ADMIN') {
+      const companies = db.getAllCompanies();
+      return res.json(companies);
+    }
+    const company = db.getCompanyById(req.user!.companyId);
+    return res.json(company ? [company] : []);
   });
 
-  app.get("/api/companies/:id", (req, res) => {
+  app.get("/api/companies/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user?.role !== 'SUPER_ADMIN' && req.user?.companyId !== req.params.id) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
     const company = db.getCompanyById(req.params.id);
     if (!company) {
       return res.status(404).json({ error: "Empresa no encontrada" });
@@ -218,9 +213,13 @@ async function startServer() {
     res.json(company);
   });
 
-  // --- DASHBOARD METRICS (Scoped to company) ---
-  app.get("/api/metrics", (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp_centro_logistico_01';
+  // --- DASHBOARD METRICS (Strictly Scoped to authenticated company) ---
+  app.get("/api/metrics", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const companyId =
+      req.user?.role === 'SUPER_ADMIN' && req.query.companyId
+        ? (req.query.companyId as string)
+        : req.user!.companyId;
+
     const drivers = db.getDriversByCompany(companyId);
     const deliveries = db.getDeliveriesByCompany(companyId);
 
@@ -266,29 +265,42 @@ async function startServer() {
     res.json(metrics);
   });
 
-  // --- DRIVERS ENDPOINTS (Scoped to company) ---
-  app.get("/api/drivers", (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp_centro_logistico_01';
-    const drivers = db.getDriversByCompany(companyId);
+  // --- DRIVERS ENDPOINTS (Scoped to authenticated company) ---
+  app.get("/api/drivers", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const companyId =
+      req.user?.role === 'SUPER_ADMIN' && req.query.companyId
+        ? (req.query.companyId as string)
+        : req.user!.companyId;
+
+    let drivers = db.getDriversByCompany(companyId);
+    if (req.user?.role === 'DRIVER') {
+      drivers = drivers.filter((d) => d.id === req.user?.driverId);
+    }
     res.json(drivers);
   });
 
-  app.get("/api/drivers/:id", (req, res) => {
+  app.get("/api/drivers/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const driver = db.getDriverById(req.params.id);
     if (!driver) {
       return res.status(404).json({ error: "Repartidor no encontrado" });
     }
+    if (req.user?.role !== 'SUPER_ADMIN' && driver.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a repartidor de otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && driver.id !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a perfil de otro repartidor" });
+    }
     res.json(driver);
   });
 
-  app.post("/api/drivers", (req: Request, res: Response) => {
-    const { name, phone, email, internalId, vehicle, companyId } = req.body;
+  app.post("/api/drivers", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
+    const { name, phone, email, internalId, vehicle } = req.body;
 
     if (!name || !phone) {
       return res.status(400).json({ error: "Nombre y teléfono son obligatorios" });
     }
 
-    const cid = companyId || 'comp_centro_logistico_01';
+    const cid = req.user?.role === 'SUPER_ADMIN' && req.body.companyId ? req.body.companyId : req.user!.companyId;
     const existingDrivers = db.getDriversByCompany(cid);
     const generatedId = `drv_${Date.now()}`;
     const nextInternal = internalId || `R-${String(existingDrivers.length + 1).padStart(2, '0')}`;
@@ -320,7 +332,7 @@ async function startServer() {
     res.status(201).json(newDriver);
   });
 
-  app.patch("/api/drivers/:id/status", (req, res) => {
+  app.patch("/api/drivers/:id/status", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { status } = req.body;
     const validStatuses: DriverStatus[] = ['disponible', 'en_tarea', 'pausado', 'desconectado', 'inactivo'];
 
@@ -328,20 +340,27 @@ async function startServer() {
       return res.status(400).json({ error: "Estado de repartidor inválido" });
     }
 
+    const driver = db.getDriverById(req.params.id);
+    if (!driver) {
+      return res.status(404).json({ error: "Repartidor no encontrado" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && driver.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && driver.id !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a otro repartidor" });
+    }
+
     const updated = db.updateDriver(req.params.id, {
       status,
       lastActiveAt: Date.now(),
     });
 
-    if (!updated) {
-      return res.status(404).json({ error: "Repartidor no encontrado" });
-    }
-
     res.json(updated);
   });
 
   // Repartidor updates GPS location stream (Throttled & Persisted)
-  app.post("/api/drivers/:id/location", (req, res) => {
+  app.post("/api/drivers/:id/location", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { latitude, longitude, accuracy, speed, heading, deliveryId } = req.body;
 
     if (latitude === undefined || longitude === undefined) {
@@ -351,6 +370,12 @@ async function startServer() {
     const driver = db.getDriverById(req.params.id);
     if (!driver) {
       return res.status(404).json({ error: "Repartidor no encontrado" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && driver.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && driver.id !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a otro repartidor" });
     }
 
     const loc = {
@@ -384,83 +409,93 @@ async function startServer() {
     if (deliveryId) {
       const delivery = db.getDeliveryById(deliveryId);
       if (delivery && delivery.status !== 'entregado' && delivery.status !== 'cancelado') {
-        const route = delivery.routeHistory ? [...delivery.routeHistory] : [];
-        const lastPoint = route[route.length - 1];
+        if (delivery.companyId === driver.companyId) {
+          const route = delivery.routeHistory ? [...delivery.routeHistory] : [];
+          const lastPoint = route[route.length - 1];
 
-        // Route point throttling: record point only if > 10 seconds or moved > 15 meters
-        let shouldAppendPoint = true;
-        if (lastPoint) {
-          const distFromLast = calculateDistanceMeters(
-            lastPoint.latitude,
-            lastPoint.longitude,
-            loc.latitude,
-            loc.longitude
-          );
-          const timeFromLastSec = (Date.now() - lastPoint.timestamp) / 1000;
-          if (distFromLast < 15 && timeFromLastSec < 10) {
-            shouldAppendPoint = false;
+          // Route point throttling: record point only if > 10 seconds or moved > 15 meters
+          let shouldAppendPoint = true;
+          if (lastPoint) {
+            const distFromLast = calculateDistanceMeters(
+              lastPoint.latitude,
+              lastPoint.longitude,
+              loc.latitude,
+              loc.longitude
+            );
+            const timeFromLastSec = (Date.now() - lastPoint.timestamp) / 1000;
+            if (distFromLast < 15 && timeFromLastSec < 10) {
+              shouldAppendPoint = false;
+            }
           }
-        }
 
-        if (shouldAppendPoint) {
-          route.push({
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-            timestamp: Date.now(),
-            speed: loc.speed,
+          if (shouldAppendPoint) {
+            route.push({
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+              timestamp: Date.now(),
+              speed: loc.speed,
+            });
+          }
+
+          let distanceMeters = delivery.distanceMeters;
+          let etaMinutes = delivery.etaMinutes;
+
+          if (delivery.recipientLocation) {
+            distanceMeters = calculateDistanceMeters(
+              loc.latitude,
+              loc.longitude,
+              delivery.recipientLocation.latitude,
+              delivery.recipientLocation.longitude
+            );
+            etaMinutes = calculateEtaMinutes(distanceMeters, loc.speed || 25);
+          }
+
+          db.updateDelivery(delivery.id, {
+            driverLocation: loc,
+            routeHistory: route,
+            distanceMeters,
+            etaMinutes,
           });
         }
-
-        let distanceMeters = delivery.distanceMeters;
-        let etaMinutes = delivery.etaMinutes;
-
-        if (delivery.recipientLocation) {
-          distanceMeters = calculateDistanceMeters(
-            loc.latitude,
-            loc.longitude,
-            delivery.recipientLocation.latitude,
-            delivery.recipientLocation.longitude
-          );
-          etaMinutes = calculateEtaMinutes(distanceMeters, loc.speed || 25);
-        }
-
-        db.updateDelivery(delivery.id, {
-          driverLocation: loc,
-          routeHistory: route,
-          distanceMeters,
-          etaMinutes,
-        });
       }
     }
 
     res.json({ success: true, location: loc });
   });
 
-  // --- DELIVERIES ENDPOINTS ---
-  app.get("/api/deliveries", (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp_centro_logistico_01';
-    const driverId = req.query.driverId as string;
-
-    let deliveries: Delivery[];
-    if (driverId) {
-      deliveries = db.getDeliveriesByDriver(driverId);
-    } else {
-      deliveries = db.getDeliveriesByCompany(companyId);
+  // --- DELIVERIES ENDPOINTS (Scoped & Multi-tenant Protected) ---
+  app.get("/api/deliveries", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (req.user?.role === 'DRIVER') {
+      const deliveries = db.getDeliveriesByDriver(req.user.driverId || '')
+        .filter((d) => d.companyId === req.user?.companyId);
+      return res.json(deliveries);
     }
 
+    const companyId =
+      req.user?.role === 'SUPER_ADMIN' && req.query.companyId
+        ? (req.query.companyId as string)
+        : req.user!.companyId;
+
+    const deliveries = db.getDeliveriesByCompany(companyId);
     res.json(deliveries);
   });
 
-  app.get("/api/deliveries/:id", (req, res) => {
+  app.get("/api/deliveries/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const delivery = db.getDeliveryById(req.params.id);
     if (!delivery) {
       return res.status(404).json({ error: "Entrega no encontrada" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a entrega de otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && delivery.driverId !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a entrega asignada a otro repartidor" });
     }
     res.json(delivery);
   });
 
   // Create new task from Central Control
-  app.post("/api/deliveries", (req: Request, res: Response) => {
+  app.post("/api/deliveries", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN', 'DISPATCHER']), (req: AuthenticatedRequest, res: Response) => {
     const {
       recipientPhone,
       recipientName,
@@ -471,21 +506,23 @@ async function startServer() {
       priority,
       notes,
       driverId,
-      companyId,
     } = req.body;
 
     if (!recipientPhone || !description) {
       return res.status(400).json({ error: "Teléfono y descripción son obligatorios" });
     }
 
-    const cid = companyId || 'comp_centro_logistico_01';
+    const cid = req.user?.role === 'SUPER_ADMIN' && req.body.companyId ? req.body.companyId : req.user!.companyId;
     const companyDeliveries = db.getDeliveriesByCompany(cid);
     const nextOrderNumber = 1000 + companyDeliveries.length + 1;
     const deliveryId = `del_${Date.now()}`;
     const sessionToken = generateSecureToken();
 
-    // Assign driver or pick first available
+    // Assign driver or pick first available within company
     let assignedDriver = driverId ? db.getDriverById(driverId) : undefined;
+    if (assignedDriver && assignedDriver.companyId !== cid) {
+      return res.status(400).json({ error: "El repartidor no pertenece a la empresa especificada" });
+    }
     if (!assignedDriver) {
       const companyDrivers = db.getDriversByCompany(cid);
       assignedDriver = companyDrivers.find((d) => d.status === 'disponible') || companyDrivers[0];
@@ -553,9 +590,9 @@ async function startServer() {
       nextOrderNumber,
       'DELIVERY_CREATED',
       `Tarea #${nextOrderNumber} creada desde UBIKA CONTROL.`,
-      'Despacho Central',
-      undefined,
-      'DISPATCHER'
+      req.user?.name || 'Despacho Central',
+      req.user?.userId,
+      req.user?.role || 'DISPATCHER'
     );
 
     recordAuditEvent(
@@ -564,19 +601,25 @@ async function startServer() {
       nextOrderNumber,
       'DRIVER_ASSIGNED',
       `Asignado al repartidor ${assignedDriver.name} (${assignedDriver.internalId}).`,
-      'Despacho Central',
-      undefined,
-      'DISPATCHER'
+      req.user?.name || 'Despacho Central',
+      req.user?.userId,
+      req.user?.role || 'DISPATCHER'
     );
 
     res.status(201).json(newDelivery);
   });
 
   // Driver accepts task
-  app.patch("/api/deliveries/:id/accept", (req, res) => {
+  app.patch("/api/deliveries/:id/accept", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const delivery = db.getDeliveryById(req.params.id);
     if (!delivery) {
       return res.status(404).json({ error: "Entrega no encontrada" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && delivery.driverId !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a entrega de otro repartidor" });
     }
 
     const now = Date.now();
@@ -607,11 +650,17 @@ async function startServer() {
   });
 
   // Driver rejects task
-  app.patch("/api/deliveries/:id/reject", (req, res) => {
+  app.patch("/api/deliveries/:id/reject", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { reason } = req.body;
     const delivery = db.getDeliveryById(req.params.id);
     if (!delivery) {
       return res.status(404).json({ error: "Entrega no encontrada" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && delivery.driverId !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a entrega de otro repartidor" });
     }
 
     const updated = db.updateDelivery(delivery.id, {
@@ -641,10 +690,16 @@ async function startServer() {
   });
 
   // Driver starts trip (en_camino)
-  app.patch("/api/deliveries/:id/start", (req, res) => {
+  app.patch("/api/deliveries/:id/start", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const delivery = db.getDeliveryById(req.params.id);
     if (!delivery) {
       return res.status(404).json({ error: "Entrega no encontrada" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && delivery.driverId !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a entrega de otro repartidor" });
     }
 
     const now = Date.now();
@@ -675,10 +730,16 @@ async function startServer() {
   });
 
   // Driver arrives (cerca)
-  app.patch("/api/deliveries/:id/arrive", (req, res) => {
+  app.patch("/api/deliveries/:id/arrive", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const delivery = db.getDeliveryById(req.params.id);
     if (!delivery) {
       return res.status(404).json({ error: "Entrega no encontrada" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && delivery.driverId !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a entrega de otro repartidor" });
     }
 
     const now = Date.now();
@@ -702,10 +763,16 @@ async function startServer() {
   });
 
   // Driver completes delivery (entregado) + Purges Coordinates
-  app.patch("/api/deliveries/:id/complete", (req, res) => {
+  app.patch("/api/deliveries/:id/complete", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const delivery = db.getDeliveryById(req.params.id);
     if (!delivery) {
       return res.status(404).json({ error: "Entrega no encontrada" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && delivery.driverId !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a entrega de otro repartidor" });
     }
 
     const now = Date.now();
@@ -743,11 +810,14 @@ async function startServer() {
   });
 
   // Cancel delivery + Purges Coordinates
-  app.patch("/api/deliveries/:id/cancel", (req, res) => {
+  app.patch("/api/deliveries/:id/cancel", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN', 'DISPATCHER']), (req: AuthenticatedRequest, res: Response) => {
     const { reason } = req.body;
     const delivery = db.getDeliveryById(req.params.id);
     if (!delivery) {
       return res.status(404).json({ error: "Entrega no encontrada" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
     }
 
     const now = Date.now();
@@ -770,20 +840,26 @@ async function startServer() {
       delivery.orderNumber,
       'DELIVERY_CANCELLED',
       `Entrega #${delivery.orderNumber} cancelada${reason ? `: ${reason}` : '.'}`,
-      'Despacho Central',
-      undefined,
-      'DISPATCHER'
+      req.user?.name || 'Despacho Central',
+      req.user?.userId,
+      req.user?.role || 'DISPATCHER'
     );
 
     res.json(updated);
   });
 
   // Update delivery generic status
-  app.patch("/api/deliveries/:id/status", (req, res) => {
+  app.patch("/api/deliveries/:id/status", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { status } = req.body;
     const delivery = db.getDeliveryById(req.params.id);
     if (!delivery) {
       return res.status(404).json({ error: "Entrega no encontrada" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && delivery.driverId !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a entrega de otro repartidor" });
     }
 
     delivery.status = status;
@@ -960,27 +1036,45 @@ async function startServer() {
     });
   });
 
-  // --- EVENTS & AUDIT LOGS (Scoped by company) ---
-  app.get("/api/events", (req: Request, res: Response) => {
-    const companyId = (req.query.companyId as string) || 'comp_centro_logistico_01';
+  // --- EVENTS & AUDIT LOGS (Scoped by authenticated company) ---
+  app.get("/api/events", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const deliveryId = req.query.deliveryId as string;
 
-    let events: DeliveryEvent[];
     if (deliveryId) {
-      events = db.getEventsByDelivery(deliveryId);
-    } else {
-      events = db.getEventsByCompany(companyId);
+      const delivery = db.getDeliveryById(deliveryId);
+      if (!delivery) {
+        return res.status(404).json({ error: "Entrega no encontrada" });
+      }
+      if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+        return res.status(403).json({ error: "Acceso denegado a entrega de otra empresa" });
+      }
+      if (req.user?.role === 'DRIVER' && delivery.driverId !== req.user?.driverId) {
+        return res.status(403).json({ error: "Acceso denegado a eventos de otro repartidor" });
+      }
+      return res.json(db.getEventsByDelivery(deliveryId));
     }
 
+    const companyId =
+      req.user?.role === 'SUPER_ADMIN' && req.query.companyId
+        ? (req.query.companyId as string)
+        : req.user!.companyId;
+
+    const events = db.getEventsByCompany(companyId);
     res.json(events);
   });
 
-  // Direct Driver Location update on Delivery
-  app.post("/api/deliveries/:id/driver-location", (req: Request, res: Response) => {
+  // Direct Driver Location update on Delivery (Authenticated & Scoped)
+  app.post("/api/deliveries/:id/driver-location", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { latitude, longitude, accuracy, speed, heading } = req.body;
     const delivery = db.getDeliveryById(req.params.id);
     if (!delivery) {
       return res.status(404).json({ error: "Entrega no encontrada" });
+    }
+    if (req.user?.role !== 'SUPER_ADMIN' && delivery.companyId !== req.user?.companyId) {
+      return res.status(403).json({ error: "Acceso denegado a otra empresa" });
+    }
+    if (req.user?.role === 'DRIVER' && delivery.driverId !== req.user?.driverId) {
+      return res.status(403).json({ error: "Acceso denegado a entrega de otro repartidor" });
     }
 
     if (latitude === undefined || longitude === undefined) {
@@ -1135,10 +1229,9 @@ async function startServer() {
     res.json({ success: true, message: "Ubicación rechazada" });
   });
 
-  // Admin Backup Trigger
-  app.post("/api/admin/backup", (_req, res) => {
-    const { createBackup } = require("./server/db");
-    const file = createBackup();
+  // Admin Backup Trigger (Protected: SUPER_ADMIN only)
+  app.post("/api/admin/backup", authenticateUser, requireRole(['SUPER_ADMIN']), (_req: AuthenticatedRequest, res: Response) => {
+    const file = db.createBackup();
     res.json({ success: true, backupFile: file, timestamp: Date.now() });
   });
 

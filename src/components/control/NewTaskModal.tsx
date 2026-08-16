@@ -14,6 +14,7 @@ import {
   Car,
 } from 'lucide-react';
 import { Driver, TaskPriority, VehicleType } from '../../types';
+import { apiFetch } from '../../utils/api';
 
 interface NewTaskModalProps {
   isOpen: boolean;
@@ -59,7 +60,7 @@ export const NewTaskModal: React.FC<NewTaskModalProps> = ({
     setLoading(true);
 
     try {
-      const res = await fetch('/api/deliveries', {
+      const res = await apiFetch('/api/deliveries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -110,12 +110,31 @@ export function createBackup(): string | null {
 }
 
 /**
- * Initialize Default Seed Data if DB file is fresh
+ * Initialize Default Seed Data if DB file is fresh or demo seed requested
  */
 function createInitialSeedData(): DatabaseSchema {
+  const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production';
+  const shouldSeedDemo = process.env.SEED_DEMO_DATA === 'true' || (isDev && process.env.SEED_DEMO_DATA !== 'false');
+
+  if (!shouldSeedDemo) {
+    return {
+      version: 1,
+      companies: [],
+      users: [],
+      drivers: [],
+      deliveries: [],
+      location_sessions: [],
+      events: [],
+      driver_locations: [],
+    };
+  }
+
   const salt = bcrypt.genSaltSync(10);
-  const adminPasswordHash = bcrypt.hashSync('Admin123!', salt);
-  const driverPasswordHash = bcrypt.hashSync('Driver123!', salt);
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'UbikaAdminSecure2026!';
+  const driverPassword = process.env.INITIAL_DRIVER_PASSWORD || 'UbikaDriverSecure2026!';
+
+  const adminPasswordHash = bcrypt.hashSync(adminPassword, salt);
+  const driverPasswordHash = bcrypt.hashSync(driverPassword, salt);
 
   const pilotoCompany: Company = {
     id: 'comp_ubika_piloto',
@@ -558,27 +577,36 @@ export function loadDatabase(): DatabaseSchema {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
       dbState = JSON.parse(raw);
       
-      // Ensure piloto test company & drivers exist even in pre-existing db files
-      const seed = createInitialSeedData();
-      let changed = false;
-      if (!dbState.companies.some((c) => c.id === 'comp_ubika_piloto')) {
-        dbState.companies.unshift(seed.companies[0]);
-        changed = true;
-      }
-      for (const u of seed.users.filter((u) => u.companyId === 'comp_ubika_piloto')) {
-        if (!dbState.users.some((x) => x.id === u.id)) {
-          dbState.users.push(u);
+      const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production';
+      const shouldSeedDemo = process.env.SEED_DEMO_DATA === 'true' || (isDev && process.env.SEED_DEMO_DATA !== 'false');
+
+      if (shouldSeedDemo) {
+        // Ensure piloto test company & drivers exist in development/demo mode
+        const seed = createInitialSeedData();
+        let changed = false;
+        if (seed.companies.length > 0 && !dbState.companies.some((c) => c.id === 'comp_ubika_piloto')) {
+          dbState.companies.unshift(seed.companies[0]);
           changed = true;
         }
-      }
-      for (const d of seed.drivers.filter((d) => d.companyId === 'comp_ubika_piloto')) {
-        if (!dbState.drivers.some((x) => x.id === d.id)) {
-          dbState.drivers.push(d);
-          changed = true;
+        for (const u of seed.users) {
+          const existingIdx = dbState.users.findIndex((x) => x.id === u.id);
+          if (existingIdx === -1) {
+            dbState.users.push(u);
+            changed = true;
+          } else if (u.passwordHash && dbState.users[existingIdx].passwordHash !== u.passwordHash) {
+            dbState.users[existingIdx].passwordHash = u.passwordHash;
+            changed = true;
+          }
         }
-      }
-      if (changed) {
-        saveDatabaseSync();
+        for (const d of seed.drivers.filter((d) => d.companyId === 'comp_ubika_piloto')) {
+          if (!dbState.drivers.some((x) => x.id === d.id)) {
+            dbState.drivers.push(d);
+            changed = true;
+          }
+        }
+        if (changed) {
+          saveDatabaseSync();
+        }
       }
 
       console.log(`[DB] Base de datos persistente cargada con éxito desde ${DB_FILE}`);
@@ -759,6 +787,13 @@ export const db = {
   },
 
   // Raw Export for backup or tests
+  createBackup: (): string => {
+    saveDatabaseSync();
+    const backupFileName = `ubika_backup_${Date.now()}.json`;
+    const backupPath = path.join(DATA_DIR, backupFileName);
+    fs.copyFileSync(DB_FILE, backupPath);
+    return backupFileName;
+  },
   getRawState: (): DatabaseSchema => dbState,
   reloadFromDisk: (): DatabaseSchema => {
     dbState = undefined as any;
