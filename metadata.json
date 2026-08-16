@@ -1,0 +1,6 @@
+{
+  "name": "UBIKA",
+  "description": "Plataforma inteligente de ubicación y entrega para conectar repartidores con clientes de forma simple, segura y temporal.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

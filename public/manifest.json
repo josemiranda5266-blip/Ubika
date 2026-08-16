@@ -1,0 +1,24 @@
+{
+  "name": "UBIKA CONTROL — Despacho y Logística",
+  "short_name": "UBIKA CONTROL",
+  "description": "Panel de control y despacho de entregas en tiempo real",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#F97316",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1526367790999-0150786686a2?w=192&auto=format&fit=crop&q=80",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1526367790999-0150786686a2?w=512&auto=format&fit=crop&q=80",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
