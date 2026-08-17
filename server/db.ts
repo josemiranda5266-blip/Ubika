@@ -32,6 +32,42 @@ export interface UserRecord {
   active: boolean;
 }
 
+export interface InvitationRecord {
+  id: string;
+  email: string;
+  tokenHash: string;
+  companyId: string;
+  role: UserRole;
+  expiresAt: number;
+  used: boolean;
+  usedAt?: number;
+  createdAt: number;
+}
+
+export interface PasswordResetRecord {
+  id: string;
+  email: string;
+  tokenHash: string;
+  expiresAt: number;
+  used: boolean;
+  usedAt?: number;
+  createdAt: number;
+}
+
+export function validatePassword(password: string): { valid: boolean; error?: string } {
+  if (!password || typeof password !== 'string') {
+    return { valid: false, error: 'Contraseña requerida' };
+  }
+  if (password.length < 8) {
+    return { valid: false, error: 'La contraseña debe tener al menos 8 caracteres' };
+  }
+  const weakPasswords = ['password', '12345678', '123456789', 'qwerty123', '123456784', '123456785'];
+  if (weakPasswords.includes(password.toLowerCase()) || /^(123456|password|qwerty)/i.test(password)) {
+    return { valid: false, error: 'La contraseña es demasiado débil o común. Por favor elija una más segura.' };
+  }
+  return { valid: true };
+}
+
 export interface LocationSessionRecord {
   id: string;
   deliveryId: string;
@@ -69,6 +105,8 @@ export interface DatabaseSchema {
   food_products?: FoodProduct[];
   food_shipping_rates?: FoodShippingRate[];
   food_orders?: FoodOrder[];
+  invitations?: InvitationRecord[];
+  password_resets?: PasswordResetRecord[];
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -183,6 +221,8 @@ function createInitialSeedData(): DatabaseSchema {
     food_products: [],
     food_shipping_rates: [],
     food_orders: [],
+    invitations: [],
+    password_resets: [],
   };
 }
 
@@ -336,6 +376,8 @@ export function loadDatabase(): DatabaseSchema {
       dbState.food_products = dbState.food_products || [];
       dbState.food_shipping_rates = dbState.food_shipping_rates || [];
       dbState.food_orders = dbState.food_orders || [];
+      dbState.invitations = dbState.invitations || [];
+      dbState.password_resets = dbState.password_resets || [];
 
       // Run Food multi-tenant isolation migration
       const migrationChanged = runFoodMigration(dbState);
@@ -419,6 +461,49 @@ export const db = {
     dbState.users.push(user);
     saveDatabaseSync();
     return user;
+  },
+  updateUser: (userId: string, updates: Partial<UserRecord>): UserRecord | null => {
+    const idx = dbState.users.findIndex((u) => u.id === userId);
+    if (idx === -1) return null;
+    dbState.users[idx] = { ...dbState.users[idx], ...updates };
+    saveDatabaseSync();
+    return dbState.users[idx];
+  },
+  createInvitation: (inv: InvitationRecord): InvitationRecord => {
+    dbState.invitations = dbState.invitations || [];
+    dbState.invitations.push(inv);
+    saveDatabaseSync();
+    return inv;
+  },
+  getInvitationByHash: (hash: string): InvitationRecord | undefined => {
+    dbState.invitations = dbState.invitations || [];
+    return dbState.invitations.find((i) => i.tokenHash === hash);
+  },
+  updateInvitation: (id: string, updates: Partial<InvitationRecord>): InvitationRecord | null => {
+    dbState.invitations = dbState.invitations || [];
+    const idx = dbState.invitations.findIndex((i) => i.id === id);
+    if (idx === -1) return null;
+    dbState.invitations[idx] = { ...dbState.invitations[idx], ...updates };
+    saveDatabaseSync();
+    return dbState.invitations[idx];
+  },
+  createPasswordReset: (pr: PasswordResetRecord): PasswordResetRecord => {
+    dbState.password_resets = dbState.password_resets || [];
+    dbState.password_resets.push(pr);
+    saveDatabaseSync();
+    return pr;
+  },
+  getPasswordResetByHash: (hash: string): PasswordResetRecord | undefined => {
+    dbState.password_resets = dbState.password_resets || [];
+    return dbState.password_resets.find((p) => p.tokenHash === hash);
+  },
+  updatePasswordReset: (id: string, updates: Partial<PasswordResetRecord>): PasswordResetRecord | null => {
+    dbState.password_resets = dbState.password_resets || [];
+    const idx = dbState.password_resets.findIndex((p) => p.id === id);
+    if (idx === -1) return null;
+    dbState.password_resets[idx] = { ...dbState.password_resets[idx], ...updates };
+    saveDatabaseSync();
+    return dbState.password_resets[idx];
   },
 
   // Drivers (Scoped by Company)

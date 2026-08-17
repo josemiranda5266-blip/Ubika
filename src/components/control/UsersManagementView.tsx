@@ -19,11 +19,11 @@ export const UsersManagementView: React.FC = () => {
   // Form states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [role, setRole] = useState('DRIVER');
   const [driverId, setDriverId] = useState('');
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ inviteUrl: string; inviteToken: string } | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -45,26 +45,31 @@ export const UsersManagementView: React.FC = () => {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password) {
-      setFormError('Todos los campos son obligatorios');
+    if (!name || !email || !role) {
+      setFormError('Nombre, email y rol son obligatorios');
       return;
     }
     setFormLoading(true);
     setFormError('');
+    setInviteResult(null);
 
     try {
       const res = await apiFetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role, driverId: role === 'DRIVER' ? driverId : undefined }),
+        body: JSON.stringify({ name, email, role, driverId: role === 'DRIVER' ? driverId : undefined }),
       });
       if (res.ok) {
-        setIsAddModalOpen(false);
+        const data = await res.json();
+        setInviteResult({
+          inviteUrl: data.inviteUrl || `/#accept-invite?token=${data.inviteToken}`,
+          inviteToken: data.inviteToken,
+        });
         fetchUsers();
-        setName(''); setEmail(''); setPassword(''); setRole('DRIVER'); setDriverId('');
+        setName(''); setEmail(''); setRole('DRIVER'); setDriverId('');
       } else {
         const data = await res.json();
-        setFormError(data.error || 'Error al crear usuario');
+        setFormError(data.error || 'Error al crear invitación');
       }
     } catch (err) {
       setFormError('Error de red');
@@ -154,10 +159,7 @@ export const UsersManagementView: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-700 mb-1">Correo (Usuario)</label>
                 <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-orange-500" />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Contraseña Inicial</label>
-                <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-orange-500" />
-              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Rol</label>
                 <select value={role} onChange={e => setRole(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-orange-500">

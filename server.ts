@@ -5,7 +5,7 @@ import fs from "fs";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
-import { db, hashToken, UserRole } from "./server/db";
+import { db, hashToken, validatePassword, UserRole } from "./server/db";
 import {
   authenticateUser,
   requireRole,
@@ -308,6 +308,209 @@ export function createUbikaApp(): express.Express {
     return res.json({ user, company });
   });
 
+  // --- PHASE 2 AUTH ENDPOINTS: INVITATIONS & RECOVERY ---
+
+  // 1. Create Employee Invitation
+  app.post("/api/auth/invite", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
+    const { name, email, role, companyId: targetCompanyId } = req.body;
+
+    if (!name || !email || !role) {
+      return res.status(400).json({ error: "Nombre, email y rol son obligatorios" });
+    }
+
+    const allowedRoles = ['DRIVER', 'KITCHEN', 'DISPATCHER'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(403).json({ error: "Rol no permitido. Solo se permite DRIVER, KITCHEN o DISPATCHER." });
+    }
+
+    const cid = req.user?.role === 'SUPER_ADMIN' && targetCompanyId ? targetCompanyId : req.user!.companyId;
+
+    const existingUser = db.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(409).json({ error: "El correo electrónico ya está registrado" });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    const invitation = {
+      id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      email: email.trim().toLowerCase(),
+      tokenHash,
+      companyId: cid,
+      role,
+      expiresAt,
+      used: false,
+      createdAt: Date.now(),
+    };
+
+    db.createInvitation(invitation);
+
+    // Email provider integration point:
+    // Integration point for email service (e.g. SendGrid, AWS SES) to send invite link.
+    // We return inviteToken in JSON for test/admin convenience.
+    res.status(201).json({
+      message: "Invitación creada con éxito",
+      inviteToken: rawToken,
+      inviteUrl: `/accept-invite?token=${rawToken}`,
+      expiresAt,
+    });
+  });
+
+  // 2. Accept Invitation
+  app.post("/api/auth/accept-invite", rateLimit(60000, 10), (req: Request, res: Response) => {
+    const { token, name, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: "Token y contraseña son obligatorios" });
+    }
+
+    const validation = validatePassword(password);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const tokenHash = hashToken(token);
+    const invitation = db.getInvitationByHash(tokenHash);
+
+    if (!invitation) {
+      return res.status(400).json({ error: "Invitación inválida o token alterado" });
+    }
+
+    if (invitation.used) {
+      return res.status(400).json({ error: "La invitación ya fue utilizada" });
+    }
+
+    if (invitation.expiresAt < Date.now()) {
+      return res.status(400).json({ error: "La invitación ha expirado" });
+    }
+
+    const existingUser = db.getUserByEmail(invitation.email);
+    if (existingUser) {
+      return res.status(409).json({ error: "El usuario ya existe" });
+    }
+
+    db.updateInvitation(invitation.id, { used: true, usedAt: Date.now() });
+
+    const salt = bcrypt.genSaltSync(10);
+    const passwordHash = bcrypt.hashSync(password, salt);
+
+    const newUser = {
+      id: `usr_${Date.now()}`,
+      email: invitation.email,
+      passwordHash,
+      name: name || invitation.email.split('@')[0],
+      role: invitation.role, // Enforce role from invitation, cannot be changed by user
+      companyId: invitation.companyId, // Enforce company from invitation, cannot be changed
+      createdAt: Date.now(),
+      active: true,
+    };
+
+    db.createUser(newUser);
+
+    const authToken = generateAuthToken(newUser);
+    const company = db.getCompanyById(newUser.companyId);
+
+    res.status(201).json({
+      token: authToken,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        companyId: newUser.companyId,
+      },
+      company: company || null,
+    });
+  });
+
+  // 3. Forgot Password
+  app.post("/api/auth/forgot-password", rateLimit(60000, 5), (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    // Generic response to prevent user enumeration
+    const genericResponse = { message: "Si el correo está registrado, se han enviado las instrucciones de recuperación." };
+
+    if (!email) {
+      return res.json(genericResponse);
+    }
+
+    const user = db.getUserByEmail(email);
+    if (!user) {
+      return res.json(genericResponse);
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
+    const passwordReset = {
+      id: `pr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      email: user.email.toLowerCase(),
+      tokenHash,
+      expiresAt,
+      used: false,
+      createdAt: Date.now(),
+    };
+
+    db.createPasswordReset(passwordReset);
+
+    // Email provider integration point:
+    // Integration point for email service (e.g. SendGrid, AWS SES) to send password reset link.
+    // In test/development mode, we include resetToken for verification in tests.
+    const responsePayload: any = { ...genericResponse };
+    if (process.env.NODE_ENV === 'test' || process.env.ENABLE_DEV_TOKENS === 'true') {
+      responsePayload.resetToken = rawToken;
+      responsePayload.resetUrl = `/reset-password?token=${rawToken}`;
+    }
+
+    res.json(responsePayload);
+  });
+
+  // 4. Reset Password
+  app.post("/api/auth/reset-password", rateLimit(60000, 5), (req: Request, res: Response) => {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: "Token y contraseña son requeridos" });
+    }
+
+    const validation = validatePassword(password);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const tokenHash = hashToken(token);
+    const resetRecord = db.getPasswordResetByHash(tokenHash);
+
+    if (!resetRecord) {
+      return res.status(400).json({ error: "Token de recuperación inválido o alterado" });
+    }
+
+    if (resetRecord.used) {
+      return res.status(400).json({ error: "El token de recuperación ya fue utilizado" });
+    }
+
+    if (resetRecord.expiresAt < Date.now()) {
+      return res.status(400).json({ error: "El token de recuperación ha expirado" });
+    }
+
+    const user = db.getUserByEmail(resetRecord.email);
+    if (!user) {
+      return res.status(400).json({ error: "Usuario no encontrado" });
+    }
+
+    db.updatePasswordReset(resetRecord.id, { used: true, usedAt: Date.now() });
+
+    const salt = bcrypt.genSaltSync(10);
+    const passwordHash = bcrypt.hashSync(password, salt);
+
+    db.updateUser(user.id, { passwordHash });
+
+    res.json({ message: "Contraseña actualizada exitosamente" });
+  });
+
   // --- COMPANIES ENDPOINTS (Multi-tenant secured) ---
   app.get("/api/companies", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     if (req.user?.role === 'SUPER_ADMIN') {
@@ -421,16 +624,15 @@ export function createUbikaApp(): express.Express {
   });
 
   app.post("/api/users", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
-    const { name, email, password, role, driverId, phone } = req.body;
+    const { name, email, role, driverId, phone, companyId: targetCompanyId } = req.body;
     
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ error: "Nombre, email, contraseña y rol son obligatorios" });
+    if (!name || !email || !role) {
+      return res.status(400).json({ error: "Nombre, email y rol son obligatorios" });
     }
 
-    // Role restrictions: public cannot create, but this is admin. Admin can only create allowed roles.
     const allowedRoles = ['DRIVER', 'KITCHEN', 'DISPATCHER'];
     if (!allowedRoles.includes(role)) {
-       return res.status(403).json({ error: "Rol no permitido. Solo puede crear empleados operativos." });
+       return res.status(403).json({ error: "Rol no permitido. Solo se permite DRIVER, KITCHEN o DISPATCHER." });
     }
 
     const existingUser = db.getUserByEmail(email);
@@ -438,28 +640,31 @@ export function createUbikaApp(): express.Express {
       return res.status(409).json({ error: "El correo electrónico ya está registrado" });
     }
 
-    const cid = req.user?.role === 'SUPER_ADMIN' && req.body.companyId ? req.body.companyId : req.user!.companyId;
+    const cid = req.user?.role === 'SUPER_ADMIN' && targetCompanyId ? targetCompanyId : req.user!.companyId;
 
-    const salt = bcrypt.genSaltSync(10);
-    const passwordHash = bcrypt.hashSync(password, salt);
-    
-    const newUser = {
-      id: `usr_${Date.now()}`,
-      email,
-      passwordHash,
-      name,
-      role,
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    const invitation = {
+      id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      email: email.trim().toLowerCase(),
+      tokenHash,
       companyId: cid,
-      driverId: role === 'DRIVER' ? driverId : undefined,
-      phone,
+      role,
+      expiresAt,
+      used: false,
       createdAt: Date.now(),
-      active: true,
     };
 
-    db.createUser(newUser);
+    db.createInvitation(invitation);
 
-    const { passwordHash: _ph, ...safeUser } = newUser;
-    res.status(201).json(safeUser);
+    res.status(201).json({
+      message: "Invitación de empleado creada con éxito. El administrador no establece la contraseña.",
+      inviteToken: rawToken,
+      inviteUrl: `/accept-invite?token=${rawToken}`,
+      expiresAt,
+    });
   });
 
   app.post("/api/drivers", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
