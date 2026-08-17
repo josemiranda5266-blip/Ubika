@@ -71,6 +71,90 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
   const [pickupCodeInput, setPickupCodeInput] = useState<Record<string, string>>({});
   const [pickupError, setPickupError] = useState<Record<string, string>>({});
 
+  // Image Upload States
+  const [imageUploadMethod, setImageUploadMethod] = useState<'upload' | 'url'>('url');
+  const [localImageFile, setLocalImageFile] = useState<File | null>(null);
+  const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
+  const [localImageBase64, setLocalImageBase64] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleOpenCreateProduct = () => {
+    if (categories.length === 0) {
+      setEditingCategory({ name: '', displayOrder: 1, active: true });
+      return;
+    }
+    setLocalImageFile(null);
+    setLocalImagePreview(null);
+    setLocalImageBase64(null);
+    setUploadError(null);
+    setImageUploadMethod('url');
+    setEditingProduct({
+      name: '',
+      categoryId: categories[0]?.id || '',
+      price: 0,
+      isAvailable: true,
+      description: '',
+      imageUrl: '',
+    });
+  };
+
+  const handleOpenEditProduct = (p: FoodProduct) => {
+    setLocalImageFile(null);
+    setLocalImageBase64(null);
+    setUploadError(null);
+    if (p.imageUrl && p.imageUrl.startsWith('/uploads/')) {
+      setImageUploadMethod('upload');
+      setLocalImagePreview(p.imageUrl);
+    } else {
+      setImageUploadMethod('url');
+      setLocalImagePreview(null);
+    }
+    setEditingProduct(p);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validation of type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      alert("Formato de archivo no soportado. Permitidos: JPG, JPEG, PNG, WEBP.");
+      return;
+    }
+
+    // Validation of size (max 5MB)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      alert("El archivo supera el tamaño máximo permitido de 5MB.");
+      return;
+    }
+
+    setLocalImageFile(file);
+    setUploadError(null);
+
+    // Create a local preview
+    const previewUrl = URL.createObjectURL(file);
+    setLocalImagePreview(previewUrl);
+
+    // Read file as Base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLocalImageBase64(reader.result as string);
+    };
+    reader.onerror = () => {
+      alert("Error al leer el archivo.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setLocalImageFile(null);
+    setLocalImagePreview(null);
+    setLocalImageBase64(null);
+  };
+
   // Form states
   const [savingConfig, setSavingConfig] = useState<boolean>(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
@@ -374,29 +458,79 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
       alert('Nombre, Categoría y Precio son obligatorios');
       return;
     }
-    const isNew = !editingProduct.id;
-    const url = isNew ? '/api/food/products' : `/api/food/products/${editingProduct.id}`;
-    const method = isNew ? 'POST' : 'PUT';
+
+    setUploadingImage(true);
+    setUploadError(null);
 
     try {
+      const isNew = !editingProduct.id;
+      const productId = editingProduct.id || `fprod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+      let finalImageUrl = editingProduct.imageUrl || '';
+
+      if (imageUploadMethod === 'upload') {
+        if (localImageFile && localImageBase64) {
+          // Upload local image to server first
+          const uploadRes = await fetch('/api/food/products/upload-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              productId,
+              fileName: localImageFile.name,
+              fileType: localImageFile.type,
+              base64Data: localImageBase64,
+            }),
+          });
+
+          if (!uploadRes.ok) {
+            const errData = await uploadRes.json();
+            throw new Error(errData.error || 'Error al subir la imagen');
+          }
+
+          const uploadData = await uploadRes.json();
+          finalImageUrl = uploadData.publicUrl;
+        } else if (!localImagePreview) {
+          // Image was cleared/deleted
+          finalImageUrl = '';
+        }
+      }
+
+      const productPayload = {
+        ...editingProduct,
+        id: productId,
+        imageUrl: finalImageUrl,
+      };
+
+      const url = isNew ? '/api/food/products' : `/api/food/products/${productId}`;
+      const method = isNew ? 'POST' : 'PUT';
+
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(editingProduct),
+        body: JSON.stringify(productPayload),
       });
+
       if (res.ok) {
         showNotification('Producto guardado exitosamente.');
         setEditingProduct(null);
+        setLocalImageFile(null);
+        setLocalImagePreview(null);
+        setLocalImageBase64(null);
         fetchConfig();
       } else {
         const data = await res.json();
         alert(data.error || 'Error al guardar producto');
       }
-    } catch (err) {
-      alert('Error de conexión');
+    } catch (err: any) {
+      alert(err.message || 'Error de conexión');
+      setUploadError(err.message || 'Error al guardar producto');
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -509,7 +643,7 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
         </div>
 
         {/* 6 Sub-Tab Buttons */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 w-full xl:w-auto overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 w-full xl:w-auto">
           <button
             id="tab-merchant-overview"
             onClick={() => setActiveTab('OVERVIEW')}
@@ -996,19 +1130,7 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  if (categories.length === 0) {
-                    setEditingCategory({ name: '', displayOrder: 1, active: true });
-                    return;
-                  }
-                  setEditingProduct({
-                    name: '',
-                    categoryId: categories[0]?.id || '',
-                    price: 0,
-                    isAvailable: true,
-                    description: '',
-                  });
-                }}
+                onClick={handleOpenCreateProduct}
                 className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm"
               >
                 <Plus className="w-4 h-4" />
@@ -1077,7 +1199,7 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
                     </span>
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => setEditingProduct(p)}
+                        onClick={() => handleOpenEditProduct(p)}
                         className="p-2 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 shadow-xs"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -1641,8 +1763,14 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
                     type="number"
                     required
                     min={0}
-                    value={editingProduct.price || 0}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) || 0 })}
+                    value={editingProduct.price === undefined ? '' : editingProduct.price === 0 ? '0' : editingProduct.price}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      if (val.length > 1 && val.startsWith('0') && !val.startsWith('0.')) {
+                        val = val.replace(/^0+/, '');
+                      }
+                      setEditingProduct({ ...editingProduct, price: val ? parseFloat(val) : 0 });
+                    }}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold"
                   />
                 </div>
@@ -1658,15 +1786,107 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
                   ></textarea>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">URL de Imagen</label>
-                  <input
-                    type="url"
-                    value={editingProduct.imageUrl || ''}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, imageUrl: e.target.value })}
-                    placeholder="https://..."
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs"
-                  />
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-slate-700">Imagen del producto</label>
+                  
+                  {/* Selector de Método */}
+                  <div className="flex gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMethod('upload')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                        imageUploadMethod === 'upload'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      📷 Subir archivo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMethod('url')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                        imageUploadMethod === 'url'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      🔗 URL de Imagen
+                    </button>
+                  </div>
+
+                  {imageUploadMethod === 'upload' ? (
+                    <div className="space-y-2">
+                      {/* Vista Previa */}
+                      {localImagePreview ? (
+                        <div className="relative w-full h-36 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                          <img
+                            src={localImagePreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="absolute top-2 right-2 p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-black shadow-md flex items-center gap-1 transition-all"
+                            title="Eliminar imagen"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-full h-32 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center bg-slate-50 text-slate-500 p-4 hover:bg-slate-100/50 transition-all">
+                          <label className="cursor-pointer flex flex-col items-center justify-center w-full h-full">
+                            <Plus className="w-6 h-6 text-slate-400 mb-1" />
+                            <span className="text-xs font-bold text-slate-700">Seleccionar imagen</span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, WEBP (Max 5MB)</span>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/jpg,image/png,image/webp"
+                              onChange={handleFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="url"
+                        value={editingProduct.imageUrl || ''}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, imageUrl: e.target.value })}
+                        placeholder="https://ejemplo.com/imagen.jpg"
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs"
+                      />
+                      {editingProduct.imageUrl && (
+                        <div className="mt-2 w-full h-24 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                          <img
+                            src={editingProduct.imageUrl}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Indicador de progreso de subida */}
+                  {uploadingImage && (
+                    <div className="flex items-center gap-2 text-xs text-orange-600 font-bold animate-pulse">
+                      <span className="w-4 h-4 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></span>
+                      <span>Guardando y subiendo imagen...</span>
+                    </div>
+                  )}
+
+                  {uploadError && (
+                    <div className="text-[11px] text-rose-600 font-bold bg-rose-50 p-2 rounded-lg border border-rose-200">
+                      ⚠️ {uploadError}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 pt-2">

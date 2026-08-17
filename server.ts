@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import path from "path";
+import fs from "fs";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
@@ -183,8 +184,11 @@ export function createUbikaApp(): express.Express {
     next();
   });
 
-  // JSON Body Parser with reasonable limits
-  app.use(express.json({ limit: '1mb' }));
+  // JSON Body Parser with reasonable limits (increased for base64 uploads)
+  app.use(express.json({ limit: '10mb' }));
+
+  // Serve uploaded images statically
+  app.use('/uploads', express.static(path.join(process.cwd(), 'data', 'uploads')));
 
   // --- HEALTH & STATUS ---
   app.get("/api/health", (_req, res) => {
@@ -2348,6 +2352,104 @@ export function createUbikaApp(): express.Express {
     res.json({ success: true, message: "Categoría eliminada exitosamente" });
   });
 
+  // UPLOAD PRODUCT IMAGE (MULTI-TENANT SECURE FILE UPLOAD)
+  app.post("/api/food/products/upload-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (!isAuthorizedFoodAdmin(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+    }
+    const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado para administrar productos gastronómicos" });
+    }
+
+    const { productId, fileName, fileType, base64Data } = req.body;
+    if (!productId || !fileName || !fileType || !base64Data) {
+      return res.status(400).json({ error: "Faltan parámetros requeridos para la carga de imagen" });
+    }
+
+    // Security check: If product already exists, verify ownership
+    const existingProd = db.getFoodProductsByCompanyId(companyId).find((p) => p.id === productId);
+    if (existingProd && existingProd.companyId !== companyId) {
+      return res.status(403).json({ error: "No tiene permisos sobre este producto" });
+    }
+
+    // Validate type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(fileType.toLowerCase())) {
+      return res.status(400).json({ error: "Formato de archivo no soportado. Permitidos: JPG, JPEG, PNG, WEBP." });
+    }
+
+    // Validate extension
+    const ext = path.extname(fileName).toLowerCase();
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+    if (!allowedExts.includes(ext)) {
+      return res.status(400).json({ error: "Extensión de archivo no permitida." });
+    }
+
+    // Extract base64 payload
+    const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Content, 'base64');
+
+    // Validate size (max 5MB)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (buffer.length > MAX_SIZE) {
+      return res.status(400).json({ error: "El archivo supera el tamaño máximo permitido de 5MB." });
+    }
+
+    // Target directory: data/uploads/companies/{companyId}/products/{productId}
+    const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'companies', companyId, 'products', productId);
+    try {
+      fs.mkdirSync(uploadDir, { recursive: true });
+      const safeFileName = `image_${Date.now()}${ext}`;
+      const filePath = path.join(uploadDir, safeFileName);
+      fs.writeFileSync(filePath, buffer);
+
+      // Return the public URL for this image
+      const publicUrl = `/uploads/companies/${companyId}/products/${productId}/${safeFileName}`;
+      res.json({ publicUrl });
+    } catch (err: any) {
+      console.error('[Upload Error]:', err);
+      res.status(500).json({ error: "Error al guardar la imagen en el servidor" });
+    }
+  });
+
+  // DELETE PRODUCT IMAGE (MULTI-TENANT SECURE FILE DELETION)
+  app.post("/api/food/products/delete-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (!isAuthorizedFoodAdmin(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+    }
+    const companyId = req.user!.companyId;
+    const company = db.getCompanyById(companyId);
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado" });
+    }
+
+    const { productId, imageUrl } = req.body;
+    if (!productId || !imageUrl) {
+      return res.status(400).json({ error: "Faltan parámetros para eliminar la imagen" });
+    }
+
+    // Security check: Only delete if the imageUrl belongs to this company's products
+    if (!imageUrl.startsWith(`/uploads/companies/${companyId}/products/${productId}/`)) {
+      return res.status(403).json({ error: "No tiene permisos para eliminar esta imagen" });
+    }
+
+    // Translate URL to file path
+    const relativePath = imageUrl.replace(/^\/uploads\//, "");
+    const filePath = path.join(process.cwd(), 'data', 'uploads', relativePath);
+
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      res.json({ success: true, message: "Imagen eliminada del servidor" });
+    } catch (err: any) {
+      console.error('[Delete Image Error]:', err);
+      res.status(500).json({ error: "Error al eliminar la imagen del servidor" });
+    }
+  });
+
   // PRODUCTS CRUD - DYNAMIC MULTI-TENANT PRODUCTS
   app.post("/api/food/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     if (!isAuthorizedFoodAdmin(req)) {
@@ -2359,7 +2461,7 @@ export function createUbikaApp(): express.Express {
       return res.status(403).json({ error: "Comercio no autorizado para administrar productos gastronómicos" });
     }
 
-    const { categoryId, name, description, price, imageUrl, isAvailable, displayOrder, optionGroups } = req.body;
+    const { id, categoryId, name, description, price, imageUrl, isAvailable, displayOrder, optionGroups } = req.body;
     const trimmedName = typeof name === 'string' ? name.trim() : '';
     if (!categoryId || !trimmedName || typeof price !== 'number') {
       return res.status(400).json({ error: "categoryId, name y price numérico son obligatorios" });
@@ -2372,7 +2474,7 @@ export function createUbikaApp(): express.Express {
     }
 
     const newProd: FoodProduct = {
-      id: `fprod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      id: id || `fprod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       companyId,
       categoryId,
       name: trimmedName,
