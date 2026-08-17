@@ -471,6 +471,13 @@ export const db = {
   },
   createInvitation: (inv: InvitationRecord): InvitationRecord => {
     dbState.invitations = dbState.invitations || [];
+    // Mark existing active invitations for this email as used/invalidated
+    dbState.invitations.forEach(i => {
+      if (i.email.toLowerCase() === inv.email.toLowerCase() && !i.used) {
+        i.used = true;
+        i.usedAt = Date.now();
+      }
+    });
     dbState.invitations.push(inv);
     saveDatabaseSync();
     return inv;
@@ -489,6 +496,13 @@ export const db = {
   },
   createPasswordReset: (pr: PasswordResetRecord): PasswordResetRecord => {
     dbState.password_resets = dbState.password_resets || [];
+    // Invalidate any previous active password reset tokens for this email
+    dbState.password_resets.forEach(p => {
+      if (p.email.toLowerCase() === pr.email.toLowerCase() && !p.used) {
+        p.used = true;
+        p.usedAt = Date.now();
+      }
+    });
     dbState.password_resets.push(pr);
     saveDatabaseSync();
     return pr;

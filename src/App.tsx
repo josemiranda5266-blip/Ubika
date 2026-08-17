@@ -8,12 +8,13 @@ import { DriverApp } from './components/DriverApp';
 import { CustomerWebApp } from './components/CustomerWebApp';
 import { UbikaControl } from './components/control/UbikaControl';
 import { UbikaFoodApp } from './components/food/UbikaFoodApp';
+import { UbikaCommerceApp } from './components/commerce/UbikaCommerceApp';
 import { Login } from './components/Login';
 import { getStoredToken, getStoredUser, clearStoredAuth, StoredUser } from './utils/api';
-import { Smartphone, Globe, LayoutDashboard, Truck, Utensils, LogOut, User } from 'lucide-react';
+import { Smartphone, Globe, LayoutDashboard, Truck, Utensils, Store, LogOut, User } from 'lucide-react';
 
 export default function App() {
-  const [viewMode, setViewMode] = useState<'control' | 'driver' | 'customer' | 'food'>('control');
+  const [viewMode, setViewMode] = useState<'control' | 'driver' | 'customer' | 'food' | 'commerce'>('control');
   const [customerToken, setCustomerToken] = useState<string>('');
   const [foodCompanyId, setFoodCompanyId] = useState<string | undefined>(undefined);
   const [foodOrderId, setFoodOrderId] = useState<string | undefined>(undefined);
@@ -44,6 +45,11 @@ export default function App() {
           const orderId = hash.replace('#food/order/', '');
           if (orderId) setFoodOrderId(orderId);
         }
+        return;
+      }
+
+      if (hash === '#commerce') {
+        setViewMode('commerce');
         return;
       }
 
@@ -200,6 +206,23 @@ export default function App() {
             <Utensils className="w-3.5 h-3.5" />
             <span>UBIKA FOOD 🍔</span>
           </button>
+
+          <button
+            id="app-mode-commerce"
+            type="button"
+            onClick={() => {
+              window.location.hash = '#commerce';
+              setViewMode('commerce');
+            }}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
+              viewMode === 'commerce'
+                ? 'bg-orange-600 text-white shadow-md shadow-orange-200'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Store className="w-3.5 h-3.5" />
+            <span>UBIKA COMMERCE 🛒</span>
+          </button>
         </div>
 
         {/* User profile & Logout */}
@@ -242,6 +265,7 @@ export default function App() {
             onBackToControl={handleBackToControl}
           />
         )}
+        {viewMode === 'commerce' && <UbikaCommerceApp />}
       </div>
     </div>
   );

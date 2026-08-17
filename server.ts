@@ -6,6 +6,8 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
 import { db, hashToken, validatePassword, UserRole } from "./server/db";
+import { EmailService } from "./server/email";
+import { CommerceService } from "./server/commerce/service";
 import {
   authenticateUser,
   requireRole,
@@ -311,7 +313,7 @@ export function createUbikaApp(): express.Express {
   // --- PHASE 2 AUTH ENDPOINTS: INVITATIONS & RECOVERY ---
 
   // 1. Create Employee Invitation
-  app.post("/api/auth/invite", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
+  app.post("/api/auth/invite", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), async (req: AuthenticatedRequest, res: Response) => {
     const { name, email, role, companyId: targetCompanyId } = req.body;
 
     if (!name || !email || !role) {
@@ -347,15 +349,24 @@ export function createUbikaApp(): express.Express {
 
     db.createInvitation(invitation);
 
-    // Email provider integration point:
-    // Integration point for email service (e.g. SendGrid, AWS SES) to send invite link.
-    // We return inviteToken in JSON for test/admin convenience.
-    res.status(201).json({
-      message: "Invitación creada con éxito",
-      inviteToken: rawToken,
-      inviteUrl: `/accept-invite?token=${rawToken}`,
+    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const inviteUrl = `${appUrl}/accept-invite?token=${rawToken}`;
+    const company = db.getCompanyById(cid);
+    const companyName = company ? company.name : 'UBIKA';
+
+    await EmailService.sendEmployeeInvitation(invitation.email, inviteUrl, invitation.role, companyName);
+
+    const inviteResp: any = {
+      message: "Invitación creada con éxito. Se ha enviado un correo electrónico con las instrucciones al empleado.",
+      email: invitation.email,
+      role: invitation.role,
       expiresAt,
-    });
+    };
+    if (process.env.NODE_ENV === 'test' || process.env.ENABLE_DEV_TOKENS === 'true') {
+      inviteResp.inviteToken = rawToken;
+      inviteResp.inviteUrl = inviteUrl;
+    }
+    res.status(201).json(inviteResp);
   });
 
   // 2. Accept Invitation
@@ -426,7 +437,7 @@ export function createUbikaApp(): express.Express {
   });
 
   // 3. Forgot Password
-  app.post("/api/auth/forgot-password", rateLimit(60000, 5), (req: Request, res: Response) => {
+  app.post("/api/auth/forgot-password", rateLimit(60000, 5), async (req: Request, res: Response) => {
     const { email } = req.body;
 
     // Generic response to prevent user enumeration
@@ -456,13 +467,15 @@ export function createUbikaApp(): express.Express {
 
     db.createPasswordReset(passwordReset);
 
-    // Email provider integration point:
-    // Integration point for email service (e.g. SendGrid, AWS SES) to send password reset link.
-    // In test/development mode, we include resetToken for verification in tests.
+    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
+
+    await EmailService.sendPasswordReset(user.email, resetUrl);
+
     const responsePayload: any = { ...genericResponse };
     if (process.env.NODE_ENV === 'test' || process.env.ENABLE_DEV_TOKENS === 'true') {
       responsePayload.resetToken = rawToken;
-      responsePayload.resetUrl = `/reset-password?token=${rawToken}`;
+      responsePayload.resetUrl = resetUrl;
     }
 
     res.json(responsePayload);
@@ -659,12 +672,20 @@ export function createUbikaApp(): express.Express {
 
     db.createInvitation(invitation);
 
-    res.status(201).json({
-      message: "Invitación de empleado creada con éxito. El administrador no establece la contraseña.",
-      inviteToken: rawToken,
-      inviteUrl: `/accept-invite?token=${rawToken}`,
+    // Email provider integration point:
+    // Integration point for email service (e.g. SendGrid, AWS SES) to send invite link securely.
+    // The raw token is NOT exposed to the admin interface or API response in production.
+    const userInviteResp: any = {
+      message: "Invitación de empleado creada con éxito. El administrador no establece la contraseña. Se ha enviado un correo con las instrucciones al empleado.",
+      email: invitation.email,
+      role: invitation.role,
       expiresAt,
-    });
+    };
+    if (process.env.NODE_ENV === 'test' || process.env.ENABLE_DEV_TOKENS === 'true') {
+      userInviteResp.inviteToken = rawToken;
+      userInviteResp.inviteUrl = `/accept-invite?token=${rawToken}`;
+    }
+    res.status(201).json(userInviteResp);
   });
 
   app.post("/api/drivers", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
@@ -2876,6 +2897,197 @@ export function createUbikaApp(): express.Express {
   });
 
   // Admin Backup Trigger (Protected: SUPER_ADMIN only)
+    // --- UBIKA COMMERCE API ROUTES ---
+    app.get("/api/v1/commerce/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const products = CommerceService.getProducts(req.user!.companyId);
+        res.json(products);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.post("/api/v1/commerce/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const product = CommerceService.createProduct(req.body, req.user!.companyId);
+        res.status(201).json(product);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.get("/api/v1/commerce/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const product = CommerceService.getProduct(req.params.id, req.user!.companyId);
+        if (!product) return res.status(404).json({ error: "Producto no encontrado" });
+        res.json(product);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.patch("/api/v1/commerce/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const updated = CommerceService.updateProduct(req.params.id, req.user!.companyId, req.body);
+        if (!updated) return res.status(404).json({ error: "Producto no encontrado" });
+        res.json(updated);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.delete("/api/v1/commerce/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const success = CommerceService.deleteProduct(req.params.id, req.user!.companyId);
+        if (!success) return res.status(404).json({ error: "Producto no encontrado" });
+        res.json({ success: true });
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.get("/api/v1/commerce/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const categories = CommerceService.getCategories(req.user!.companyId);
+        res.json(categories);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.post("/api/v1/commerce/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const cat = CommerceService.createCategory(req.body, req.user!.companyId);
+        res.status(201).json(cat);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.get("/api/v1/commerce/customers", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const customers = CommerceService.getCustomers(req.user!.companyId);
+        res.json(customers);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.post("/api/v1/commerce/customers", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const cust = CommerceService.createCustomer(req.body, req.user!.companyId);
+        res.status(201).json(cust);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.get("/api/v1/commerce/stock/movements", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const movements = CommerceService.getStockMovements(req.user!.companyId);
+        res.json(movements);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.post("/api/v1/commerce/stock/adjust", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const { productId, quantity, type, reason } = req.body;
+        const mov = CommerceService.adjustStock(productId, req.user!.companyId, Number(quantity), type, reason, req.user!.userId);
+        res.status(201).json(mov);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.get("/api/v1/commerce/cash", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const sessions = CommerceService.getCashSessions(req.user!.companyId);
+        res.json(sessions);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.get("/api/v1/commerce/cash/current", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const session = CommerceService.getCurrentCashSession(req.user!.companyId, req.user!.userId);
+        res.json(session || null);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.post("/api/v1/commerce/cash/open", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const { initialCash, branchId } = req.body;
+        const session = CommerceService.openCashSession(req.user!.companyId, req.user!.userId, initialCash, branchId);
+        res.status(201).json(session);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.post("/api/v1/commerce/cash/close", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const { sessionId, countedCash, notes } = req.body;
+        const session = CommerceService.closeCashSession(sessionId, req.user!.companyId, Number(countedCash), notes);
+        res.json(session);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.get("/api/v1/commerce/sales", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const sales = CommerceService.getSales(req.user!.companyId);
+        res.json(sales);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.post("/api/v1/commerce/sales", authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const idempotencyKey = req.headers['x-idempotency-key'] as string || req.body.idempotencyKey;
+        const sale = await CommerceService.finalizeSale({
+          companyId: req.user!.companyId,
+          branchId: req.body.branchId,
+          customerId: req.body.customerId,
+          items: req.body.items,
+          payments: req.body.payments,
+          discount: req.body.discount,
+          surcharge: req.body.surcharge,
+          idempotencyKey,
+          userId: req.user!.userId,
+        });
+        res.status(201).json(sale);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.get("/api/v1/commerce/sales/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const sale = CommerceService.getSale(req.params.id, req.user!.companyId);
+        if (!sale) return res.status(404).json({ error: "Venta no encontrada" });
+        res.json(sale);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
+    app.post("/api/v1/commerce/fiscal/invoice", authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const { saleId, customerDocument, customerName, voucherType } = req.body;
+        const invoice = await CommerceService.fiscalizeSale(saleId, req.user!.companyId, customerDocument, customerName, voucherType || 'FACTURA_B');
+        res.status(201).json(invoice);
+      } catch (err: any) {
+        res.status(400).json({ error: err.message });
+      }
+    });
+
   app.post("/api/admin/backup", authenticateUser, requireRole(['SUPER_ADMIN']), (_req: AuthenticatedRequest, res: Response) => {
     const file = db.createBackup();
     res.json({ success: true, backupFile: file, timestamp: Date.now() });

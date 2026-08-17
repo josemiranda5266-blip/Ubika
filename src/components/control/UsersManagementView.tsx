@@ -23,7 +23,7 @@ export const UsersManagementView: React.FC = () => {
   const [driverId, setDriverId] = useState('');
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
-  const [inviteResult, setInviteResult] = useState<{ inviteUrl: string; inviteToken: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{ message: string } | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -60,10 +60,8 @@ export const UsersManagementView: React.FC = () => {
         body: JSON.stringify({ name, email, role, driverId: role === 'DRIVER' ? driverId : undefined }),
       });
       if (res.ok) {
-        const data = await res.json();
         setInviteResult({
-          inviteUrl: data.inviteUrl || `/#accept-invite?token=${data.inviteToken}`,
-          inviteToken: data.inviteToken,
+          message: 'Invitación creada con éxito. El empleado recibirá un correo electrónico con el enlace de acceso seguro. El administrador no conoce ni establece la contraseña.',
         });
         fetchUsers();
         setName(''); setEmail(''); setRole('DRIVER'); setDriverId('');
@@ -147,6 +145,12 @@ export const UsersManagementView: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
             <h3 className="text-lg font-black text-slate-900 mb-4">Crear Acceso de Empleado</h3>
+            {inviteResult && (
+              <div className="mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold space-y-2">
+                <p>{inviteResult.message}</p>
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-black">Cerrar</button>
+              </div>
+            )}
             {formError && (
               <div className="mb-4 p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold">{formError}</div>
             )}
