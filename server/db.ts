@@ -390,7 +390,12 @@ export const db = {
     return dbState.companies.find((c) => c.id === companyId);
   },
   getAllCompanies: (): Company[] => {
-    return [...dbState.companies];
+    return dbState.companies;
+  },
+  createCompany: (company: Company): Company => {
+    dbState.companies.push(company);
+    saveDatabaseSync();
+    return company;
   },
   updateCompany: (companyId: string, updates: Partial<Company>): Company | null => {
     const idx = dbState.companies.findIndex((c) => c.id === companyId);

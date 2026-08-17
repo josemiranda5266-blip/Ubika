@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Map,
-  Users,
+  Users, User,
   PlusCircle,
   History,
   Route,
@@ -28,6 +28,7 @@ import { DriversManagementView } from './DriversManagementView';
 import { DeliveriesHistoryView } from './DeliveriesHistoryView';
 import { RouteHistoryView } from './RouteHistoryView';
 import { AuditEventsView } from './AuditEventsView';
+import { UsersManagementView } from './UsersManagementView';
 import { NewTaskModal } from './NewTaskModal';
 
 interface UbikaControlProps {
@@ -407,6 +408,25 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
 
             {/* Menu Items */}
             <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentTab('users');
+                  setIsMoreMenuOpen(false);
+                }}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 hover:bg-orange-50 text-slate-900 font-bold text-sm border border-slate-100 transition-colors min-h-[48px]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <span>Personal y Accesos</span>
+                    <p className="text-[11px] text-slate-400 font-medium">Cuentas de empleados</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
               <button
                 type="button"
                 onClick={() => {

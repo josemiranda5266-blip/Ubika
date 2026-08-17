@@ -202,6 +202,69 @@ export function createUbikaApp(): express.Express {
   });
 
   // --- AUTHENTICATION ENDPOINTS ---
+  
+  app.post("/api/auth/register", rateLimit(60000, 5), (req: Request, res: Response) => {
+    const { companyName, responsibleName, email, phone, category, password } = req.body;
+    
+    if (!companyName || !responsibleName || !email || !password || !phone || !category) {
+      return res.status(400).json({ error: "Todos los campos son obligatorios" });
+    }
+
+    const existingUser = db.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(409).json({ error: "El correo electrónico ya está registrado" });
+    }
+
+    const businessType: 'FOOD' | 'LOGISTICS' = category === 'Gastronomía' || category === 'Restaurante / Comidas' ? 'FOOD' : 'LOGISTICS';
+    
+    const companyId = `comp_${Date.now()}`;
+    const newCompany = {
+      id: companyId,
+      name: companyName,
+      category,
+      address: '',
+      phone,
+      city: '',
+      activeOrdersCount: 0,
+      totalDriversCount: 0,
+      businessType,
+      foodEnabled: businessType === 'FOOD'
+    };
+
+    db.createCompany(newCompany);
+
+    const salt = bcrypt.genSaltSync(10);
+    const passwordHash = bcrypt.hashSync(password, salt);
+    
+    const newUser = {
+      id: `usr_${Date.now()}`,
+      email,
+      passwordHash,
+      name: responsibleName,
+      role: 'COMPANY_ADMIN' as const,
+      companyId: companyId,
+      phone,
+      createdAt: Date.now(),
+      active: true,
+    };
+
+    db.createUser(newUser);
+
+    const token = generateAuthToken(newUser);
+
+    res.status(201).json({
+      token,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
+        companyId: newUser.companyId,
+      },
+      company: newCompany
+    });
+  });
+
   app.post("/api/auth/login", rateLimit(60000, 10), (req: Request, res: Response) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -345,6 +408,58 @@ export function createUbikaApp(): express.Express {
       return res.status(403).json({ error: "Acceso denegado a perfil de otro repartidor" });
     }
     res.json(driver);
+  });
+
+  
+  app.get("/api/users", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
+    const cid = req.user?.role === 'SUPER_ADMIN' && req.query.companyId ? req.query.companyId as string : req.user!.companyId;
+    const users = db.getUsersByCompany(cid).map(u => {
+      const { passwordHash, ...safeUser } = u;
+      return safeUser;
+    });
+    res.json(users);
+  });
+
+  app.post("/api/users", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
+    const { name, email, password, role, driverId, phone } = req.body;
+    
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ error: "Nombre, email, contraseña y rol son obligatorios" });
+    }
+
+    // Role restrictions: public cannot create, but this is admin. Admin can only create allowed roles.
+    const allowedRoles = ['DRIVER', 'KITCHEN', 'DISPATCHER'];
+    if (!allowedRoles.includes(role)) {
+       return res.status(403).json({ error: "Rol no permitido. Solo puede crear empleados operativos." });
+    }
+
+    const existingUser = db.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(409).json({ error: "El correo electrónico ya está registrado" });
+    }
+
+    const cid = req.user?.role === 'SUPER_ADMIN' && req.body.companyId ? req.body.companyId : req.user!.companyId;
+
+    const salt = bcrypt.genSaltSync(10);
+    const passwordHash = bcrypt.hashSync(password, salt);
+    
+    const newUser = {
+      id: `usr_${Date.now()}`,
+      email,
+      passwordHash,
+      name,
+      role,
+      companyId: cid,
+      driverId: role === 'DRIVER' ? driverId : undefined,
+      phone,
+      createdAt: Date.now(),
+      active: true,
+    };
+
+    db.createUser(newUser);
+
+    const { passwordHash: _ph, ...safeUser } = newUser;
+    res.status(201).json(safeUser);
   });
 
   app.post("/api/drivers", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
