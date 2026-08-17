@@ -2897,8 +2897,20 @@ export function createUbikaApp(): express.Express {
   });
 
   // Admin Backup Trigger (Protected: SUPER_ADMIN only)
+const COMMERCE_ALLOWED_ROLES: (UserRole | string)[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'DISPATCHER', 'CASHIER', 'STOCK_OPERATOR', 'OPERATOR'];
+
+function requireCommerceAccess(req: AuthenticatedRequest, res: Response, next: express.NextFunction) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'UNAUTHORIZED' });
+  }
+  if (!COMMERCE_ALLOWED_ROLES.includes(req.user.role)) {
+    return res.status(403).json({ error: 'FORBIDDEN_COMMERCE_ACCESS' });
+  }
+  next();
+}
+
     // --- UBIKA COMMERCE API ROUTES ---
-    app.get("/api/v1/commerce/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.get("/api/v1/commerce/products", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const products = CommerceService.getProducts(req.user!.companyId);
         res.json(products);
@@ -2907,7 +2919,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.post("/api/v1/commerce/products", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.post("/api/v1/commerce/products", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const product = CommerceService.createProduct(req.body, req.user!.companyId);
         res.status(201).json(product);
@@ -2916,7 +2928,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.get("/api/v1/commerce/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.get("/api/v1/commerce/products/:id", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const product = CommerceService.getProduct(req.params.id, req.user!.companyId);
         if (!product) return res.status(404).json({ error: "Producto no encontrado" });
@@ -2926,7 +2938,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.patch("/api/v1/commerce/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.patch("/api/v1/commerce/products/:id", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const updated = CommerceService.updateProduct(req.params.id, req.user!.companyId, req.body);
         if (!updated) return res.status(404).json({ error: "Producto no encontrado" });
@@ -2936,7 +2948,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.delete("/api/v1/commerce/products/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.delete("/api/v1/commerce/products/:id", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const success = CommerceService.deleteProduct(req.params.id, req.user!.companyId);
         if (!success) return res.status(404).json({ error: "Producto no encontrado" });
@@ -2946,7 +2958,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.get("/api/v1/commerce/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.get("/api/v1/commerce/categories", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const categories = CommerceService.getCategories(req.user!.companyId);
         res.json(categories);
@@ -2955,7 +2967,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.post("/api/v1/commerce/categories", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.post("/api/v1/commerce/categories", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const cat = CommerceService.createCategory(req.body, req.user!.companyId);
         res.status(201).json(cat);
@@ -2964,7 +2976,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.get("/api/v1/commerce/customers", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.get("/api/v1/commerce/customers", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const customers = CommerceService.getCustomers(req.user!.companyId);
         res.json(customers);
@@ -2973,7 +2985,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.post("/api/v1/commerce/customers", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.post("/api/v1/commerce/customers", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const cust = CommerceService.createCustomer(req.body, req.user!.companyId);
         res.status(201).json(cust);
@@ -2982,7 +2994,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.get("/api/v1/commerce/stock/movements", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.get("/api/v1/commerce/stock/movements", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const movements = CommerceService.getStockMovements(req.user!.companyId);
         res.json(movements);
@@ -2991,7 +3003,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.post("/api/v1/commerce/stock/adjust", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.post("/api/v1/commerce/stock/adjust", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const { productId, quantity, type, reason } = req.body;
         const mov = CommerceService.adjustStock(productId, req.user!.companyId, Number(quantity), type, reason, req.user!.userId);
@@ -3001,7 +3013,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.get("/api/v1/commerce/cash", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.get("/api/v1/commerce/cash", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const sessions = CommerceService.getCashSessions(req.user!.companyId);
         res.json(sessions);
@@ -3010,7 +3022,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.get("/api/v1/commerce/cash/current", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.get("/api/v1/commerce/cash/current", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const session = CommerceService.getCurrentCashSession(req.user!.companyId, req.user!.userId);
         res.json(session || null);
@@ -3019,7 +3031,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.post("/api/v1/commerce/cash/open", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.post("/api/v1/commerce/cash/open", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const { initialCash, branchId } = req.body;
         const session = CommerceService.openCashSession(req.user!.companyId, req.user!.userId, initialCash, branchId);
@@ -3029,17 +3041,17 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.post("/api/v1/commerce/cash/close", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.post("/api/v1/commerce/cash/close", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const { sessionId, countedCash, notes } = req.body;
-        const session = CommerceService.closeCashSession(sessionId, req.user!.companyId, Number(countedCash), notes);
+        const session = CommerceService.closeCashSession(sessionId, req.user!.companyId, Number(countedCash), notes, req.user!.userId, req.user!.role);
         res.json(session);
       } catch (err: any) {
         res.status(400).json({ error: err.message });
       }
     });
 
-    app.get("/api/v1/commerce/sales", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.get("/api/v1/commerce/sales", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const sales = CommerceService.getSales(req.user!.companyId);
         res.json(sales);
@@ -3048,7 +3060,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.post("/api/v1/commerce/sales", authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+    app.post("/api/v1/commerce/sales", authenticateUser, requireCommerceAccess, async (req: AuthenticatedRequest, res: Response) => {
       try {
         const idempotencyKey = req.headers['x-idempotency-key'] as string || req.body.idempotencyKey;
         const sale = await CommerceService.finalizeSale({
@@ -3068,7 +3080,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.get("/api/v1/commerce/sales/:id", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    app.get("/api/v1/commerce/sales/:id", authenticateUser, requireCommerceAccess, (req: AuthenticatedRequest, res: Response) => {
       try {
         const sale = CommerceService.getSale(req.params.id, req.user!.companyId);
         if (!sale) return res.status(404).json({ error: "Venta no encontrada" });
@@ -3078,7 +3090,7 @@ export function createUbikaApp(): express.Express {
       }
     });
 
-    app.post("/api/v1/commerce/fiscal/invoice", authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+    app.post("/api/v1/commerce/fiscal/invoice", authenticateUser, requireCommerceAccess, async (req: AuthenticatedRequest, res: Response) => {
       try {
         const { saleId, customerDocument, customerName, voucherType } = req.body;
         const invoice = await CommerceService.fiscalizeSale(saleId, req.user!.companyId, customerDocument, customerName, voucherType || 'FACTURA_B');

@@ -107,6 +107,13 @@ export interface DatabaseSchema {
   food_orders?: FoodOrder[];
   invitations?: InvitationRecord[];
   password_resets?: PasswordResetRecord[];
+  commerce_categories?: any[];
+  commerce_products?: any[];
+  commerce_customers?: any[];
+  commerce_stock_movements?: any[];
+  commerce_cash_sessions?: any[];
+  commerce_sales?: any[];
+  commerce_invoices?: any[];
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -378,6 +385,13 @@ export function loadDatabase(): DatabaseSchema {
       dbState.food_orders = dbState.food_orders || [];
       dbState.invitations = dbState.invitations || [];
       dbState.password_resets = dbState.password_resets || [];
+      dbState.commerce_categories = dbState.commerce_categories || [];
+      dbState.commerce_products = dbState.commerce_products || [];
+      dbState.commerce_customers = dbState.commerce_customers || [];
+      dbState.commerce_stock_movements = dbState.commerce_stock_movements || [];
+      dbState.commerce_cash_sessions = dbState.commerce_cash_sessions || [];
+      dbState.commerce_sales = dbState.commerce_sales || [];
+      dbState.commerce_invoices = dbState.commerce_invoices || [];
 
       // Run Food multi-tenant isolation migration
       const migrationChanged = runFoodMigration(dbState);

@@ -63,6 +63,7 @@ export interface CashSession {
   userId: string;
   openedAt: number;
   closedAt?: number;
+  closedBy?: string;
   initialCash: number;
   expectedCash?: number;
   countedCash?: number;

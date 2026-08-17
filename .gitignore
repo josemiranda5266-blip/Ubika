@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+data/ubika_persistent_db.json
+data/backups/
+*.pem
+*.key
+*.crt

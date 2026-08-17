@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db, saveDatabaseSync } from '../db';
 import {
   CommerceCategory,
   CommerceProduct,
@@ -21,11 +21,16 @@ export const CommerceRepository = {
     const categories = (state as any).commerce_categories || [];
     return categories.find((c: CommerceCategory) => c.id === id);
   },
+  getCategoryByIdForCompany: (id: string, companyId: string): CommerceCategory | undefined => {
+    const cat = CommerceRepository.getCategoryById(id);
+    if (!cat || cat.companyId !== companyId) return undefined;
+    return cat;
+  },
   createCategory: (category: CommerceCategory): CommerceCategory => {
     const state = db.getRawState() as any;
     if (!state.commerce_categories) state.commerce_categories = [];
     state.commerce_categories.push(category);
-    db.createBackup(); // or save via persistence
+    saveDatabaseSync();
     return category;
   },
   updateCategory: (id: string, updates: Partial<CommerceCategory>): CommerceCategory | null => {
@@ -34,6 +39,7 @@ export const CommerceRepository = {
     const idx = categories.findIndex((c: CommerceCategory) => c.id === id);
     if (idx === -1) return null;
     categories[idx] = { ...categories[idx], ...updates };
+    saveDatabaseSync();
     return categories[idx];
   },
   deleteCategory: (id: string): boolean => {
@@ -41,7 +47,11 @@ export const CommerceRepository = {
     const categories = state.commerce_categories || [];
     const initialLen = categories.length;
     state.commerce_categories = categories.filter((c: CommerceCategory) => c.id !== id);
-    return state.commerce_categories.length < initialLen;
+    if (state.commerce_categories.length < initialLen) {
+      saveDatabaseSync();
+      return true;
+    }
+    return false;
   },
 
   // Products
@@ -55,10 +65,16 @@ export const CommerceRepository = {
     const products = (state as any).commerce_products || [];
     return products.find((p: CommerceProduct) => p.id === id);
   },
+  getProductByIdForCompany: (id: string, companyId: string): CommerceProduct | undefined => {
+    const product = CommerceRepository.getProductById(id);
+    if (!product || product.companyId !== companyId) return undefined;
+    return product;
+  },
   createProduct: (product: CommerceProduct): CommerceProduct => {
     const state = db.getRawState() as any;
     if (!state.commerce_products) state.commerce_products = [];
     state.commerce_products.push(product);
+    saveDatabaseSync();
     return product;
   },
   updateProduct: (id: string, updates: Partial<CommerceProduct>): CommerceProduct | null => {
@@ -67,6 +83,7 @@ export const CommerceRepository = {
     const idx = products.findIndex((p: CommerceProduct) => p.id === id);
     if (idx === -1) return null;
     products[idx] = { ...products[idx], ...updates, updatedAt: Date.now() };
+    saveDatabaseSync();
     return products[idx];
   },
   deleteProduct: (id: string): boolean => {
@@ -74,7 +91,11 @@ export const CommerceRepository = {
     const products = state.commerce_products || [];
     const initialLen = products.length;
     state.commerce_products = products.filter((p: CommerceProduct) => p.id !== id);
-    return state.commerce_products.length < initialLen;
+    if (state.commerce_products.length < initialLen) {
+      saveDatabaseSync();
+      return true;
+    }
+    return false;
   },
 
   // Customers
@@ -88,10 +109,16 @@ export const CommerceRepository = {
     const customers = (state as any).commerce_customers || [];
     return customers.find((c: CommerceCustomer) => c.id === id);
   },
+  getCustomerByIdForCompany: (id: string, companyId: string): CommerceCustomer | undefined => {
+    const cust = CommerceRepository.getCustomerById(id);
+    if (!cust || cust.companyId !== companyId) return undefined;
+    return cust;
+  },
   createCustomer: (customer: CommerceCustomer): CommerceCustomer => {
     const state = db.getRawState() as any;
     if (!state.commerce_customers) state.commerce_customers = [];
     state.commerce_customers.push(customer);
+    saveDatabaseSync();
     return customer;
   },
   updateCustomer: (id: string, updates: Partial<CommerceCustomer>): CommerceCustomer | null => {
@@ -100,6 +127,7 @@ export const CommerceRepository = {
     const idx = customers.findIndex((c: CommerceCustomer) => c.id === id);
     if (idx === -1) return null;
     customers[idx] = { ...customers[idx], ...updates };
+    saveDatabaseSync();
     return customers[idx];
   },
   deleteCustomer: (id: string): boolean => {
@@ -107,7 +135,11 @@ export const CommerceRepository = {
     const customers = state.commerce_customers || [];
     const initialLen = customers.length;
     state.commerce_customers = customers.filter((c: CommerceCustomer) => c.id !== id);
-    return state.commerce_customers.length < initialLen;
+    if (state.commerce_customers.length < initialLen) {
+      saveDatabaseSync();
+      return true;
+    }
+    return false;
   },
 
   // Stock Movements
@@ -120,6 +152,7 @@ export const CommerceRepository = {
     const state = db.getRawState() as any;
     if (!state.commerce_stock_movements) state.commerce_stock_movements = [];
     state.commerce_stock_movements.unshift(movement);
+    saveDatabaseSync();
     return movement;
   },
 
@@ -134,10 +167,21 @@ export const CommerceRepository = {
     const sessions = (state as any).commerce_cash_sessions || [];
     return sessions.find((s: CashSession) => s.companyId === companyId && s.status === 'OPEN' && (!userId || s.userId === userId));
   },
+  getCashSessionById: (id: string): CashSession | undefined => {
+    const state = db.getRawState();
+    const sessions = (state as any).commerce_cash_sessions || [];
+    return sessions.find((s: CashSession) => s.id === id);
+  },
+  getCashSessionByIdForCompany: (id: string, companyId: string): CashSession | undefined => {
+    const session = CommerceRepository.getCashSessionById(id);
+    if (!session || session.companyId !== companyId) return undefined;
+    return session;
+  },
   createCashSession: (session: CashSession): CashSession => {
     const state = db.getRawState() as any;
     if (!state.commerce_cash_sessions) state.commerce_cash_sessions = [];
     state.commerce_cash_sessions.unshift(session);
+    saveDatabaseSync();
     return session;
   },
   updateCashSession: (id: string, updates: Partial<CashSession>): CashSession | null => {
@@ -146,6 +190,7 @@ export const CommerceRepository = {
     const idx = sessions.findIndex((s: CashSession) => s.id === id);
     if (idx === -1) return null;
     sessions[idx] = { ...sessions[idx], ...updates };
+    saveDatabaseSync();
     return sessions[idx];
   },
 
@@ -160,6 +205,11 @@ export const CommerceRepository = {
     const sales = (state as any).commerce_sales || [];
     return sales.find((s: Sale) => s.id === id);
   },
+  getSaleByIdForCompany: (id: string, companyId: string): Sale | undefined => {
+    const sale = CommerceRepository.getSaleById(id);
+    if (!sale || sale.companyId !== companyId) return undefined;
+    return sale;
+  },
   getSaleByIdempotencyKey: (key: string): Sale | undefined => {
     const state = db.getRawState();
     const sales = (state as any).commerce_sales || [];
@@ -169,6 +219,7 @@ export const CommerceRepository = {
     const state = db.getRawState() as any;
     if (!state.commerce_sales) state.commerce_sales = [];
     state.commerce_sales.unshift(sale);
+    saveDatabaseSync();
     return sale;
   },
   updateSale: (id: string, updates: Partial<Sale>): Sale | null => {
@@ -177,6 +228,7 @@ export const CommerceRepository = {
     const idx = sales.findIndex((s: Sale) => s.id === id);
     if (idx === -1) return null;
     sales[idx] = { ...sales[idx], ...updates, updatedAt: Date.now() };
+    saveDatabaseSync();
     return sales[idx];
   },
 
@@ -190,6 +242,7 @@ export const CommerceRepository = {
     const state = db.getRawState() as any;
     if (!state.commerce_invoices) state.commerce_invoices = [];
     state.commerce_invoices.unshift(invoice);
+    saveDatabaseSync();
     return invoice;
   },
 };

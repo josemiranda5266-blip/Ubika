@@ -8,21 +8,40 @@ import {
 import { PaymentProviderService } from './payments';
 import { ArcaFiscalService } from './fiscal';
 
+// Mutex map for idempotency keys
+const idempotencyLocks = new Map<string, Promise<Sale>>();
+
 export const CommerceService = {
   // Categories
   getCategories(companyId: string) {
     return CommerceRepository.getCategoriesByCompany(companyId);
   },
   createCategory(data: any, companyId: string) {
+    if (!data.name || typeof data.name !== 'string' || !data.name.trim()) {
+      throw new Error('CATEGORY_NAME_REQUIRED');
+    }
     const category = {
       id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       companyId,
       branchId: data.branchId,
-      name: data.name,
-      description: data.description,
+      name: data.name.trim(),
+      description: data.description || '',
       createdAt: Date.now(),
     };
     return CommerceRepository.createCategory(category);
+  },
+  updateCategory(id: string, companyId: string, updates: any) {
+    const cat = CommerceRepository.getCategoryByIdForCompany(id, companyId);
+    if (!cat) return null;
+    const allowed: Partial<any> = {};
+    if (updates.name !== undefined) allowed.name = String(updates.name).trim();
+    if (updates.description !== undefined) allowed.description = String(updates.description);
+    return CommerceRepository.updateCategory(id, allowed);
+  },
+  deleteCategory(id: string, companyId: string) {
+    const cat = CommerceRepository.getCategoryByIdForCompany(id, companyId);
+    if (!cat) return false;
+    return CommerceRepository.deleteCategory(id);
   },
 
   // Products
@@ -30,24 +49,35 @@ export const CommerceService = {
     return CommerceRepository.getProductsByCompany(companyId);
   },
   getProduct(id: string, companyId: string) {
-    const product = CommerceRepository.getProductById(id);
-    if (!product || product.companyId !== companyId) return null;
-    return product;
+    return CommerceRepository.getProductByIdForCompany(id, companyId) || null;
   },
   createProduct(data: any, companyId: string) {
+    if (!data.name || typeof data.name !== 'string' || !data.name.trim()) {
+      throw new Error('PRODUCT_NAME_REQUIRED');
+    }
+    const salePrice = Number(data.salePrice);
+    const costPrice = Number(data.costPrice || 0);
+    const taxRate = Number(data.taxRate ?? 21);
+    const initialStock = Number(data.stock || 0);
+
+    if (!Number.isFinite(salePrice) || salePrice < 0) throw new Error('INVALID_SALE_PRICE');
+    if (!Number.isFinite(costPrice) || costPrice < 0) throw new Error('INVALID_COST_PRICE');
+    if (!Number.isFinite(taxRate) || taxRate < 0) throw new Error('INVALID_TAX_RATE');
+    if (!Number.isFinite(initialStock) || initialStock < 0) throw new Error('INVALID_STOCK');
+
     const product: CommerceProduct = {
       id: `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       companyId,
       branchId: data.branchId,
-      name: data.name,
-      description: data.description,
-      code: data.code,
-      barcode: data.barcode,
-      categoryId: data.categoryId,
-      costPrice: Number(data.costPrice || 0),
-      salePrice: Number(data.salePrice || 0),
-      taxRate: Number(data.taxRate || 21),
-      stock: Number(data.stock || 0),
+      name: data.name.trim(),
+      description: data.description || '',
+      code: data.code || '',
+      barcode: data.barcode || '',
+      categoryId: data.categoryId || '',
+      costPrice,
+      salePrice,
+      taxRate,
+      stock: initialStock,
       minStock: Number(data.minStock || 5),
       maxStock: Number(data.maxStock || 100),
       status: data.status || 'ACTIVE',
@@ -57,13 +87,45 @@ export const CommerceService = {
     return CommerceRepository.createProduct(product);
   },
   updateProduct(id: string, companyId: string, updates: any) {
-    const product = CommerceRepository.getProductById(id);
-    if (!product || product.companyId !== companyId) return null;
-    return CommerceRepository.updateProduct(id, updates);
+    const product = CommerceRepository.getProductByIdForCompany(id, companyId);
+    if (!product) return null;
+
+    // Strict whitelist: prevent mass assignment of id, companyId, stock, createdAt, etc.
+    const allowedUpdates: Partial<CommerceProduct> = {};
+    if (updates.name !== undefined) {
+      if (typeof updates.name !== 'string' || !updates.name.trim()) throw new Error('INVALID_PRODUCT_NAME');
+      allowedUpdates.name = updates.name.trim();
+    }
+    if (updates.description !== undefined) allowedUpdates.description = String(updates.description);
+    if (updates.code !== undefined) allowedUpdates.code = String(updates.code);
+    if (updates.barcode !== undefined) allowedUpdates.barcode = String(updates.barcode);
+    if (updates.categoryId !== undefined) allowedUpdates.categoryId = String(updates.categoryId);
+    if (updates.branchId !== undefined) allowedUpdates.branchId = updates.branchId;
+    if (updates.status !== undefined) allowedUpdates.status = updates.status;
+
+    if (updates.costPrice !== undefined) {
+      const cp = Number(updates.costPrice);
+      if (!Number.isFinite(cp) || cp < 0) throw new Error('INVALID_COST_PRICE');
+      allowedUpdates.costPrice = cp;
+    }
+    if (updates.salePrice !== undefined) {
+      const sp = Number(updates.salePrice);
+      if (!Number.isFinite(sp) || sp < 0) throw new Error('INVALID_SALE_PRICE');
+      allowedUpdates.salePrice = sp;
+    }
+    if (updates.taxRate !== undefined) {
+      const tr = Number(updates.taxRate);
+      if (!Number.isFinite(tr) || tr < 0) throw new Error('INVALID_TAX_RATE');
+      allowedUpdates.taxRate = tr;
+    }
+    if (updates.minStock !== undefined) allowedUpdates.minStock = Number(updates.minStock);
+    if (updates.maxStock !== undefined) allowedUpdates.maxStock = Number(updates.maxStock);
+
+    return CommerceRepository.updateProduct(id, allowedUpdates);
   },
   deleteProduct(id: string, companyId: string) {
-    const product = CommerceRepository.getProductById(id);
-    if (!product || product.companyId !== companyId) return false;
+    const product = CommerceRepository.getProductByIdForCompany(id, companyId);
+    if (!product) return false;
     return CommerceRepository.deleteProduct(id);
   },
 
@@ -71,16 +133,22 @@ export const CommerceService = {
   getCustomers(companyId: string) {
     return CommerceRepository.getCustomersByCompany(companyId);
   },
+  getCustomer(id: string, companyId: string) {
+    return CommerceRepository.getCustomerByIdForCompany(id, companyId) || null;
+  },
   createCustomer(data: any, companyId: string) {
+    if (!data.name || typeof data.name !== 'string' || !data.name.trim()) {
+      throw new Error('CUSTOMER_NAME_REQUIRED');
+    }
     const customer = {
       id: `cust_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       companyId,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      documentNumber: data.documentNumber,
+      name: data.name.trim(),
+      email: data.email || '',
+      phone: data.phone || '',
+      documentNumber: data.documentNumber || '',
       documentType: data.documentType || 'DNI',
-      address: data.address,
+      address: data.address || '',
       accountBalance: Number(data.accountBalance || 0),
       creditLimit: Number(data.creditLimit || 0),
       taxCondition: data.taxCondition || 'CONSUMIDOR_FINAL',
@@ -88,22 +156,51 @@ export const CommerceService = {
     };
     return CommerceRepository.createCustomer(customer);
   },
+  updateCustomer(id: string, companyId: string, updates: any) {
+    const customer = CommerceRepository.getCustomerByIdForCompany(id, companyId);
+    if (!customer) return null;
+
+    const allowed: Partial<any> = {};
+    if (updates.name !== undefined) allowed.name = String(updates.name).trim();
+    if (updates.email !== undefined) allowed.email = String(updates.email);
+    if (updates.phone !== undefined) allowed.phone = String(updates.phone);
+    if (updates.documentNumber !== undefined) allowed.documentNumber = String(updates.documentNumber);
+    if (updates.documentType !== undefined) allowed.documentType = updates.documentType;
+    if (updates.address !== undefined) allowed.address = String(updates.address);
+    if (updates.accountBalance !== undefined) allowed.accountBalance = Number(updates.accountBalance);
+    if (updates.creditLimit !== undefined) allowed.creditLimit = Number(updates.creditLimit);
+    if (updates.taxCondition !== undefined) allowed.taxCondition = updates.taxCondition;
+
+    return CommerceRepository.updateCustomer(id, allowed);
+  },
+  deleteCustomer(id: string, companyId: string) {
+    const cust = CommerceRepository.getCustomerByIdForCompany(id, companyId);
+    if (!cust) return false;
+    return CommerceRepository.deleteCustomer(id);
+  },
 
   // Stock
   getStockMovements(companyId: string) {
     return CommerceRepository.getStockMovementsByCompany(companyId);
   },
   adjustStock(productId: string, companyId: string, quantity: number, type: 'ENTRADA' | 'SALIDA' | 'AJUSTE', reason: string, userId: string, branchId?: string) {
-    const product = CommerceRepository.getProductById(productId);
-    if (!product || product.companyId !== companyId) throw new Error('PRODUCT_NOT_FOUND');
+    const product = CommerceRepository.getProductByIdForCompany(productId, companyId);
+    if (!product) throw new Error('PRODUCT_NOT_FOUND');
+
+    const qty = Number(quantity);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      throw new Error('INVALID_QUANTITY_MUST_BE_POSITIVE');
+    }
 
     const previousStock = product.stock;
     let newStock = previousStock;
-    if (type === 'ENTRADA') newStock += quantity;
-    else if (type === 'SALIDA') newStock -= quantity;
-    else if (type === 'AJUSTE') newStock = quantity;
+    if (type === 'ENTRADA') newStock += qty;
+    else if (type === 'SALIDA') newStock -= qty;
+    else if (type === 'AJUSTE') newStock = qty;
 
-    if (newStock < 0) throw new Error('INSUFFICIENT_STOCK');
+    if (newStock < 0) {
+      throw new Error('INSUFFICIENT_STOCK_NEGATIVE_RESULT');
+    }
 
     CommerceRepository.updateProduct(productId, { stock: newStock });
 
@@ -113,10 +210,10 @@ export const CommerceService = {
       companyId,
       branchId,
       type,
-      quantity,
+      quantity: qty,
       previousStock,
       newStock,
-      reason,
+      reason: reason || 'Ajuste de inventario',
       userId,
       createdAt: Date.now(),
     };
@@ -134,43 +231,65 @@ export const CommerceService = {
     const existing = CommerceRepository.getCurrentOpenCashSession(companyId, userId);
     if (existing) throw new Error('CASH_SESSION_ALREADY_OPEN');
 
+    const initCash = Number(initialCash || 0);
+    if (!Number.isFinite(initCash) || initCash < 0) throw new Error('INVALID_INITIAL_CASH');
+
     const session: CashSession = {
       id: `cash_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       companyId,
       branchId,
       userId,
       openedAt: Date.now(),
-      initialCash: Number(initialCash || 0),
+      initialCash: initCash,
       status: 'OPEN',
     };
     return CommerceRepository.createCashSession(session);
   },
-  closeCashSession(sessionId: string, companyId: string, countedCash: number, notes?: string) {
-    const sessions = CommerceRepository.getCashSessionsByCompany(companyId);
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session || session.status !== 'OPEN') throw new Error('CASH_SESSION_NOT_FOUND_OR_CLOSED');
+  closeCashSession(sessionId: string, companyId: string, countedCash: number, notes?: string, userId?: string, userRole?: string) {
+    const session = CommerceRepository.getCashSessionByIdForCompany(sessionId, companyId);
+    if (!session || session.status !== 'OPEN') {
+      throw new Error('CASH_SESSION_NOT_FOUND_OR_CLOSED');
+    }
 
-    const expectedCash = session.initialCash; // plus cash sales sum
-    const difference = countedCash - expectedCash;
+    if (userId && userRole && userRole !== 'SUPER_ADMIN' && userRole !== 'COMPANY_ADMIN' && session.userId !== userId) {
+      throw new Error('UNAUTHORIZED_CASH_SESSION_CLOSURE');
+    }
+
+    const counted = Number(countedCash);
+    if (!Number.isFinite(counted) || counted < 0) throw new Error('INVALID_COUNTED_CASH');
+
+    const sales = CommerceRepository.getSalesByCompany(companyId);
+    const sessionSales = sales.filter(s => s.cashSessionId === sessionId || (s.createdAt >= session.openedAt && (!session.closedAt || s.createdAt <= session.closedAt)));
+    
+    let cashSalesTotal = 0;
+    for (const s of sessionSales) {
+      for (const p of s.payments) {
+        if (p.method === 'CASH') {
+          cashSalesTotal += Number(p.amount || 0);
+        }
+      }
+    }
+
+    const expectedCash = session.initialCash + cashSalesTotal;
+    const difference = counted - expectedCash;
 
     return CommerceRepository.updateCashSession(sessionId, {
       closedAt: Date.now(),
-      countedCash: Number(countedCash || 0),
+      closedBy: userId,
+      countedCash: counted,
       expectedCash,
       difference,
       status: 'CLOSED',
-      notes,
+      notes: notes || '',
     });
   },
 
-  // Sales & FinalizeSale (Critical Operation)
+  // Sales
   getSales(companyId: string) {
     return CommerceRepository.getSalesByCompany(companyId);
   },
   getSale(id: string, companyId: string) {
-    const sale = CommerceRepository.getSaleById(id);
-    if (!sale || sale.companyId !== companyId) return null;
-    return sale;
+    return CommerceRepository.getSaleByIdForCompany(id, companyId) || null;
   },
 
   async finalizeSale(saleData: {
@@ -186,149 +305,198 @@ export const CommerceService = {
   }): Promise<Sale> {
     const { companyId, branchId, customerId, items, payments, discount = 0, surcharge = 0, idempotencyKey, userId } = saleData;
 
-    // 1. Idempotency check
     if (idempotencyKey) {
-      const existing = CommerceRepository.getSaleByIdempotencyKey(idempotencyKey);
-      if (existing) return existing;
-    }
-
-    // 2. Validate open cash session if cash payment exists
-    const hasCash = payments.some(p => p.method === 'CASH');
-    if (hasCash) {
-      const openCash = CommerceRepository.getCurrentOpenCashSession(companyId, userId);
-      if (!openCash) {
-        throw new Error('CASH_SESSION_REQUIRED_FOR_CASH_PAYMENTS');
+      if (idempotencyLocks.has(idempotencyKey)) {
+        return idempotencyLocks.get(idempotencyKey)!;
       }
     }
 
-    // 3. Verify products, calculate server-side totals, prices, taxes & stock
-    let subtotal = 0;
-    let totalTax = 0;
-    const verifiedItems = [];
-
-    for (const rawItem of items) {
-      const product = CommerceRepository.getProductById(rawItem.productId);
-      if (!product || product.companyId !== companyId) {
-        throw new Error(`PRODUCT_NOT_FOUND_OR_UNAUTHORIZED:${rawItem.productId}`);
+    const promise = (async () => {
+      if (idempotencyKey) {
+        const existing = CommerceRepository.getSaleByIdempotencyKey(idempotencyKey);
+        if (existing) return existing;
       }
 
-      const qty = Number(rawItem.quantity || 0);
-      if (qty <= 0) throw new Error('INVALID_QUANTITY');
-
-      if (product.stock < qty) {
-        throw new Error(`INSUFFICIENT_STOCK_FOR_PRODUCT:${product.name}`);
+      const hasCash = payments.some(p => p.method === 'CASH');
+      let openCash = undefined;
+      if (hasCash) {
+        openCash = CommerceRepository.getCurrentOpenCashSession(companyId, userId);
+        if (!openCash) {
+          throw new Error('CASH_SESSION_REQUIRED_FOR_CASH_PAYMENTS');
+        }
+      } else {
+        openCash = CommerceRepository.getCurrentOpenCashSession(companyId, userId);
       }
 
-      // Catalog real price verification (prevent client price manipulation)
-      const unitPrice = product.salePrice;
-      const itemDiscount = Number(rawItem.discount || 0);
-      const itemSubtotal = (unitPrice * qty) - itemDiscount;
-      const itemTax = itemSubtotal * (product.taxRate / 100);
+      if (!Array.isArray(items) || items.length === 0) {
+        throw new Error('SALE_ITEMS_REQUIRED');
+      }
 
-      subtotal += itemSubtotal;
-      totalTax += itemTax;
+      let subtotal = 0;
+      let totalTax = 0;
+      const verifiedItems = [];
 
-      verifiedItems.push({
-        productId: product.id,
-        productName: product.name,
-        quantity: qty,
-        unitPrice,
-        discount: itemDiscount,
-        taxRate: product.taxRate,
-        subtotal: itemSubtotal,
-        total: itemSubtotal + itemTax,
-      });
-    }
+      for (const rawItem of items) {
+        const productId = rawItem.productId;
+        const product = CommerceRepository.getProductByIdForCompany(productId, companyId);
+        if (!product) {
+          throw new Error(`PRODUCT_NOT_FOUND_OR_UNAUTHORIZED:${productId}`);
+        }
 
-    const netDiscount = Number(discount || 0);
-    const netSurcharge = Number(surcharge || 0);
-    const grandTotal = Math.max(0, subtotal - netDiscount + netSurcharge + totalTax);
+        const qty = Number(rawItem.quantity);
+        if (!Number.isFinite(qty) || qty <= 0) {
+          throw new Error('INVALID_QUANTITY_MUST_BE_POSITIVE');
+        }
 
-    // Verify payments total matches grand total
-    const totalPayments = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    if (Math.abs(totalPayments - grandTotal) > 0.05) {
-      throw new Error('PAYMENT_AMOUNT_MISMATCH_WITH_TOTAL');
-    }
+        if (product.stock < qty) {
+          throw new Error(`INSUFFICIENT_STOCK_FOR_PRODUCT:${product.name}`);
+        }
 
-    const saleId = `sale_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const openCash = CommerceRepository.getCurrentOpenCashSession(companyId, userId);
+        const unitPrice = Number(product.salePrice);
+        if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+          throw new Error('INVALID_PRODUCT_PRICE');
+        }
 
-    // 4. Process payments (e.g. Mercado Pago if applicable)
-    const processedPayments = [];
-    for (const p of payments) {
-      let extRef = undefined;
-      let provResp = undefined;
-      let payStatus: 'COMPLETED' | 'PENDING' = 'COMPLETED';
+        const itemDiscount = Number(rawItem.discount || 0);
+        if (!Number.isFinite(itemDiscount) || itemDiscount < 0) {
+          throw new Error('INVALID_ITEM_DISCOUNT');
+        }
 
-      if (p.method === 'MERCADO_PAGO') {
-        const mpResult = await PaymentProviderService.createPayment({
-          companyId,
-          saleId,
-          amount: p.amount,
-          paymentMethod: 'credit_card',
-          idempotencyKey: idempotencyKey ? `${idempotencyKey}_pay` : undefined,
+        const itemSubtotal = (unitPrice * qty) - itemDiscount;
+        if (itemSubtotal < 0) throw new Error('ITEM_SUBTOTAL_CANNOT_BE_NEGATIVE');
+
+        const itemTax = itemSubtotal * (product.taxRate / 100);
+
+        subtotal += itemSubtotal;
+        totalTax += itemTax;
+
+        verifiedItems.push({
+          productId: product.id,
+          productName: product.name,
+          quantity: qty,
+          unitPrice,
+          discount: itemDiscount,
+          taxRate: product.taxRate,
+          subtotal: itemSubtotal,
+          total: itemSubtotal + itemTax,
         });
-        extRef = mpResult.externalReference;
-        provResp = mpResult.providerResponse;
-        payStatus = mpResult.success ? 'COMPLETED' : 'PENDING';
       }
 
-      processedPayments.push({
-        id: `pay_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        method: p.method,
-        amount: p.amount,
-        status: payStatus,
-        externalReference: extRef,
-        providerResponse: provResp,
-        createdAt: Date.now(),
-      });
-    }
+      const netDiscount = Number(discount || 0);
+      if (!Number.isFinite(netDiscount) || netDiscount < 0 || netDiscount > subtotal) {
+        throw new Error('INVALID_DISCOUNT_AMOUNT');
+      }
 
-    // 5. Deduct stock and record stock movements atomically
-    for (const vItem of verifiedItems) {
-      CommerceService.adjustStock(
-        vItem.productId,
+      const netSurcharge = Number(surcharge || 0);
+      if (!Number.isFinite(netSurcharge) || netSurcharge < 0) {
+        throw new Error('INVALID_SURCHARGE_AMOUNT');
+      }
+
+      const grandTotal = Math.max(0, subtotal - netDiscount + netSurcharge + totalTax);
+
+      if (!Array.isArray(payments) || payments.length === 0) {
+        throw new Error('PAYMENTS_REQUIRED');
+      }
+
+      const totalPayments = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      if (!Number.isFinite(totalPayments) || Math.abs(totalPayments - grandTotal) > 0.05) {
+        throw new Error('PAYMENT_AMOUNT_MISMATCH_WITH_TOTAL');
+      }
+
+      const saleId = `sale_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+      const processedPayments = [];
+      for (const p of payments) {
+        let extRef = undefined;
+        let provResp = undefined;
+        let payStatus: 'COMPLETED' | 'PENDING' = 'COMPLETED';
+
+        const pAmount = Number(p.amount);
+        if (!Number.isFinite(pAmount) || pAmount <= 0) {
+          throw new Error('INVALID_PAYMENT_AMOUNT');
+        }
+
+        if (p.method === 'MERCADO_PAGO') {
+          const mpResult = await PaymentProviderService.createPayment({
+            companyId,
+            saleId,
+            amount: pAmount,
+            paymentMethod: 'credit_card',
+            idempotencyKey: idempotencyKey ? `${idempotencyKey}_pay` : undefined,
+          });
+          extRef = mpResult.externalReference;
+          provResp = mpResult.providerResponse;
+          payStatus = mpResult.success ? 'COMPLETED' : 'PENDING';
+        }
+
+        processedPayments.push({
+          id: `pay_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          method: p.method,
+          amount: pAmount,
+          status: payStatus,
+          externalReference: extRef,
+          providerResponse: provResp,
+          createdAt: Date.now(),
+        });
+      }
+
+      for (const vItem of verifiedItems) {
+        CommerceService.adjustStock(
+          vItem.productId,
+          companyId,
+          vItem.quantity,
+          'SALIDA',
+          `Venta #${saleId}`,
+          userId,
+          branchId
+        );
+      }
+
+      const sale: Sale = {
+        id: saleId,
         companyId,
-        vItem.quantity,
-        'SALIDA',
-        `Venta #${saleId}`,
-        userId,
-        branchId
-      );
+        branchId,
+        customerId,
+        cashSessionId: openCash ? openCash.id : undefined,
+        items: verifiedItems,
+        subtotal,
+        discount: netDiscount,
+        surcharge: netSurcharge,
+        tax: totalTax,
+        total: grandTotal,
+        payments: processedPayments,
+        status: 'COMPLETED',
+        idempotencyKey,
+        createdBy: userId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      return CommerceRepository.createSale(sale);
+    })();
+
+    if (idempotencyKey) {
+      idempotencyLocks.set(idempotencyKey, promise);
+      try {
+        return await promise;
+      } finally {
+        idempotencyLocks.delete(idempotencyKey);
+      }
     }
 
-    // 6. Create Sale Record
-    const sale: Sale = {
-      id: saleId,
-      companyId,
-      branchId,
-      customerId,
-      cashSessionId: openCash ? openCash.id : undefined,
-      items: verifiedItems,
-      subtotal,
-      discount: netDiscount,
-      surcharge: netSurcharge,
-      tax: totalTax,
-      total: grandTotal,
-      payments: processedPayments,
-      status: 'COMPLETED',
-      idempotencyKey,
-      createdBy: userId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    return CommerceRepository.createSale(sale);
+    return await promise;
   },
 
   async fiscalizeSale(saleId: string, companyId: string, customerDoc: string, customerName: string, voucherType: 'FACTURA_A' | 'FACTURA_B' | 'FACTURA_C' | 'TICKET') {
-    const sale = CommerceRepository.getSaleById(saleId);
-    if (!sale || sale.companyId !== companyId) throw new Error('SALE_NOT_FOUND');
+    const sale = CommerceRepository.getSaleByIdForCompany(saleId, companyId);
+    if (!sale) throw new Error('SALE_NOT_FOUND');
 
     const arcaResult = await ArcaFiscalService.authorizeSaleInvoice(sale, customerDoc, customerName, voucherType);
     if (!arcaResult.success) {
       throw new Error(`ARCA_FISCALIZATION_FAILED:${arcaResult.error}`);
     }
+
+    const isSimulated = process.env.NODE_ENV === 'test' || !process.env.ARCA_CERTIFICATE_BASE64;
 
     const invoice = {
       id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -337,15 +505,15 @@ export const CommerceService = {
       voucherType,
       pointOfSale: arcaResult.pointOfSale || 1,
       invoiceNumber: arcaResult.invoiceNumber || 1,
-      cuit: customerDoc,
-      customerName,
-      customerDocument: customerDoc,
+      cuit: customerDoc || '',
+      customerName: customerName || 'Consumidor Final',
+      customerDocument: customerDoc || '',
       subtotal: sale.subtotal,
       tax: sale.tax,
       total: sale.total,
       cae: arcaResult.cae || '00000000000000',
       caeExpiration: arcaResult.caeExpiration || '20261231',
-      status: 'APPROVED' as const,
+      status: (isSimulated ? 'SIMULATED' : 'APPROVED') as any,
       arcaResponse: arcaResult.response,
       createdAt: Date.now(),
     };
