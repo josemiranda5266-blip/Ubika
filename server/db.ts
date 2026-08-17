@@ -418,19 +418,15 @@ export function loadDatabase(): DatabaseSchema {
  */
 export function saveDatabaseSync(): void {
   if (!dbState) return;
-  try {
-    const tempFile = `${DB_FILE}.tmp.${Date.now()}`;
-    fs.writeFileSync(tempFile, JSON.stringify(dbState, null, 2), 'utf-8');
-    fs.renameSync(tempFile, DB_FILE);
+  const tempFile = `${DB_FILE}.tmp.${Date.now()}`;
+  fs.writeFileSync(tempFile, JSON.stringify(dbState, null, 2), 'utf-8');
+  fs.renameSync(tempFile, DB_FILE);
 
-    // Auto-backup if more than 30 minutes since last backup
-    const now = Date.now();
-    if (now - lastBackupTime > 30 * 60 * 1000) {
-      lastBackupTime = now;
-      createBackup();
-    }
-  } catch (err) {
-    console.error('[DB Error] Error guardando base de datos persistente:', err);
+  // Auto-backup if more than 30 minutes since last backup
+  const now = Date.now();
+  if (now - lastBackupTime > 30 * 60 * 1000) {
+    lastBackupTime = now;
+    createBackup();
   }
 }
 

@@ -128,7 +128,7 @@ export interface Invoice {
   total: number;
   cae: string;
   caeExpiration: string;
-  status: 'APPROVED' | 'REJECTED' | 'PENDING';
+  status: 'APPROVED' | 'REJECTED' | 'PENDING' | 'SIMULATED';
   arcaResponse?: any;
   createdAt: number;
 }

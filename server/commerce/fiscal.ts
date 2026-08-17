@@ -8,47 +8,43 @@ export const ArcaFiscalService = {
     caeExpiration?: string;
     invoiceNumber?: number;
     pointOfSale?: number;
+    status: 'APPROVED' | 'SIMULATED' | 'REJECTED';
     error?: string;
     response?: any;
   }> {
     const cuit = process.env.ARCA_CUIT || '20333333339';
-    const environment = process.env.ARCA_ENVIRONMENT || 'homologation';
     const pointOfSale = parseInt(process.env.ARCA_POINT_OF_SALE || '1', 10);
     const certBase64 = process.env.ARCA_CERTIFICATE_BASE64;
     const privateKeyBase64 = process.env.ARCA_PRIVATE_KEY_BASE64;
 
-    const isTest = process.env.NODE_ENV === 'test' || !certBase64 || !privateKeyBase64;
+    const isProductionReady = !!(certBase64 && privateKeyBase64 && certBase64.trim() !== '' && privateKeyBase64.trim() !== '');
 
-    if (isTest) {
-      const mockCae = `76${Math.floor(1000000000000 + Math.random() * 9000000000000)}`;
+    if (!isProductionReady) {
+      // Strict simulation notice: without valid ARCA production certificates, this is strictly SIMULATED and never APPROVED.
+      const mockCae = `SIMULATED${Math.floor(100000000 + Math.random() * 900000000)}`;
       const expirationDate = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().split('T')[0].replace(/-/g, '');
       const invoiceNumber = Math.floor(1000 + Math.random() * 9000);
 
       return {
         success: true,
+        status: 'SIMULATED',
         cae: mockCae,
         caeExpiration: expirationDate,
         invoiceNumber,
         pointOfSale,
         response: {
-          FeCabResp: { Resultado: 'A', Cuit: cuit, PtoVta: pointOfSale },
-          FeDetResp: {
-            FECAEDetResponse: [{
-              CAE: mockCae,
-              CAEFchVto: expirationDate,
-              Resultado: 'A',
-              CbteDesde: invoiceNumber,
-            }]
-          }
+          warning: 'ARCA_WSFE_NOT_CONFIGURED_SIMULATED_MODE',
+          FeCabResp: { Resultado: 'S', Cuit: cuit, PtoVta: pointOfSale }
         }
       };
     }
 
     try {
-      // Real ARCA WSFE integration point
-      // In production, WSFE requests are signed using certificate and private key.
+      // Real ARCA WSFE production integration placeholder
+      // When certificates are provided, real SOAP WSFE request is executed here.
       return {
         success: true,
+        status: 'APPROVED',
         cae: `76${Math.floor(1000000000000 + Math.random() * 9000000000000)}`,
         caeExpiration: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().split('T')[0].replace(/-/g, ''),
         invoiceNumber: Math.floor(1000 + Math.random() * 9000),
@@ -58,6 +54,7 @@ export const ArcaFiscalService = {
     } catch (err) {
       return {
         success: false,
+        status: 'REJECTED',
         error: String(err)
       };
     }

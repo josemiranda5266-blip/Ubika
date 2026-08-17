@@ -210,10 +210,10 @@ export const CommerceRepository = {
     if (!sale || sale.companyId !== companyId) return undefined;
     return sale;
   },
-  getSaleByIdempotencyKey: (key: string): Sale | undefined => {
+  getSaleByIdempotencyKey: (companyId: string, key: string): Sale | undefined => {
     const state = db.getRawState();
     const sales = (state as any).commerce_sales || [];
-    return sales.find((s: Sale) => s.idempotencyKey === key);
+    return sales.find((s: Sale) => s.companyId === companyId && s.idempotencyKey === key);
   },
   createSale: (sale: Sale): Sale => {
     const state = db.getRawState() as any;
