@@ -10,10 +10,10 @@ import { PaymentProviderService } from './payments';
 import { ArcaFiscalService } from './fiscal';
 import { db, saveDatabaseSync } from '../db';
 
-// Mutex map for idempotency keys
+// Mutex map for idempotency keys (SINGLE INSTANCE ONLY - in-memory per Node process)
 const idempotencyLocks = new Map<string, Promise<Sale>>();
 
-// Product Concurrency Locks (Mutex per product ID for serialization)
+// Product Concurrency Locks (SINGLE INSTANCE ONLY - in-memory per Node process, does not protect multiple containers)
 const productLocks = new Map<string, Promise<any>>();
 const lockContext = new AsyncLocalStorage<Set<string>>();
 
