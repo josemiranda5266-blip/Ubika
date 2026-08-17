@@ -14,8 +14,8 @@ import { Smartphone, Globe, LayoutDashboard, Truck, Utensils, LogOut, User } fro
 
 export default function App() {
   const [viewMode, setViewMode] = useState<'control' | 'driver' | 'customer' | 'food'>('control');
-  const [customerToken, setCustomerToken] = useState<string>('tok_demo_demo842');
-  const [foodCompanyId, setFoodCompanyId] = useState<string>('comp_food_don_pedro_01');
+  const [customerToken, setCustomerToken] = useState<string>('');
+  const [foodCompanyId, setFoodCompanyId] = useState<string | undefined>(undefined);
   const [foodOrderId, setFoodOrderId] = useState<string | undefined>(undefined);
   
   // Real authentication state

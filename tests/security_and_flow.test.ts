@@ -19,7 +19,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { db, hashToken, saveDatabaseSync } from '../server/db';
+import { db, hashToken, saveDatabaseSync, injectTestFixtures } from '../server/db';
 import { generateAuthToken } from '../server/auth';
 import { createUbikaApp } from '../server';
 
@@ -192,6 +192,7 @@ async function runAuditSuite() {
   // ----------------------------------------------------
   // CONFIGURACIÓN DE SERVIDOR HTTP PARA TESTS REALES
   // ----------------------------------------------------
+  injectTestFixtures();
   const app = createUbikaApp();
   const server = app.listen(0);
   const address = server.address() as any;

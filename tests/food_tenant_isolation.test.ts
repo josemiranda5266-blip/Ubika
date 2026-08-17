@@ -1,7 +1,7 @@
 import './setup_env';
 import 'dotenv/config';
 import assert from 'assert';
-import { db } from '../server/db';
+import { db, injectTestFixtures } from '../server/db';
 import { createUbikaApp } from '../server';
 import { generateAuthToken } from '../server/auth';
 
@@ -25,6 +25,7 @@ async function runFoodTenantIsolationTests() {
     }
   }
 
+  injectTestFixtures();
   const app = createUbikaApp();
   const server = app.listen(0);
   const address = server.address() as any;

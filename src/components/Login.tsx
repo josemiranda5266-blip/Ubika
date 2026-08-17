@@ -125,46 +125,6 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             )}
           </button>
         </form>
-
-        {/* Platform Account Hints */}
-        <div className="mt-8 border-t border-slate-100 pt-6">
-          <div className="flex items-start gap-2 text-slate-500 mb-3">
-            <Info className="w-4 h-4 shrink-0 text-orange-500 mt-0.5" />
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-              Cuentas Registradas en el Sistema:
-            </span>
-          </div>
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded-lg border border-slate-100">
-              <span className="font-bold text-slate-700">donpedro@ubikafood.com</span>
-              <span className="text-[10px] bg-amber-50 text-amber-700 font-black px-1.5 py-0.5 rounded border border-amber-200">
-                COMERCIO
-              </span>
-            </div>
-            <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded-lg border border-slate-100">
-              <span className="font-bold text-slate-700">cocina@ubikafood.com</span>
-              <span className="text-[10px] bg-indigo-50 text-indigo-700 font-black px-1.5 py-0.5 rounded border border-indigo-200">
-                COCINA
-              </span>
-            </div>
-            <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded-lg border border-slate-100">
-              <span className="font-bold text-slate-700">admin@ubikapiloto.com</span>
-              <span className="text-[10px] bg-orange-50 text-orange-700 font-black px-1.5 py-0.5 rounded border border-orange-200">
-                LOGÍSTICA
-              </span>
-            </div>
-            <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded-lg border border-slate-100">
-              <span className="font-bold text-slate-700">driver@ubikapiloto.com</span>
-              <span className="text-[10px] bg-emerald-50 text-emerald-700 font-black px-1.5 py-0.5 rounded border border-emerald-200">
-                CADETE
-              </span>
-            </div>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-3 text-center font-bold uppercase tracking-wider">
-            La contraseña se encuentra configurada en las variables de entorno.
-          </p>
-        </div>
-
       </div>
     </div>
   );

@@ -48,7 +48,7 @@ interface FoodMerchantPanelProps {
 export type FoodMerchantTab = 'OVERVIEW' | 'ORDERS' | 'PRODUCTS' | 'CATEGORIES' | 'SETTINGS' | 'SHIPPING';
 
 export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
-  companyId = 'comp_food_don_pedro_01',
+  companyId,
   token = '',
   drivers = [],
   onOpenCustomerView,

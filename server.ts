@@ -1914,7 +1914,7 @@ export function createUbikaApp(): express.Express {
             isValidTransition = order.deliveryType === 'FOOD_DELIVERY' ? targetStatus === 'READY' : targetStatus === 'READY_FOR_PICKUP';
             break;
           case 'READY':
-            isValidTransition = targetStatus === 'ASSIGNED' || targetStatus === 'IN_TRANSIT';
+            isValidTransition = targetStatus === 'ASSIGNED';
             break;
           case 'ASSIGNED':
             isValidTransition = targetStatus === 'IN_TRANSIT'; // ASSIGNED -> DELIVERED is strictly FORBIDDEN

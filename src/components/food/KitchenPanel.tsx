@@ -19,14 +19,26 @@ interface KitchenPanelProps {
 }
 
 export const KitchenPanel: React.FC<KitchenPanelProps> = ({
-  companyId = 'comp_food_don_pedro_01',
-  token = '',
+  companyId,
+  token,
 }) => {
   const [orders, setOrders] = useState<FoodOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'PREPARING'>('ALL');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!companyId || !token) {
+      setError('Sesión de cocina inválida o expirada.');
+      setLoading(false);
+      return;
+    }
+    fetchKitchenOrders();
+    // Auto refresh every 30 seconds
+    const interval = setInterval(fetchKitchenOrders, 30000);
+    return () => clearInterval(interval);
+  }, [token, companyId]);
 
   const fetchKitchenOrders = async () => {
     if (!token) return;
@@ -50,13 +62,6 @@ export const KitchenPanel: React.FC<KitchenPanelProps> = ({
       setIsRefreshing(false);
     }
   };
-
-  useEffect(() => {
-    fetchKitchenOrders();
-    // Auto refresh every 30 seconds
-    const interval = setInterval(fetchKitchenOrders, 30000);
-    return () => clearInterval(interval);
-  }, [token, companyId]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

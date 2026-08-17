@@ -30,25 +30,14 @@ interface FoodStoreInfo {
 }
 
 export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
-  initialCompanyId = 'comp_food_don_pedro_01',
+  initialCompanyId,
   initialOrderId,
   initialViewMode = 'merchant',
   onBackToControl,
 }) => {
-  const [foodStores, setFoodStores] = useState<FoodStoreInfo[]>([
-    {
-      companyId: 'comp_food_don_pedro_01',
-      name: 'Hamburguesería Don Pedro',
-      description: 'Hamburguesas artesanales, papas fritas y bebidas frescas.',
-      address: 'Av. Belgrano 1234, CABA',
-      phone: '+54 9 11 4555-8800',
-      whatsappNumber: '+54 9 11 4555-8800',
-      isOpenManual: true,
-      category: 'Gastronomía',
-    },
-  ]);
+  const [foodStores, setFoodStores] = useState<FoodStoreInfo[]>([]);
 
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(initialCompanyId);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | undefined>(initialCompanyId);
   const [mode, setMode] = useState<'customer' | 'merchant'>(initialViewMode);
   
   // Real user and token from API helper
@@ -129,7 +118,7 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
   const activeStore = foodStores.find((s) => s.companyId === selectedCompanyId) || foodStores[0];
 
   // Disable dropdown if merchant is logged in and locked to their company
-  const isCompanyLocked = !!(currentUser?.companyId && currentUser.companyId.startsWith('comp_food_'));
+  const isCompanyLocked = mode === 'merchant' || !!currentUser;
 
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-[#F8FAFC]">
