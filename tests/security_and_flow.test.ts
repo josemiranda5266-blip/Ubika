@@ -12,9 +12,11 @@
  * 8. Auditoría automática de código sin secretos
  */
 
+import './setup_env';
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { db, hashToken, saveDatabaseSync } from '../server/db';
@@ -88,6 +90,47 @@ async function runAuditSuite() {
     process.env.SEED_DEMO_DATA === 'true',
     'Entorno configurado con SEED_DEMO_DATA === true para la ejecución del test suite'
   );
+
+  // ----------------------------------------------------
+  // 1.5 VERIFICACIÓN DE VARIABLES DE ENTORNO REQUERIDAS (INITIAL_ADMIN_PASSWORD & JWT_SECRET)
+  // ----------------------------------------------------
+  console.log('\n--- 1.5 VERIFICACIÓN DE VARIABLES DE ENTORNO REQUERIDAS ---');
+
+  // A. INITIAL_ADMIN_PASSWORD definida: inicialización correcta
+  try {
+    execSync('INITIAL_ADMIN_PASSWORD=some_test_admin_pass INITIAL_DRIVER_PASSWORD=driver_pass JWT_SECRET=test_jwt_secret_123456 SEED_DEMO_DATA=true tsx -e "import(\'./server/db.ts\').then(m => m.loadDatabase())"', { stdio: 'pipe' });
+    assert(true, 'INITIAL_ADMIN_PASSWORD definida: inicialización de DB correcta');
+  } catch (err: any) {
+    assert(false, 'INITIAL_ADMIN_PASSWORD definida: debió inicializar DB pero falló', err.message);
+  }
+
+  // B. INITIAL_ADMIN_PASSWORD ausente: error seguro
+  try {
+    execSync('INITIAL_ADMIN_PASSWORD="" INITIAL_DRIVER_PASSWORD=driver_pass JWT_SECRET=test_jwt_secret_123456 SEED_DEMO_DATA=true tsx -e "import(\'./server/db.ts\').then(m => m.loadDatabase())"', { stdio: 'pipe' });
+    assert(false, 'INITIAL_ADMIN_PASSWORD ausente: debió fallar con error seguro pero no lo hizo');
+  } catch (err: any) {
+    const errorMsg = err.stderr ? err.stderr.toString() : err.message;
+    const hasExpectedError = errorMsg.includes('INITIAL_ADMIN_PASSWORD is required');
+    assert(hasExpectedError, 'INITIAL_ADMIN_PASSWORD ausente: produce un error explícito y seguro', errorMsg);
+  }
+
+  // C. JWT_SECRET definida: servidor inicia correctamente
+  try {
+    execSync('JWT_SECRET=test_jwt_secret_123456 tsx -e "import(\'./server/auth.ts\')"', { stdio: 'pipe' });
+    assert(true, 'JWT_SECRET definida: módulo de autenticación carga correctamente');
+  } catch (err: any) {
+    assert(false, 'JWT_SECRET definida: debió cargar correctamente pero falló', err.message);
+  }
+
+  // D. JWT_SECRET ausente: el servidor no inicia (falla al importar)
+  try {
+    execSync('JWT_SECRET="" tsx -e "import(\'./server/auth.ts\')"', { stdio: 'pipe' });
+    assert(false, 'JWT_SECRET ausente: debió fallar en la inicialización pero no lo hizo');
+  } catch (err: any) {
+    const errorMsg = err.stderr ? err.stderr.toString() : err.message;
+    const hasExpectedError = errorMsg.includes('JWT_SECRET is not configured');
+    assert(hasExpectedError, 'JWT_SECRET ausente: el servidor falla al iniciar de manera explícita', errorMsg);
+  }
 
   // ----------------------------------------------------
   // 2. PRUEBA DE JWT RIGUROSA CON JWT.VERIFY (Requerimiento 4)

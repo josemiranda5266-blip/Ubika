@@ -21,7 +21,7 @@ import {
   Package,
 } from 'lucide-react';
 import { Company, DashboardMetrics, Delivery, Driver, DeliveryEvent } from '../../types';
-import { apiFetch, getStoredToken, setStoredAuth } from '../../utils/api';
+import { apiFetch, getStoredToken, getStoredUser } from '../../utils/api';
 import { DashboardView } from './DashboardView';
 import { FleetMapView } from './FleetMapView';
 import { DriversManagementView } from './DriversManagementView';
@@ -37,9 +37,16 @@ interface UbikaControlProps {
 export type ControlTab = 'dashboard' | 'history' | 'map' | 'drivers' | 'routes' | 'audit';
 
 export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }) => {
+  const currentUser = getStoredUser();
   const [currentTab, setCurrentTab] = useState<ControlTab>('dashboard');
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('comp_centro_logistico_01');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(() => {
+    const user = getStoredUser();
+    if (user?.companyId && user.companyId !== 'comp_ubika_piloto') {
+      return user.companyId;
+    }
+    return 'comp_centro_logistico_01';
+  });
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [events, setEvents] = useState<DeliveryEvent[]>([]);
@@ -73,29 +80,9 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
     };
   }, []);
 
-  // Ensure valid authentication session
-  const ensureAuth = async () => {
-    if (!getStoredToken()) {
-      try {
-        const res = await fetch('/api/auth/demo-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'COMPANY_ADMIN' }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setStoredAuth(data.token, data.user);
-        }
-      } catch (err) {
-        console.error('Auth bootstrap failed:', err);
-      }
-    }
-  };
-
   // Load Companies (Strict LOGISTICS tenant isolation)
   const fetchCompanies = async () => {
     try {
-      await ensureAuth();
       const res = await apiFetch('/api/companies');
       if (res.ok) {
         const data: Company[] = await res.json();
@@ -104,7 +91,11 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
           (c) => c.businessType === 'LOGISTICS' || (!c.businessType && c.category !== 'Gastronomía')
         );
         setCompanies(logisticsOnly);
-        if (logisticsOnly.length > 0 && !logisticsOnly.some((c) => c.id === selectedCompanyId)) {
+        
+        const user = getStoredUser();
+        if (user?.companyId && user.companyId !== 'comp_ubika_piloto') {
+          setSelectedCompanyId(user.companyId);
+        } else if (logisticsOnly.length > 0 && !logisticsOnly.some((c) => c.id === selectedCompanyId)) {
           setSelectedCompanyId(logisticsOnly[0].id);
         }
       }
@@ -191,19 +182,27 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
                 )}
               </div>
               <div className="relative mt-0.5 max-w-[200px] sm:max-w-xs">
-                <select
-                  id="control-company-select"
-                  value={selectedCompanyId}
-                  onChange={(e) => setSelectedCompanyId(e.target.value)}
-                  className="w-full appearance-none pr-6 text-xs sm:text-sm font-black text-slate-900 bg-transparent focus:outline-none cursor-pointer truncate"
-                >
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-0 top-1 pointer-events-none" />
+                {currentUser?.companyId && currentUser.companyId !== 'comp_ubika_piloto' ? (
+                  <span className="text-xs sm:text-sm font-black text-slate-900 block px-0.5">
+                    {activeCompany?.name || 'Cargando empresa...'}
+                  </span>
+                ) : (
+                  <>
+                    <select
+                      id="control-company-select"
+                      value={selectedCompanyId}
+                      onChange={(e) => setSelectedCompanyId(e.target.value)}
+                      className="w-full appearance-none pr-6 text-xs sm:text-sm font-black text-slate-900 bg-transparent focus:outline-none cursor-pointer truncate"
+                    >
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-0 top-1 pointer-events-none" />
+                  </>
+                )}
               </div>
             </div>
           </div>

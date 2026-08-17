@@ -8,13 +8,19 @@ import { DriverApp } from './components/DriverApp';
 import { CustomerWebApp } from './components/CustomerWebApp';
 import { UbikaControl } from './components/control/UbikaControl';
 import { UbikaFoodApp } from './components/food/UbikaFoodApp';
-import { Smartphone, Globe, LayoutDashboard, Building2, Truck, Shield, Utensils } from 'lucide-react';
+import { Login } from './components/Login';
+import { getStoredToken, getStoredUser, clearStoredAuth, StoredUser } from './utils/api';
+import { Smartphone, Globe, LayoutDashboard, Truck, Utensils, LogOut, User } from 'lucide-react';
 
 export default function App() {
   const [viewMode, setViewMode] = useState<'control' | 'driver' | 'customer' | 'food'>('control');
   const [customerToken, setCustomerToken] = useState<string>('tok_demo_demo842');
   const [foodCompanyId, setFoodCompanyId] = useState<string>('comp_food_don_pedro_01');
   const [foodOrderId, setFoodOrderId] = useState<string | undefined>(undefined);
+  
+  // Real authentication state
+  const [authToken, setAuthToken] = useState<string | null>(getStoredToken());
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(getStoredUser());
 
   // Detect hash changes or URL params for #track/:token, #food, #food/admin, #food/company/:companyId, #food/order/:orderId
   useEffect(() => {
@@ -69,6 +75,46 @@ export default function App() {
     window.location.hash = '';
     setViewMode('control');
   };
+
+  const handleLoginSuccess = (user: StoredUser, tokenVal: string) => {
+    setAuthToken(tokenVal);
+    setCurrentUser(user);
+    
+    // Proactively route the authenticated user based on their role
+    if (user.role === 'DRIVER') {
+      setViewMode('driver');
+      window.location.hash = '';
+    } else if (user.role === 'KITCHEN') {
+      setViewMode('food');
+      window.location.hash = '#food/admin';
+    } else if (user.role === 'COMPANY_ADMIN') {
+      if (user.companyId && user.companyId.startsWith('comp_food_')) {
+        setViewMode('food');
+        window.location.hash = '#food/admin';
+      } else {
+        setViewMode('control');
+        window.location.hash = '';
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    clearStoredAuth();
+    setAuthToken(null);
+    setCurrentUser(null);
+    setViewMode('control');
+    window.location.hash = '';
+  };
+
+  // Determine if authentication is required for the current view
+  const isFoodCustomerMenu = viewMode === 'food' && window.location.hash.includes('/company/');
+  const isPublicTracking = viewMode === 'customer';
+  const authRequired = !isFoodCustomerMenu && !isPublicTracking;
+
+  // Render Login page if authentication is required and not present
+  if (authRequired && !authToken) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
@@ -155,6 +201,30 @@ export default function App() {
             <span>UBIKA FOOD 🍔</span>
           </button>
         </div>
+
+        {/* User profile & Logout */}
+        {authToken && currentUser && (
+          <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
+            <div className="text-right hidden md:block">
+              <div className="text-xs font-black text-slate-800 uppercase tracking-tight flex items-center gap-1">
+                <User className="w-3.5 h-3.5 text-slate-400" />
+                {currentUser.name}
+              </div>
+              <div className="text-[9px] font-black uppercase text-orange-500 tracking-wider">
+                {currentUser.role}
+              </div>
+            </div>
+            <button
+              id="btn-global-logout"
+              type="button"
+              onClick={handleLogout}
+              title="Cerrar Sesión"
+              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200/60 transition-all shadow-xs"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* App views */}

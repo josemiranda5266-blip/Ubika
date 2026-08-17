@@ -59,12 +59,12 @@
       "role": "COMPANY_ADMIN",
       "createdAt": 1786912565543,
       "active": true,
-      "passwordHash": "$2b$10$wlBJT679cTr85UQmZ7wCY.a3B8Zb1ifWbWty3rF/9Vg3LIrgH5ZuO"
+      "passwordHash": "$2b$10$vd8EsQfgsvPflms5zaAIleeb8EXxPRIusOq5Z1opKxfzkTYAaubsq"
     },
     {
       "id": "usr_admin_piloto",
       "email": "admin@ubikapiloto.com",
-      "passwordHash": "$2b$10$7Ai7SeDT57h7W9plkKnhpOjRvUaURNqit7GEOde0ksCfNHFqZCKSa",
+      "passwordHash": "$2b$10$.Cqq6Lishn08dApygFKEOuM.6upoWbJC8B35zTMA558LGQWoIt4rC",
       "name": "ADMIN PILOTO",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_ubika_piloto",
@@ -75,7 +75,7 @@
     {
       "id": "usr_driver_piloto",
       "email": "driver@ubikapiloto.com",
-      "passwordHash": "$2b$10$7Ai7SeDT57h7W9plkKnhpOODCRaTmlZcNzJjJcXZTXEY0ojpMsWfi",
+      "passwordHash": "$2b$10$.Cqq6Lishn08dApygFKEOuOJEmeXSoOpeDDK25ihhrov.6ua2IQJe",
       "name": "DRIVER PILOTO",
       "role": "DRIVER",
       "companyId": "comp_ubika_piloto",
@@ -87,7 +87,7 @@
     {
       "id": "usr_admin_01",
       "email": "admin@logisticaexpress.com",
-      "passwordHash": "$2b$10$7Ai7SeDT57h7W9plkKnhpOjRvUaURNqit7GEOde0ksCfNHFqZCKSa",
+      "passwordHash": "$2b$10$.Cqq6Lishn08dApygFKEOuM.6upoWbJC8B35zTMA558LGQWoIt4rC",
       "name": "Martín Rodríguez (Admin)",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_centro_logistico_01",
@@ -98,7 +98,7 @@
     {
       "id": "usr_dispatcher_01",
       "email": "despacho@logisticaexpress.com",
-      "passwordHash": "$2b$10$7Ai7SeDT57h7W9plkKnhpOjRvUaURNqit7GEOde0ksCfNHFqZCKSa",
+      "passwordHash": "$2b$10$.Cqq6Lishn08dApygFKEOuM.6upoWbJC8B35zTMA558LGQWoIt4rC",
       "name": "Carla Méndez (Despachadora)",
       "role": "DISPATCHER",
       "companyId": "comp_centro_logistico_01",
@@ -109,7 +109,7 @@
     {
       "id": "usr_driver_01",
       "email": "driver1@logisticaexpress.com",
-      "passwordHash": "$2b$10$7Ai7SeDT57h7W9plkKnhpOODCRaTmlZcNzJjJcXZTXEY0ojpMsWfi",
+      "passwordHash": "$2b$10$.Cqq6Lishn08dApygFKEOuOJEmeXSoOpeDDK25ihhrov.6ua2IQJe",
       "name": "Carlos Mendoza",
       "role": "DRIVER",
       "companyId": "comp_centro_logistico_01",
@@ -121,7 +121,7 @@
     {
       "id": "usr_driver_02",
       "email": "driver2@logisticaexpress.com",
-      "passwordHash": "$2b$10$7Ai7SeDT57h7W9plkKnhpOODCRaTmlZcNzJjJcXZTXEY0ojpMsWfi",
+      "passwordHash": "$2b$10$.Cqq6Lishn08dApygFKEOuOJEmeXSoOpeDDK25ihhrov.6ua2IQJe",
       "name": "Gonzalo Silva",
       "role": "DRIVER",
       "companyId": "comp_centro_logistico_01",
@@ -133,7 +133,7 @@
     {
       "id": "usr_admin_farma_02",
       "email": "admin@farmanorte.com",
-      "passwordHash": "$2b$10$7Ai7SeDT57h7W9plkKnhpOjRvUaURNqit7GEOde0ksCfNHFqZCKSa",
+      "passwordHash": "$2b$10$.Cqq6Lishn08dApygFKEOuM.6upoWbJC8B35zTMA558LGQWoIt4rC",
       "name": "Dra. Silvina Ramos",
       "role": "COMPANY_ADMIN",
       "companyId": "comp_farma_norte_02",
@@ -144,7 +144,7 @@
     {
       "id": "usr_driver_farma_02",
       "email": "driver@farmanorte.com",
-      "passwordHash": "$2b$10$7Ai7SeDT57h7W9plkKnhpOODCRaTmlZcNzJjJcXZTXEY0ojpMsWfi",
+      "passwordHash": "$2b$10$.Cqq6Lishn08dApygFKEOuOJEmeXSoOpeDDK25ihhrov.6ua2IQJe",
       "name": "Roberto Farma Driver",
       "role": "DRIVER",
       "companyId": "comp_farma_norte_02",
@@ -189,7 +189,7 @@
       "companyId": "comp_food_don_pedro_01",
       "name": "Cocina Don Pedro",
       "email": "cocina@ubikafood.com",
-      "passwordHash": "$2b$10$wlBJT679cTr85UQmZ7wCY.a3B8Zb1ifWbWty3rF/9Vg3LIrgH5ZuO",
+      "passwordHash": "$2b$10$vd8EsQfgsvPflms5zaAIleeb8EXxPRIusOq5Z1opKxfzkTYAaubsq",
       "role": "KITCHEN",
       "createdAt": 1786931906043,
       "active": true
@@ -253,7 +253,7 @@
       "vehicle": "moto",
       "status": "disponible",
       "createdAt": 1785616878364,
-      "totalDeliveries": 165,
+      "totalDeliveries": 169,
       "rating": 4.9,
       "lastActiveAt": 1786912878364,
       "speedKmH": 28,
@@ -346,6 +346,456 @@
     }
   ],
   "deliveries": [
+    {
+      "id": "del_1786933725677",
+      "orderNumber": 1054,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 3333-2222",
+      "description": "Paquete para validación real de purgado",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_f5997cd47290b7f5e8119ceb95671df0",
+      "status": "entregado",
+      "createdAt": 1786933725677,
+      "assignedAt": 1786933725677,
+      "expiresAt": 1786948125677,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786912878364,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786933725677,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": true,
+      "recipientLocation": null,
+      "authorizedAt": 1786933725706,
+      "distanceMeters": 0,
+      "etaMinutes": 0,
+      "endedAt": 1786933725729
+    },
+    {
+      "id": "del_1786933725649",
+      "orderNumber": 1053,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 8888-7777",
+      "description": "Entrega de prueba aislamiento inyección",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_6ad1aed1166817a2621959592996270e",
+      "status": "asignado",
+      "createdAt": 1786933725650,
+      "assignedAt": 1786933725650,
+      "expiresAt": 1786948125650,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786912878364,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786933725650,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": false
+    },
+    {
+      "id": "del_food_1217_1786933160703",
+      "orderNumber": 1217,
+      "companyId": "comp_food_don_pedro_01",
+      "driverId": "drv_don_pedro_01",
+      "driverName": "Cadete Pedro Jr",
+      "driverPhone": "+5491188889999",
+      "driverVehicle": "moto",
+      "recipientPhone": "+5491177778888",
+      "recipientName": "Gonzalo Higuaín",
+      "description": "🍔 Pedido Food #1217: 2x Hamburguesa Clásica",
+      "instructions": "Entregar en dirección del cliente",
+      "amount": "17500",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_food_1786933160703_85m7ju",
+      "status": "asignado",
+      "createdAt": 1786933160703,
+      "expiresAt": 1786947560703,
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786933160669,
+        "addressHint": "Av. Libertador 2000"
+      },
+      "taskType": "FOOD_DELIVERY",
+      "foodOrderId": "forder_1786933160670_e5zwh",
+      "itemsSummary": "2x Hamburguesa Clásica"
+    },
+    {
+      "id": "del_food_1209_1786933158451",
+      "orderNumber": 1209,
+      "companyId": "comp_food_don_pedro_01",
+      "driverId": "",
+      "driverName": "Sin asignar",
+      "driverPhone": "",
+      "driverVehicle": "moto",
+      "recipientPhone": "+5491199998888",
+      "recipientName": "Delivery Sequence User",
+      "description": "🍔 Pedido Food #1209: 1x Hamburguesa Clásica",
+      "instructions": "Entregar en dirección del cliente",
+      "amount": "9500",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_food_1786933158451_myfnzi",
+      "status": "esperando_autorizacion",
+      "createdAt": 1786933158451,
+      "expiresAt": 1786947558451,
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786933158426,
+        "addressHint": "Av. Corrientes 1000"
+      },
+      "taskType": "FOOD_DELIVERY",
+      "foodOrderId": "forder_1786933158426_o7udt",
+      "itemsSummary": "1x Hamburguesa Clásica"
+    },
+    {
+      "id": "del_1786933154020",
+      "orderNumber": 1052,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 3333-2222",
+      "description": "Paquete para validación real de purgado",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_e209c0e5d00b5dea62171f4821394c2a",
+      "status": "entregado",
+      "createdAt": 1786933154020,
+      "assignedAt": 1786933154020,
+      "expiresAt": 1786947554020,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786912878364,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786933154020,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": true,
+      "recipientLocation": null,
+      "authorizedAt": 1786933154045,
+      "distanceMeters": 0,
+      "etaMinutes": 0,
+      "endedAt": 1786933154072
+    },
+    {
+      "id": "del_1786933153993",
+      "orderNumber": 1051,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 8888-7777",
+      "description": "Entrega de prueba aislamiento inyección",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_963194b81649773a4e06954ca3bfd012",
+      "status": "asignado",
+      "createdAt": 1786933153993,
+      "assignedAt": 1786933153993,
+      "expiresAt": 1786947553993,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786912878364,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786933153993,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": false
+    },
+    {
+      "id": "del_food_1201_1786932929166",
+      "orderNumber": 1201,
+      "companyId": "comp_food_don_pedro_01",
+      "driverId": "drv_don_pedro_01",
+      "driverName": "Cadete Pedro Jr",
+      "driverPhone": "+5491188889999",
+      "driverVehicle": "moto",
+      "recipientPhone": "+5491177778888",
+      "recipientName": "Gonzalo Higuaín",
+      "description": "🍔 Pedido Food #1201: 2x Hamburguesa Clásica",
+      "instructions": "Entregar en dirección del cliente",
+      "amount": "17500",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_food_1786932929165_gbyeao",
+      "status": "asignado",
+      "createdAt": 1786932929166,
+      "expiresAt": 1786947329166,
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786932929129,
+        "addressHint": "Av. Libertador 2000"
+      },
+      "taskType": "FOOD_DELIVERY",
+      "foodOrderId": "forder_1786932929130_m3vg5",
+      "itemsSummary": "2x Hamburguesa Clásica"
+    },
+    {
+      "id": "del_food_1193_1786932926820",
+      "orderNumber": 1193,
+      "companyId": "comp_food_don_pedro_01",
+      "driverId": "",
+      "driverName": "Sin asignar",
+      "driverPhone": "",
+      "driverVehicle": "moto",
+      "recipientPhone": "+5491199998888",
+      "recipientName": "Delivery Sequence User",
+      "description": "🍔 Pedido Food #1193: 1x Hamburguesa Clásica",
+      "instructions": "Entregar en dirección del cliente",
+      "amount": "9500",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_food_1786932926820_bpvk6f",
+      "status": "esperando_autorizacion",
+      "createdAt": 1786932926820,
+      "expiresAt": 1786947326820,
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786932926794,
+        "addressHint": "Av. Corrientes 1000"
+      },
+      "taskType": "FOOD_DELIVERY",
+      "foodOrderId": "forder_1786932926794_m4eex",
+      "itemsSummary": "1x Hamburguesa Clásica"
+    },
+    {
+      "id": "del_1786932922268",
+      "orderNumber": 1050,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 3333-2222",
+      "description": "Paquete para validación real de purgado",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_7857f8660cf40bfb08cc689d0e186f80",
+      "status": "entregado",
+      "createdAt": 1786932922268,
+      "assignedAt": 1786932922268,
+      "expiresAt": 1786947322268,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786912878364,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786932922268,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": true,
+      "recipientLocation": null,
+      "authorizedAt": 1786932922292,
+      "distanceMeters": 0,
+      "etaMinutes": 0,
+      "endedAt": 1786932922314
+    },
+    {
+      "id": "del_1786932922242",
+      "orderNumber": 1049,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 8888-7777",
+      "description": "Entrega de prueba aislamiento inyección",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_f5f48ae5ece5f4d65d27aa8ab6bff974",
+      "status": "asignado",
+      "createdAt": 1786932922242,
+      "assignedAt": 1786932922242,
+      "expiresAt": 1786947322242,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786912878364,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786932922242,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": false
+    },
+    {
+      "id": "del_1786932883704",
+      "orderNumber": 1048,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 3333-2222",
+      "description": "Paquete para validación real de purgado",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_511854a7653339bf27c1e86e590f05ca",
+      "status": "entregado",
+      "createdAt": 1786932883704,
+      "assignedAt": 1786932883704,
+      "expiresAt": 1786947283704,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786912878364,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786932883704,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": true,
+      "recipientLocation": null,
+      "authorizedAt": 1786932883726,
+      "distanceMeters": 0,
+      "etaMinutes": 0,
+      "endedAt": 1786932883747
+    },
+    {
+      "id": "del_1786932883681",
+      "orderNumber": 1047,
+      "companyId": "comp_centro_logistico_01",
+      "driverId": "drv_01",
+      "driverName": "Carlos Mendoza",
+      "driverPhone": "+54 9 11 5555-1234",
+      "driverVehicle": "moto",
+      "recipientPhone": "+54 9 11 8888-7777",
+      "description": "Entrega de prueba aislamiento inyección",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_live_55c792b3e6286d8afbe43f2fcf366a4e",
+      "status": "asignado",
+      "createdAt": 1786932883681,
+      "assignedAt": 1786932883681,
+      "expiresAt": 1786947283681,
+      "driverLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 8,
+        "updatedAt": 1786912878364,
+        "speed": 28,
+        "heading": 145
+      },
+      "routeHistory": [
+        {
+          "latitude": -34.6037,
+          "longitude": -58.3816,
+          "timestamp": 1786932883681,
+          "speed": 28
+        }
+      ],
+      "privacyPolicyPurged": false
+    },
+    {
+      "id": "del_food_1185_1786932124949",
+      "orderNumber": 1185,
+      "companyId": "comp_food_don_pedro_01",
+      "driverId": "drv_don_pedro_01",
+      "driverName": "Cadete Pedro Jr",
+      "driverPhone": "+5491188889999",
+      "driverVehicle": "moto",
+      "recipientPhone": "+5491177778888",
+      "recipientName": "Gonzalo Higuaín",
+      "description": "🍔 Pedido Food #1185: 2x Hamburguesa Clásica",
+      "instructions": "Entregar en dirección del cliente",
+      "amount": "17500",
+      "paymentMethod": "Efectivo",
+      "priority": "normal",
+      "sessionToken": "tok_food_1786932124949_8aqyx5",
+      "status": "asignado",
+      "createdAt": 1786932124949,
+      "expiresAt": 1786946524949,
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786932124915,
+        "addressHint": "Av. Libertador 2000"
+      },
+      "taskType": "FOOD_DELIVERY",
+      "foodOrderId": "forder_1786932124915_vprni",
+      "itemsSummary": "2x Hamburguesa Clásica"
+    },
     {
       "id": "del_food_1177_1786932123123",
       "orderNumber": 1177,
@@ -3975,9 +4425,1650 @@
         "updatedAt": 1786932123094,
         "addressHint": "Av. Corrientes 1000"
       }
+    },
+    {
+      "id": "sess_food_del_food_1185_1786932124949",
+      "deliveryId": "del_food_1185_1786932124949",
+      "companyId": "comp_food_don_pedro_01",
+      "sessionTokenHash": "c7868924bc8860ec91eaa7e9964d534a49e0a8b3c390704deb2d586b47f50409",
+      "createdAt": 1786932124957,
+      "expiresAt": 1786946524957,
+      "status": "ACTIVE",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786932124915,
+        "addressHint": "Av. Libertador 2000"
+      }
+    },
+    {
+      "id": "sess_del_1786932883681",
+      "deliveryId": "del_1786932883681",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "2737f078a1e82a151e2788daa181ab11064806f1751147728f59408ac3ad8f85",
+      "createdAt": 1786932883681,
+      "expiresAt": 1786947283681,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sess_del_1786932883704",
+      "deliveryId": "del_1786932883704",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "0b8230ff4b5e7b6bb0b761b54948bc0339abbccc89b894501da91bfe4337be96",
+      "createdAt": 1786932883704,
+      "expiresAt": 1786947283704,
+      "status": "PURGED",
+      "authorizedAt": 1786932883726,
+      "recipientLocation": null,
+      "endedAt": 1786932883747
+    },
+    {
+      "id": "sess_expired_test",
+      "deliveryId": "del_1786932883704",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "2816de6652c7d73298038f1b590bc76b0c6200a04a817e1bc63441b146b3e626",
+      "createdAt": 1786932873795,
+      "expiresAt": 1786932882795,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "sess_del_1786932922242",
+      "deliveryId": "del_1786932922242",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "1f357ff0e512623e1d86862a7de8269d061a512b216c035d6568e11f10b2f725",
+      "createdAt": 1786932922242,
+      "expiresAt": 1786947322242,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sess_del_1786932922268",
+      "deliveryId": "del_1786932922268",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "c71b9ab22c2dea721b4e07fb8a02a664e51923b877ec6c9a582acdca50158cdc",
+      "createdAt": 1786932922268,
+      "expiresAt": 1786947322268,
+      "status": "PURGED",
+      "authorizedAt": 1786932922292,
+      "recipientLocation": null,
+      "endedAt": 1786932922314
+    },
+    {
+      "id": "sess_expired_test",
+      "deliveryId": "del_1786932922268",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "4518927454a7d4402344ccf4cdc5d2c244e0ab64ae85c7bf7434fdf8f5786284",
+      "createdAt": 1786932912363,
+      "expiresAt": 1786932921363,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "sess_food_del_food_1193_1786932926820",
+      "deliveryId": "del_food_1193_1786932926820",
+      "companyId": "comp_food_don_pedro_01",
+      "sessionTokenHash": "e9f16272e21de61ed3f53626675542084f32814525b06c7823670a03f24d8dd5",
+      "createdAt": 1786932926825,
+      "expiresAt": 1786947326825,
+      "status": "ACTIVE",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786932926794,
+        "addressHint": "Av. Corrientes 1000"
+      }
+    },
+    {
+      "id": "sess_food_del_food_1201_1786932929166",
+      "deliveryId": "del_food_1201_1786932929166",
+      "companyId": "comp_food_don_pedro_01",
+      "sessionTokenHash": "967574fe22a4d75948d97722d7334a308c27bb00a7891d2777d0fdd9b840513f",
+      "createdAt": 1786932929171,
+      "expiresAt": 1786947329171,
+      "status": "ACTIVE",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786932929129,
+        "addressHint": "Av. Libertador 2000"
+      }
+    },
+    {
+      "id": "sess_del_1786933153993",
+      "deliveryId": "del_1786933153993",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "515856280d3cbe49559dd7960164ee42618506926c2b571e9710cb8cce1bae96",
+      "createdAt": 1786933153993,
+      "expiresAt": 1786947553993,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sess_del_1786933154020",
+      "deliveryId": "del_1786933154020",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "17df7f67c75c154d4424d77fb343ef53094b90d7478812c43b739d0538a728a9",
+      "createdAt": 1786933154020,
+      "expiresAt": 1786947554020,
+      "status": "PURGED",
+      "authorizedAt": 1786933154045,
+      "recipientLocation": null,
+      "endedAt": 1786933154072
+    },
+    {
+      "id": "sess_expired_test",
+      "deliveryId": "del_1786933154020",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "7f56d8950c8658f812a849b7404678a6ee789ad334b7eac04c63eff9710b988f",
+      "createdAt": 1786933144128,
+      "expiresAt": 1786933153128,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "sess_food_del_food_1209_1786933158451",
+      "deliveryId": "del_food_1209_1786933158451",
+      "companyId": "comp_food_don_pedro_01",
+      "sessionTokenHash": "8ea2b6f18e5a723bc3bf358d4786b8da7504d408d9002cebfdad28d28120449e",
+      "createdAt": 1786933158457,
+      "expiresAt": 1786947558457,
+      "status": "ACTIVE",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786933158426,
+        "addressHint": "Av. Corrientes 1000"
+      }
+    },
+    {
+      "id": "sess_food_del_food_1217_1786933160703",
+      "deliveryId": "del_food_1217_1786933160703",
+      "companyId": "comp_food_don_pedro_01",
+      "sessionTokenHash": "8da99dfea41ad5c0525ee1f4a5383f7f5a4942724946843bf85dcbecd8d798d0",
+      "createdAt": 1786933160708,
+      "expiresAt": 1786947560708,
+      "status": "ACTIVE",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786933160669,
+        "addressHint": "Av. Libertador 2000"
+      }
+    },
+    {
+      "id": "sess_del_1786933725649",
+      "deliveryId": "del_1786933725649",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "80d7a717e13e759d35013bea5b517bcfd18e68a0eab2932af224b39c763a6197",
+      "createdAt": 1786933725650,
+      "expiresAt": 1786948125650,
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sess_del_1786933725677",
+      "deliveryId": "del_1786933725677",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "65c73099a515fe8da4ca4b85466ea5f1ff8cadbba13254cd1ffd9e8b054241b2",
+      "createdAt": 1786933725677,
+      "expiresAt": 1786948125677,
+      "status": "PURGED",
+      "authorizedAt": 1786933725706,
+      "recipientLocation": null,
+      "endedAt": 1786933725729
+    },
+    {
+      "id": "sess_expired_test",
+      "deliveryId": "del_1786933725677",
+      "companyId": "comp_centro_logistico_01",
+      "sessionTokenHash": "a10123c27c1f48e343396e8c21cab965dbef2d6fd0e7d5c0cf0d65b8f75fabf7",
+      "createdAt": 1786933715777,
+      "expiresAt": 1786933724777,
+      "status": "EXPIRED"
     }
   ],
   "events": [
+    {
+      "id": "ev_1786933725754_bfva2",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933725677",
+      "orderNumber": 1054,
+      "type": "DELIVERY_COMPLETED",
+      "description": "Entrega #1054 finalizada con éxito por Carlos Mendoza.",
+      "timestamp": 1786933725754,
+      "author": "Carlos Mendoza",
+      "actorId": "drv_01",
+      "actorRole": "DRIVER"
+    },
+    {
+      "id": "ev_1786933725738_gswwn",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933725677",
+      "orderNumber": 1054,
+      "type": "LOCATION_PURGED",
+      "description": "Coordenadas exactas del destinatario purgadas según política de retención de privacidad.",
+      "timestamp": 1786933725738,
+      "author": "Sistema UBIKA",
+      "actorRole": "SYSTEM"
+    },
+    {
+      "id": "ev_1786933725718_0z2et",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933725677",
+      "orderNumber": 1054,
+      "type": "LOCATION_SHARED",
+      "description": "El destinatario autorizó y compartió su posición GPS precisa (Av. Corrientes 1234).",
+      "timestamp": 1786933725718,
+      "author": "Destinatario",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_1786933725695_d1law",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933725677",
+      "orderNumber": 1054,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786933725695,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786933725690_jcump",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933725677",
+      "orderNumber": 1054,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1054 creada desde UBIKA CONTROL.",
+      "timestamp": 1786933725690,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786933725666_n9usg",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933725649",
+      "orderNumber": 1053,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786933725666,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786933725661_mms1q",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933725649",
+      "orderNumber": 1053,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1053 creada desde UBIKA CONTROL.",
+      "timestamp": 1786933725661,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pdone_1786933160846",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160767_0y29v",
+      "orderNumber": 1218,
+      "type": "FOOD_ORDER_PICKED_UP",
+      "description": "Pedido #1218 retirado por el cliente con código validado.",
+      "timestamp": 1786933160846,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pready_1786933160821",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160767_0y29v",
+      "orderNumber": 1218,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1218 listo para ser retirado en local.",
+      "timestamp": 1786933160821,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786933160806",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160767_0y29v",
+      "orderNumber": 1218,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1218 puesto en preparación por la cocina.",
+      "timestamp": 1786933160806,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pappr_1786933160798",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160767_0y29v",
+      "orderNumber": 1218,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1218 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786933160798,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pay_1786933160786",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160767_0y29v",
+      "orderNumber": 1218,
+      "type": "FOOD_PAYMENT_PENDING",
+      "description": "El cliente informó haber realizado la transferencia bancaria por 8000 para el pedido #1218. Pendiente de verificación por el comercio.",
+      "timestamp": 1786933160786,
+      "author": "Lionel Messi",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786933160772",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160767_0y29v",
+      "orderNumber": 1218,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1218 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933160772,
+      "author": "Lionel Messi",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pappr_1786933160751",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160670_e5zwh",
+      "orderNumber": 1217,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1217 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786933160751,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_ready_1786933160713",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160670_e5zwh",
+      "orderNumber": 1217,
+      "type": "FOOD_ORDER_READY",
+      "description": "Pedido #1217 listo para despacho. Cadete asignado: Cadete Pedro Jr",
+      "timestamp": 1786933160713,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786933160689",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160670_e5zwh",
+      "orderNumber": 1217,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1217 puesto en preparación por la cocina.",
+      "timestamp": 1786933160689,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_food_1786933160675",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933160670_e5zwh",
+      "orderNumber": 1217,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1217 (🛵 Delivery). Total: 17500",
+      "timestamp": 1786933160675,
+      "author": "Gonzalo Higuaín",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_prep_1786933158767",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158750_kfvsy",
+      "orderNumber": 1216,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1216 puesto en preparación por la cocina.",
+      "timestamp": 1786933158767,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786933158757",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158750_kfvsy",
+      "orderNumber": 1216,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1216 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933158757,
+      "author": "Kitchen Driver Assign Test",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pready_1786933158723",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158693_d9bdk",
+      "orderNumber": 1215,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1215 listo para ser retirado en local.",
+      "timestamp": 1786933158723,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_prep_1786933158708",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158693_d9bdk",
+      "orderNumber": 1215,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1215 puesto en preparación por la cocina.",
+      "timestamp": 1786933158708,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786933158700",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158693_d9bdk",
+      "orderNumber": 1215,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1215 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933158700,
+      "author": "Kitchen Direct Assigned Test",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pready_1786933158676",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158646_aeu1o",
+      "orderNumber": 1214,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1214 listo para ser retirado en local.",
+      "timestamp": 1786933158676,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_prep_1786933158659",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158646_aeu1o",
+      "orderNumber": 1214,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1214 puesto en preparación por la cocina.",
+      "timestamp": 1786933158659,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786933158651",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158646_aeu1o",
+      "orderNumber": 1214,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1214 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933158651,
+      "author": "Kitchen Direct Transit Test",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pready_1786933158628",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158601_9862b",
+      "orderNumber": 1213,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1213 listo para ser retirado en local.",
+      "timestamp": 1786933158628,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_prep_1786933158614",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158601_9862b",
+      "orderNumber": 1213,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1213 puesto en preparación por la cocina.",
+      "timestamp": 1786933158614,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786933158606",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158601_9862b",
+      "orderNumber": 1213,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1213 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933158606,
+      "author": "Kitchen Direct Delivery Test",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pready_1786933158587",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158556_wynwg",
+      "orderNumber": 1212,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1212 listo para ser retirado en local.",
+      "timestamp": 1786933158587,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_prep_1786933158570",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158556_wynwg",
+      "orderNumber": 1212,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1212 puesto en preparación por la cocina.",
+      "timestamp": 1786933158570,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786933158562",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158556_wynwg",
+      "orderNumber": 1212,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1212 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933158562,
+      "author": "Kitchen Ready Flow",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_prep_1786933158541",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158528_aquyp",
+      "orderNumber": 1211,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1211 puesto en preparación por la cocina.",
+      "timestamp": 1786933158541,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786933158533",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158528_aquyp",
+      "orderNumber": 1211,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1211 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933158533,
+      "author": "Kitchen Flow Order",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786933158517",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158511_ydiri",
+      "orderNumber": 1210,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1210 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933158517,
+      "author": "Isolated Kitchen Order",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_ready_1786933158461",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158426_o7udt",
+      "orderNumber": 1209,
+      "type": "FOOD_ORDER_READY",
+      "description": "Pedido #1209 listo para despacho. Cadete asignado: Pendiente",
+      "timestamp": 1786933158461,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786933158439",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158426_o7udt",
+      "orderNumber": 1209,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1209 puesto en preparación por la cocina.",
+      "timestamp": 1786933158439,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_food_1786933158431",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158426_o7udt",
+      "orderNumber": 1209,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1209 (🛵 Delivery). Total: 9500",
+      "timestamp": 1786933158431,
+      "author": "Delivery Sequence User",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pappr_1786933158412",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158380_vedsy",
+      "orderNumber": 1208,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1208 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786933158412,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_food_1786933158386",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158380_vedsy",
+      "orderNumber": 1208,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1208 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933158386,
+      "author": "Transfer User",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786933158347",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158341_h6co2",
+      "orderNumber": 1207,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1207 (🏪 Retiro). Total: 1250",
+      "timestamp": 1786933158347,
+      "author": "Test Modifiers 2",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786933158332",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158327_ks7gq",
+      "orderNumber": 1206,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1206 (🏪 Retiro). Total: 1100",
+      "timestamp": 1786933158332,
+      "author": "Test Modifiers 1",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pappr_1786933158293",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158062_wcu3t",
+      "orderNumber": 1205,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1205 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786933158293,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pdone_1786933158154",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158062_wcu3t",
+      "orderNumber": 1205,
+      "type": "FOOD_ORDER_PICKED_UP",
+      "description": "Pedido #1205 retirado por el cliente con código validado.",
+      "timestamp": 1786933158154,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pready_1786933158132",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158062_wcu3t",
+      "orderNumber": 1205,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1205 listo para ser retirado en local.",
+      "timestamp": 1786933158132,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786933158119",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158062_wcu3t",
+      "orderNumber": 1205,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1205 puesto en preparación por la cocina.",
+      "timestamp": 1786933158119,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pay_1786933158096",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158062_wcu3t",
+      "orderNumber": 1205,
+      "type": "FOOD_PAYMENT_PENDING",
+      "description": "El cliente informó haber realizado la transferencia bancaria por 8000 para el pedido #1205. Pendiente de verificación por el comercio.",
+      "timestamp": 1786933158096,
+      "author": "Román Riquelme",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786933158067",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158062_wcu3t",
+      "orderNumber": 1205,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1205 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933158067,
+      "author": "Román Riquelme",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786933158055",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933158049_7kgk5",
+      "orderNumber": 1204,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1204 (🛵 Delivery). Total: 17500",
+      "timestamp": 1786933158055,
+      "author": "Martín Palermo",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pappr_1786933156097",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933156079_b3gmm",
+      "orderNumber": 1203,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1203 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786933156097,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_food_1786933156085",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786933156079_b3gmm",
+      "orderNumber": 1203,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1203 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786933156085,
+      "author": "Test Pago",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_1786933154102_wku8c",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933154020",
+      "orderNumber": 1052,
+      "type": "DELIVERY_COMPLETED",
+      "description": "Entrega #1052 finalizada con éxito por Carlos Mendoza.",
+      "timestamp": 1786933154102,
+      "author": "Carlos Mendoza",
+      "actorId": "drv_01",
+      "actorRole": "DRIVER"
+    },
+    {
+      "id": "ev_1786933154078_tsure",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933154020",
+      "orderNumber": 1052,
+      "type": "LOCATION_PURGED",
+      "description": "Coordenadas exactas del destinatario purgadas según política de retención de privacidad.",
+      "timestamp": 1786933154078,
+      "author": "Sistema UBIKA",
+      "actorRole": "SYSTEM"
+    },
+    {
+      "id": "ev_1786933154059_tigf1",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933154020",
+      "orderNumber": 1052,
+      "type": "LOCATION_SHARED",
+      "description": "El destinatario autorizó y compartió su posición GPS precisa (Av. Corrientes 1234).",
+      "timestamp": 1786933154059,
+      "author": "Destinatario",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_1786933154035_woquk",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933154020",
+      "orderNumber": 1052,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786933154035,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786933154030_71y9y",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933154020",
+      "orderNumber": 1052,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1052 creada desde UBIKA CONTROL.",
+      "timestamp": 1786933154030,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786933154009_okd7c",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933153993",
+      "orderNumber": 1051,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786933154009,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786933154004_bdw7y",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786933153993",
+      "orderNumber": 1051,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1051 creada desde UBIKA CONTROL.",
+      "timestamp": 1786933154004,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pdone_1786932929320",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929233_zocx7",
+      "orderNumber": 1202,
+      "type": "FOOD_ORDER_PICKED_UP",
+      "description": "Pedido #1202 retirado por el cliente con código validado.",
+      "timestamp": 1786932929320,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pready_1786932929297",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929233_zocx7",
+      "orderNumber": 1202,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1202 listo para ser retirado en local.",
+      "timestamp": 1786932929297,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786932929282",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929233_zocx7",
+      "orderNumber": 1202,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1202 puesto en preparación por la cocina.",
+      "timestamp": 1786932929282,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pappr_1786932929275",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929233_zocx7",
+      "orderNumber": 1202,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1202 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786932929275,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pay_1786932929260",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929233_zocx7",
+      "orderNumber": 1202,
+      "type": "FOOD_PAYMENT_PENDING",
+      "description": "El cliente informó haber realizado la transferencia bancaria por 8000 para el pedido #1202. Pendiente de verificación por el comercio.",
+      "timestamp": 1786932929260,
+      "author": "Lionel Messi",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786932929244",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929233_zocx7",
+      "orderNumber": 1202,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1202 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932929244,
+      "author": "Lionel Messi",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pappr_1786932929222",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929130_m3vg5",
+      "orderNumber": 1201,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1201 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786932929222,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_ready_1786932929178",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929130_m3vg5",
+      "orderNumber": 1201,
+      "type": "FOOD_ORDER_READY",
+      "description": "Pedido #1201 listo para despacho. Cadete asignado: Cadete Pedro Jr",
+      "timestamp": 1786932929178,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786932929151",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929130_m3vg5",
+      "orderNumber": 1201,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1201 puesto en preparación por la cocina.",
+      "timestamp": 1786932929151,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_food_1786932929135",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932929130_m3vg5",
+      "orderNumber": 1201,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1201 (🛵 Delivery). Total: 17500",
+      "timestamp": 1786932929135,
+      "author": "Gonzalo Higuaín",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_prep_1786932927108",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932927096_cxbey",
+      "orderNumber": 1200,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1200 puesto en preparación por la cocina.",
+      "timestamp": 1786932927108,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786932927101",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932927096_cxbey",
+      "orderNumber": 1200,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1200 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932927101,
+      "author": "Kitchen Driver Assign Test",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pready_1786932927071",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932927043_bp34d",
+      "orderNumber": 1199,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1199 listo para ser retirado en local.",
+      "timestamp": 1786932927071,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_prep_1786932927057",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932927043_bp34d",
+      "orderNumber": 1199,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1199 puesto en preparación por la cocina.",
+      "timestamp": 1786932927057,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786932927048",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932927043_bp34d",
+      "orderNumber": 1199,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1199 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932927048,
+      "author": "Kitchen Direct Assigned Test",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pready_1786932927025",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926998_x5jot",
+      "orderNumber": 1198,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1198 listo para ser retirado en local.",
+      "timestamp": 1786932927025,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_prep_1786932927011",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926998_x5jot",
+      "orderNumber": 1198,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1198 puesto en preparación por la cocina.",
+      "timestamp": 1786932927011,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786932927003",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926998_x5jot",
+      "orderNumber": 1198,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1198 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932927003,
+      "author": "Kitchen Direct Transit Test",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pready_1786932926983",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926958_j0720",
+      "orderNumber": 1197,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1197 listo para ser retirado en local.",
+      "timestamp": 1786932926983,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_prep_1786932926972",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926958_j0720",
+      "orderNumber": 1197,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1197 puesto en preparación por la cocina.",
+      "timestamp": 1786932926972,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786932926963",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926958_j0720",
+      "orderNumber": 1197,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1197 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932926963,
+      "author": "Kitchen Direct Delivery Test",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pready_1786932926945",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926917_is3gu",
+      "orderNumber": 1196,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1196 listo para ser retirado en local.",
+      "timestamp": 1786932926945,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_prep_1786932926931",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926917_is3gu",
+      "orderNumber": 1196,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1196 puesto en preparación por la cocina.",
+      "timestamp": 1786932926931,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786932926923",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926917_is3gu",
+      "orderNumber": 1196,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1196 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932926923,
+      "author": "Kitchen Ready Flow",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_prep_1786932926903",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926890_kjy3m",
+      "orderNumber": 1195,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1195 puesto en preparación por la cocina.",
+      "timestamp": 1786932926903,
+      "author": "cocina@ubikafood.com",
+      "actorId": "usr_cocina_don_pedro_01",
+      "actorRole": "KITCHEN"
+    },
+    {
+      "id": "ev_food_1786932926895",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926890_kjy3m",
+      "orderNumber": 1195,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1195 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932926895,
+      "author": "Kitchen Flow Order",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786932926877",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926873_w4bqg",
+      "orderNumber": 1194,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1194 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932926877,
+      "author": "Isolated Kitchen Order",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_ready_1786932926829",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926794_m4eex",
+      "orderNumber": 1193,
+      "type": "FOOD_ORDER_READY",
+      "description": "Pedido #1193 listo para despacho. Cadete asignado: Pendiente",
+      "timestamp": 1786932926829,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786932926809",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926794_m4eex",
+      "orderNumber": 1193,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1193 puesto en preparación por la cocina.",
+      "timestamp": 1786932926809,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_food_1786932926801",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926794_m4eex",
+      "orderNumber": 1193,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1193 (🛵 Delivery). Total: 9500",
+      "timestamp": 1786932926801,
+      "author": "Delivery Sequence User",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pappr_1786932926781",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926759_9brm6",
+      "orderNumber": 1192,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1192 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786932926781,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_food_1786932926764",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926759_9brm6",
+      "orderNumber": 1192,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1192 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932926764,
+      "author": "Transfer User",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786932926729",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926725_rdmez",
+      "orderNumber": 1191,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1191 (🏪 Retiro). Total: 1250",
+      "timestamp": 1786932926729,
+      "author": "Test Modifiers 2",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786932926719",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926714_gn8fe",
+      "orderNumber": 1190,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1190 (🏪 Retiro). Total: 1100",
+      "timestamp": 1786932926719,
+      "author": "Test Modifiers 1",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pappr_1786932926683",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926457_xed7i",
+      "orderNumber": 1189,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1189 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786932926683,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pdone_1786932926547",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926457_xed7i",
+      "orderNumber": 1189,
+      "type": "FOOD_ORDER_PICKED_UP",
+      "description": "Pedido #1189 retirado por el cliente con código validado.",
+      "timestamp": 1786932926547,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pready_1786932926526",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926457_xed7i",
+      "orderNumber": 1189,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1189 listo para ser retirado en local.",
+      "timestamp": 1786932926526,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786932926514",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926457_xed7i",
+      "orderNumber": 1189,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1189 puesto en preparación por la cocina.",
+      "timestamp": 1786932926514,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pay_1786932926490",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926457_xed7i",
+      "orderNumber": 1189,
+      "type": "FOOD_PAYMENT_PENDING",
+      "description": "El cliente informó haber realizado la transferencia bancaria por 8000 para el pedido #1189. Pendiente de verificación por el comercio.",
+      "timestamp": 1786932926490,
+      "author": "Román Riquelme",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786932926462",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926457_xed7i",
+      "orderNumber": 1189,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1189 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932926462,
+      "author": "Román Riquelme",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786932926449",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932926445_z0rjs",
+      "orderNumber": 1188,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1188 (🛵 Delivery). Total: 17500",
+      "timestamp": 1786932926449,
+      "author": "Martín Palermo",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pappr_1786932924414",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932924397_4egoi",
+      "orderNumber": 1187,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1187 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786932924414,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_food_1786932924402",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932924397_4egoi",
+      "orderNumber": 1187,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1187 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932924402,
+      "author": "Test Pago",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_1786932922337_qqjhq",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932922268",
+      "orderNumber": 1050,
+      "type": "DELIVERY_COMPLETED",
+      "description": "Entrega #1050 finalizada con éxito por Carlos Mendoza.",
+      "timestamp": 1786932922337,
+      "author": "Carlos Mendoza",
+      "actorId": "drv_01",
+      "actorRole": "DRIVER"
+    },
+    {
+      "id": "ev_1786932922320_txr50",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932922268",
+      "orderNumber": 1050,
+      "type": "LOCATION_PURGED",
+      "description": "Coordenadas exactas del destinatario purgadas según política de retención de privacidad.",
+      "timestamp": 1786932922320,
+      "author": "Sistema UBIKA",
+      "actorRole": "SYSTEM"
+    },
+    {
+      "id": "ev_1786932922302_owtry",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932922268",
+      "orderNumber": 1050,
+      "type": "LOCATION_SHARED",
+      "description": "El destinatario autorizó y compartió su posición GPS precisa (Av. Corrientes 1234).",
+      "timestamp": 1786932922302,
+      "author": "Destinatario",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_1786932922283_byjyk",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932922268",
+      "orderNumber": 1050,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786932922283,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786932922279_utyjo",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932922268",
+      "orderNumber": 1050,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1050 creada desde UBIKA CONTROL.",
+      "timestamp": 1786932922279,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786932922257_on7rz",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932922242",
+      "orderNumber": 1049,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786932922257,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786932922252_dsgkl",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932922242",
+      "orderNumber": 1049,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1049 creada desde UBIKA CONTROL.",
+      "timestamp": 1786932922252,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786932883771_t45p8",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932883704",
+      "orderNumber": 1048,
+      "type": "DELIVERY_COMPLETED",
+      "description": "Entrega #1048 finalizada con éxito por Carlos Mendoza.",
+      "timestamp": 1786932883771,
+      "author": "Carlos Mendoza",
+      "actorId": "drv_01",
+      "actorRole": "DRIVER"
+    },
+    {
+      "id": "ev_1786932883751_3xqzq",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932883704",
+      "orderNumber": 1048,
+      "type": "LOCATION_PURGED",
+      "description": "Coordenadas exactas del destinatario purgadas según política de retención de privacidad.",
+      "timestamp": 1786932883751,
+      "author": "Sistema UBIKA",
+      "actorRole": "SYSTEM"
+    },
+    {
+      "id": "ev_1786932883735_9exvg",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932883704",
+      "orderNumber": 1048,
+      "type": "LOCATION_SHARED",
+      "description": "El destinatario autorizó y compartió su posición GPS precisa (Av. Corrientes 1234).",
+      "timestamp": 1786932883735,
+      "author": "Destinatario",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_1786932883718_wd1e8",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932883704",
+      "orderNumber": 1048,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786932883718,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786932883713_o82id",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932883704",
+      "orderNumber": 1048,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1048 creada desde UBIKA CONTROL.",
+      "timestamp": 1786932883713,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786932883695_3f6p4",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932883681",
+      "orderNumber": 1047,
+      "type": "DRIVER_ASSIGNED",
+      "description": "Asignado al repartidor Carlos Mendoza (R-01).",
+      "timestamp": 1786932883695,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_1786932883691_xvms1",
+      "companyId": "comp_centro_logistico_01",
+      "deliveryId": "del_1786932883681",
+      "orderNumber": 1047,
+      "type": "DELIVERY_CREATED",
+      "description": "Tarea #1047 creada desde UBIKA CONTROL.",
+      "timestamp": 1786932883691,
+      "author": "Martín Rodríguez (Admin)",
+      "actorId": "usr_admin_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pdone_1786932125082",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932125006_ktrqm",
+      "orderNumber": 1186,
+      "type": "FOOD_ORDER_PICKED_UP",
+      "description": "Pedido #1186 retirado por el cliente con código validado.",
+      "timestamp": 1786932125082,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pready_1786932125064",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932125006_ktrqm",
+      "orderNumber": 1186,
+      "type": "FOOD_ORDER_PICKUP_READY",
+      "description": "Pedido #1186 listo para ser retirado en local.",
+      "timestamp": 1786932125064,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786932125048",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932125006_ktrqm",
+      "orderNumber": 1186,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1186 puesto en preparación por la cocina.",
+      "timestamp": 1786932125048,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pappr_1786932125040",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932125006_ktrqm",
+      "orderNumber": 1186,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1186 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786932125040,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_pay_1786932125027",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932125006_ktrqm",
+      "orderNumber": 1186,
+      "type": "FOOD_PAYMENT_PENDING",
+      "description": "El cliente informó haber realizado la transferencia bancaria por 8000 para el pedido #1186. Pendiente de verificación por el comercio.",
+      "timestamp": 1786932125027,
+      "author": "Lionel Messi",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_food_1786932125011",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932125006_ktrqm",
+      "orderNumber": 1186,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1186 (🏪 Retiro). Total: 8000",
+      "timestamp": 1786932125011,
+      "author": "Lionel Messi",
+      "actorRole": "CLIENT"
+    },
+    {
+      "id": "ev_pappr_1786932124996",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932124915_vprni",
+      "orderNumber": 1185,
+      "type": "FOOD_PAYMENT_APPROVED",
+      "description": "Pago del pedido #1185 APROBADO y confirmado por el comercio.",
+      "timestamp": 1786932124996,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_ready_1786932124961",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932124915_vprni",
+      "orderNumber": 1185,
+      "type": "FOOD_ORDER_READY",
+      "description": "Pedido #1185 listo para despacho. Cadete asignado: Cadete Pedro Jr",
+      "timestamp": 1786932124961,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_prep_1786932124934",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932124915_vprni",
+      "orderNumber": 1185,
+      "type": "FOOD_ORDER_PREPARING",
+      "description": "Pedido #1185 puesto en preparación por la cocina.",
+      "timestamp": 1786932124934,
+      "author": "donpedro@ubikafood.com",
+      "actorId": "usr_don_pedro_01",
+      "actorRole": "COMPANY_ADMIN"
+    },
+    {
+      "id": "ev_food_1786932124920",
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryId": "forder_1786932124915_vprni",
+      "orderNumber": 1185,
+      "type": "FOOD_ORDER_CREATED",
+      "description": "Nuevo pedido gastronómico #1185 (🛵 Delivery). Total: 17500",
+      "timestamp": 1786932124920,
+      "author": "Gonzalo Higuaín",
+      "actorRole": "CLIENT"
+    },
     {
       "id": "ev_prep_1786932123410",
       "companyId": "comp_food_don_pedro_01",
@@ -12582,6 +14673,78 @@
           ]
         }
       ]
+    },
+    {
+      "id": "fprod_test_mod_1786932926705",
+      "companyId": "comp_food_don_pedro_01",
+      "categoryId": "cat_burgers",
+      "name": "Hamburguesa Especial Modificadores",
+      "description": "Testing option groups",
+      "price": 1000,
+      "isAvailable": true,
+      "displayOrder": 99,
+      "optionGroups": [
+        {
+          "id": "grp_salsa",
+          "name": "Salsa Especial",
+          "required": true,
+          "minSelections": 1,
+          "maxSelections": 2,
+          "options": [
+            {
+              "id": "opt_ketchup",
+              "name": "Ketchup",
+              "price": 100
+            },
+            {
+              "id": "opt_mayo",
+              "name": "Mayonesa",
+              "price": 150
+            },
+            {
+              "id": "opt_bbq",
+              "name": "BBQ",
+              "price": 200
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fprod_test_mod_1786933158315",
+      "companyId": "comp_food_don_pedro_01",
+      "categoryId": "cat_burgers",
+      "name": "Hamburguesa Especial Modificadores",
+      "description": "Testing option groups",
+      "price": 1000,
+      "isAvailable": true,
+      "displayOrder": 99,
+      "optionGroups": [
+        {
+          "id": "grp_salsa",
+          "name": "Salsa Especial",
+          "required": true,
+          "minSelections": 1,
+          "maxSelections": 2,
+          "options": [
+            {
+              "id": "opt_ketchup",
+              "name": "Ketchup",
+              "price": 100
+            },
+            {
+              "id": "opt_mayo",
+              "name": "Mayonesa",
+              "price": 150
+            },
+            {
+              "id": "opt_bbq",
+              "name": "BBQ",
+              "price": 200
+            }
+          ]
+        }
+      ]
     }
   ],
   "food_shipping_rates": [
@@ -12597,6 +14760,1109 @@
     }
   ],
   "food_orders": [
+    {
+      "id": "forder_1786933160767_0y29v",
+      "orderNumber": 1218,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Lionel Messi",
+      "recipientPhone": "+5491110101010",
+      "recipientLocation": null,
+      "paymentMethod": "TRANSFER",
+      "paymentStatus": "APPROVED",
+      "pickupCode": "V8NA3",
+      "publicTrackingToken": "tr_food_1786933160767_2d9563f818ddf9b7",
+      "orderStatus": "PICKED_UP",
+      "createdAt": 1786933160767,
+      "updatedAt": 1786933160839,
+      "bankTransferReportedAt": 1786933160781,
+      "pickedUpAt": 1786933160839,
+      "pickupCodeUsedAt": 1786933160839
+    },
+    {
+      "id": "forder_1786933160670_e5zwh",
+      "orderNumber": 1217,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_DELIVERY",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 2,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 16000
+        }
+      ],
+      "subtotal": 16000,
+      "shippingCost": 1500,
+      "totalAmount": 17500,
+      "recipientName": "Gonzalo Higuaín",
+      "recipientPhone": "+5491177778888",
+      "deliveryAddress": "Av. Libertador 2000",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786933160669,
+        "addressHint": "Av. Libertador 2000"
+      },
+      "paymentMethod": "CASH",
+      "paymentStatus": "APPROVED",
+      "publicTrackingToken": "tr_food_1786933160669_726ac27aa234e45e",
+      "orderStatus": "DELIVERED",
+      "createdAt": 1786933160670,
+      "updatedAt": 1786933160746,
+      "deliveryId": "del_food_1217_1786933160703",
+      "driverId": "drv_don_pedro_01",
+      "driverName": "Cadete Pedro Jr",
+      "driverPhone": "+5491188889999"
+    },
+    {
+      "id": "forder_1786933158750_kfvsy",
+      "orderNumber": 1216,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Driver Assign Test",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "8DM7K",
+      "publicTrackingToken": "tr_food_1786933158750_cdb0b0e352aede19",
+      "orderStatus": "PREPARING",
+      "createdAt": 1786933158750,
+      "updatedAt": 1786933158774
+    },
+    {
+      "id": "forder_1786933158693_d9bdk",
+      "orderNumber": 1215,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Direct Assigned Test",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "Z4LGY",
+      "publicTrackingToken": "tr_food_1786933158693_611e6b42db381801",
+      "orderStatus": "READY_FOR_PICKUP",
+      "createdAt": 1786933158693,
+      "updatedAt": 1786933158730
+    },
+    {
+      "id": "forder_1786933158646_aeu1o",
+      "orderNumber": 1214,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Direct Transit Test",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "DNH8J",
+      "publicTrackingToken": "tr_food_1786933158646_19ab63a7ddafe769",
+      "orderStatus": "READY_FOR_PICKUP",
+      "createdAt": 1786933158646,
+      "updatedAt": 1786933158683
+    },
+    {
+      "id": "forder_1786933158601_9862b",
+      "orderNumber": 1213,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Direct Delivery Test",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "AWJFF",
+      "publicTrackingToken": "tr_food_1786933158601_ccba4984ecd1b2ea",
+      "orderStatus": "READY_FOR_PICKUP",
+      "createdAt": 1786933158601,
+      "updatedAt": 1786933158635
+    },
+    {
+      "id": "forder_1786933158556_wynwg",
+      "orderNumber": 1212,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Ready Flow",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "BWM65",
+      "publicTrackingToken": "tr_food_1786933158556_6c085d6540e0a9e1",
+      "orderStatus": "READY_FOR_PICKUP",
+      "createdAt": 1786933158556,
+      "updatedAt": 1786933158594
+    },
+    {
+      "id": "forder_1786933158528_aquyp",
+      "orderNumber": 1211,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Flow Order",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "7ANKC",
+      "publicTrackingToken": "tr_food_1786933158528_633e234e74383132",
+      "orderStatus": "PREPARING",
+      "createdAt": 1786933158528,
+      "updatedAt": 1786933158548
+    },
+    {
+      "id": "forder_1786933158511_ydiri",
+      "orderNumber": 1210,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Isolated Kitchen Order",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "Y4L6Z",
+      "publicTrackingToken": "tr_food_1786933158511_175e5364fba706da",
+      "orderStatus": "PENDING",
+      "createdAt": 1786933158511,
+      "updatedAt": 1786933158511
+    },
+    {
+      "id": "forder_1786933158426_o7udt",
+      "orderNumber": 1209,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_DELIVERY",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 1500,
+      "totalAmount": 9500,
+      "recipientName": "Delivery Sequence User",
+      "recipientPhone": "+5491199998888",
+      "deliveryAddress": "Av. Corrientes 1000",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786933158426,
+        "addressHint": "Av. Corrientes 1000"
+      },
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "publicTrackingToken": "tr_food_1786933158426_41c2b95f8f3692ed",
+      "orderStatus": "DELIVERED",
+      "createdAt": 1786933158426,
+      "updatedAt": 1786933158494,
+      "deliveryId": "del_food_1209_1786933158451"
+    },
+    {
+      "id": "forder_1786933158380_vedsy",
+      "orderNumber": 1208,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Transfer User",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "TRANSFER",
+      "paymentStatus": "APPROVED",
+      "pickupCode": "X8H8S",
+      "publicTrackingToken": "tr_food_1786933158380_b9afdc971920e850",
+      "orderStatus": "PENDING",
+      "createdAt": 1786933158380,
+      "updatedAt": 1786933158403
+    },
+    {
+      "id": "forder_1786933158341_h6co2",
+      "orderNumber": 1207,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "fprod_test_mod_1786933158315",
+          "productName": "Hamburguesa Especial Modificadores",
+          "quantity": 1,
+          "unitPrice": 1000,
+          "selectedOptions": [
+            {
+              "optionGroupId": "grp_salsa",
+              "optionGroupName": "Salsa Especial",
+              "optionId": "opt_ketchup",
+              "optionName": "Ketchup",
+              "price": 100
+            },
+            {
+              "optionGroupId": "grp_salsa",
+              "optionGroupName": "Salsa Especial",
+              "optionId": "opt_mayo",
+              "optionName": "Mayonesa",
+              "price": 150
+            }
+          ],
+          "totalPrice": 1250
+        }
+      ],
+      "subtotal": 1250,
+      "shippingCost": 0,
+      "totalAmount": 1250,
+      "recipientName": "Test Modifiers 2",
+      "recipientPhone": "+5491100000000",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "Q2KSF",
+      "publicTrackingToken": "tr_food_1786933158341_417728b2c4f520a4",
+      "orderStatus": "PENDING",
+      "createdAt": 1786933158341,
+      "updatedAt": 1786933158341
+    },
+    {
+      "id": "forder_1786933158327_ks7gq",
+      "orderNumber": 1206,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "fprod_test_mod_1786933158315",
+          "productName": "Hamburguesa Especial Modificadores",
+          "quantity": 1,
+          "unitPrice": 1000,
+          "selectedOptions": [
+            {
+              "optionGroupId": "grp_salsa",
+              "optionGroupName": "Salsa Especial",
+              "optionId": "opt_ketchup",
+              "optionName": "Ketchup",
+              "price": 100
+            }
+          ],
+          "totalPrice": 1100
+        }
+      ],
+      "subtotal": 1100,
+      "shippingCost": 0,
+      "totalAmount": 1100,
+      "recipientName": "Test Modifiers 1",
+      "recipientPhone": "+5491100000000",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "X7UEQ",
+      "publicTrackingToken": "tr_food_1786933158327_ff1c9bc6a0f368a0",
+      "orderStatus": "PENDING",
+      "createdAt": 1786933158327,
+      "updatedAt": 1786933158327
+    },
+    {
+      "id": "forder_1786933158062_wcu3t",
+      "orderNumber": 1205,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Román Riquelme",
+      "recipientPhone": "+5491166667777",
+      "recipientLocation": null,
+      "paymentMethod": "TRANSFER",
+      "paymentStatus": "APPROVED",
+      "pickupCode": "QCXDY",
+      "publicTrackingToken": "tr_food_1786933158062_9863a7e014d5d98a",
+      "orderStatus": "PICKED_UP",
+      "createdAt": 1786933158062,
+      "updatedAt": 1786933158287,
+      "bankTransferReportedAt": 1786933158091,
+      "pickedUpAt": 1786933158149,
+      "pickupCodeUsedAt": 1786933158149
+    },
+    {
+      "id": "forder_1786933158049_7kgk5",
+      "orderNumber": 1204,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_DELIVERY",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 2,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 16000
+        }
+      ],
+      "subtotal": 16000,
+      "shippingCost": 1500,
+      "totalAmount": 17500,
+      "recipientName": "Martín Palermo",
+      "recipientPhone": "+5491155556666",
+      "deliveryAddress": "Av. Mayo 500",
+      "recipientLocation": {
+        "latitude": -34.608,
+        "longitude": -58.375,
+        "accuracy": 10,
+        "updatedAt": 1786933158049,
+        "addressHint": "Av. Mayo 500"
+      },
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "publicTrackingToken": "tr_food_1786933158049_645eac321b578ee1",
+      "orderStatus": "PENDING",
+      "createdAt": 1786933158049,
+      "updatedAt": 1786933158049
+    },
+    {
+      "id": "forder_1786933156079_b3gmm",
+      "orderNumber": 1203,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Test Pago",
+      "recipientPhone": "+5491100002222",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "APPROVED",
+      "pickupCode": "5ALD7",
+      "publicTrackingToken": "tr_food_1786933156079_9f1cb2ab4087a25b",
+      "orderStatus": "PENDING",
+      "createdAt": 1786933156079,
+      "updatedAt": 1786933156092
+    },
+    {
+      "id": "forder_1786932929233_zocx7",
+      "orderNumber": 1202,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Lionel Messi",
+      "recipientPhone": "+5491110101010",
+      "recipientLocation": null,
+      "paymentMethod": "TRANSFER",
+      "paymentStatus": "APPROVED",
+      "pickupCode": "SM4QE",
+      "publicTrackingToken": "tr_food_1786932929233_2082d1457ba91a94",
+      "orderStatus": "PICKED_UP",
+      "createdAt": 1786932929233,
+      "updatedAt": 1786932929313,
+      "bankTransferReportedAt": 1786932929253,
+      "pickedUpAt": 1786932929313,
+      "pickupCodeUsedAt": 1786932929313
+    },
+    {
+      "id": "forder_1786932929130_m3vg5",
+      "orderNumber": 1201,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_DELIVERY",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 2,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 16000
+        }
+      ],
+      "subtotal": 16000,
+      "shippingCost": 1500,
+      "totalAmount": 17500,
+      "recipientName": "Gonzalo Higuaín",
+      "recipientPhone": "+5491177778888",
+      "deliveryAddress": "Av. Libertador 2000",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786932929129,
+        "addressHint": "Av. Libertador 2000"
+      },
+      "paymentMethod": "CASH",
+      "paymentStatus": "APPROVED",
+      "publicTrackingToken": "tr_food_1786932929129_cda8713b05e6916d",
+      "orderStatus": "DELIVERED",
+      "createdAt": 1786932929130,
+      "updatedAt": 1786932929215,
+      "deliveryId": "del_food_1201_1786932929166",
+      "driverId": "drv_don_pedro_01",
+      "driverName": "Cadete Pedro Jr",
+      "driverPhone": "+5491188889999"
+    },
+    {
+      "id": "forder_1786932927096_cxbey",
+      "orderNumber": 1200,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Driver Assign Test",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "VH5J9",
+      "publicTrackingToken": "tr_food_1786932927096_2e491ce3eebf0021",
+      "orderStatus": "PREPARING",
+      "createdAt": 1786932927096,
+      "updatedAt": 1786932927115
+    },
+    {
+      "id": "forder_1786932927043_bp34d",
+      "orderNumber": 1199,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Direct Assigned Test",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "ZE5SY",
+      "publicTrackingToken": "tr_food_1786932927043_f13b8f821e400d9e",
+      "orderStatus": "READY_FOR_PICKUP",
+      "createdAt": 1786932927043,
+      "updatedAt": 1786932927076
+    },
+    {
+      "id": "forder_1786932926998_x5jot",
+      "orderNumber": 1198,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Direct Transit Test",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "6QTGB",
+      "publicTrackingToken": "tr_food_1786932926998_e22388aadd4eaeb6",
+      "orderStatus": "READY_FOR_PICKUP",
+      "createdAt": 1786932926998,
+      "updatedAt": 1786932927032
+    },
+    {
+      "id": "forder_1786932926958_j0720",
+      "orderNumber": 1197,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Direct Delivery Test",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "FPCHV",
+      "publicTrackingToken": "tr_food_1786932926958_c01095041c692f8c",
+      "orderStatus": "READY_FOR_PICKUP",
+      "createdAt": 1786932926958,
+      "updatedAt": 1786932926988
+    },
+    {
+      "id": "forder_1786932926917_is3gu",
+      "orderNumber": 1196,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Ready Flow",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "7Z7EU",
+      "publicTrackingToken": "tr_food_1786932926917_ecb9a375dbfd1693",
+      "orderStatus": "READY_FOR_PICKUP",
+      "createdAt": 1786932926917,
+      "updatedAt": 1786932926951
+    },
+    {
+      "id": "forder_1786932926890_kjy3m",
+      "orderNumber": 1195,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Kitchen Flow Order",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "HCX3M",
+      "publicTrackingToken": "tr_food_1786932926890_e5b9a2751d9ff343",
+      "orderStatus": "PREPARING",
+      "createdAt": 1786932926890,
+      "updatedAt": 1786932926909
+    },
+    {
+      "id": "forder_1786932926873_w4bqg",
+      "orderNumber": 1194,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Isolated Kitchen Order",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "6GZVY",
+      "publicTrackingToken": "tr_food_1786932926873_f02fa3ab4a33828c",
+      "orderStatus": "PENDING",
+      "createdAt": 1786932926873,
+      "updatedAt": 1786932926873
+    },
+    {
+      "id": "forder_1786932926794_m4eex",
+      "orderNumber": 1193,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_DELIVERY",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 1500,
+      "totalAmount": 9500,
+      "recipientName": "Delivery Sequence User",
+      "recipientPhone": "+5491199998888",
+      "deliveryAddress": "Av. Corrientes 1000",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786932926794,
+        "addressHint": "Av. Corrientes 1000"
+      },
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "publicTrackingToken": "tr_food_1786932926794_aece29d743aa9fb5",
+      "orderStatus": "DELIVERED",
+      "createdAt": 1786932926794,
+      "updatedAt": 1786932926858,
+      "deliveryId": "del_food_1193_1786932926820"
+    },
+    {
+      "id": "forder_1786932926759_9brm6",
+      "orderNumber": 1192,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Transfer User",
+      "recipientPhone": "+5491199998888",
+      "recipientLocation": null,
+      "paymentMethod": "TRANSFER",
+      "paymentStatus": "APPROVED",
+      "pickupCode": "YHMW8",
+      "publicTrackingToken": "tr_food_1786932926759_017321b0f6df96c6",
+      "orderStatus": "PENDING",
+      "createdAt": 1786932926759,
+      "updatedAt": 1786932926777
+    },
+    {
+      "id": "forder_1786932926725_rdmez",
+      "orderNumber": 1191,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "fprod_test_mod_1786932926705",
+          "productName": "Hamburguesa Especial Modificadores",
+          "quantity": 1,
+          "unitPrice": 1000,
+          "selectedOptions": [
+            {
+              "optionGroupId": "grp_salsa",
+              "optionGroupName": "Salsa Especial",
+              "optionId": "opt_ketchup",
+              "optionName": "Ketchup",
+              "price": 100
+            },
+            {
+              "optionGroupId": "grp_salsa",
+              "optionGroupName": "Salsa Especial",
+              "optionId": "opt_mayo",
+              "optionName": "Mayonesa",
+              "price": 150
+            }
+          ],
+          "totalPrice": 1250
+        }
+      ],
+      "subtotal": 1250,
+      "shippingCost": 0,
+      "totalAmount": 1250,
+      "recipientName": "Test Modifiers 2",
+      "recipientPhone": "+5491100000000",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "EPNJE",
+      "publicTrackingToken": "tr_food_1786932926725_e5fbdd411ff3800f",
+      "orderStatus": "PENDING",
+      "createdAt": 1786932926725,
+      "updatedAt": 1786932926725
+    },
+    {
+      "id": "forder_1786932926714_gn8fe",
+      "orderNumber": 1190,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "fprod_test_mod_1786932926705",
+          "productName": "Hamburguesa Especial Modificadores",
+          "quantity": 1,
+          "unitPrice": 1000,
+          "selectedOptions": [
+            {
+              "optionGroupId": "grp_salsa",
+              "optionGroupName": "Salsa Especial",
+              "optionId": "opt_ketchup",
+              "optionName": "Ketchup",
+              "price": 100
+            }
+          ],
+          "totalPrice": 1100
+        }
+      ],
+      "subtotal": 1100,
+      "shippingCost": 0,
+      "totalAmount": 1100,
+      "recipientName": "Test Modifiers 1",
+      "recipientPhone": "+5491100000000",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "pickupCode": "TBT5S",
+      "publicTrackingToken": "tr_food_1786932926714_292a4cdfd68a5452",
+      "orderStatus": "PENDING",
+      "createdAt": 1786932926714,
+      "updatedAt": 1786932926714
+    },
+    {
+      "id": "forder_1786932926457_xed7i",
+      "orderNumber": 1189,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Román Riquelme",
+      "recipientPhone": "+5491166667777",
+      "recipientLocation": null,
+      "paymentMethod": "TRANSFER",
+      "paymentStatus": "APPROVED",
+      "pickupCode": "7MD7F",
+      "publicTrackingToken": "tr_food_1786932926457_a16a4ec8b078a273",
+      "orderStatus": "PICKED_UP",
+      "createdAt": 1786932926457,
+      "updatedAt": 1786932926673,
+      "bankTransferReportedAt": 1786932926485,
+      "pickedUpAt": 1786932926542,
+      "pickupCodeUsedAt": 1786932926542
+    },
+    {
+      "id": "forder_1786932926445_z0rjs",
+      "orderNumber": 1188,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_DELIVERY",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 2,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 16000
+        }
+      ],
+      "subtotal": 16000,
+      "shippingCost": 1500,
+      "totalAmount": 17500,
+      "recipientName": "Martín Palermo",
+      "recipientPhone": "+5491155556666",
+      "deliveryAddress": "Av. Mayo 500",
+      "recipientLocation": {
+        "latitude": -34.608,
+        "longitude": -58.375,
+        "accuracy": 10,
+        "updatedAt": 1786932926444,
+        "addressHint": "Av. Mayo 500"
+      },
+      "paymentMethod": "CASH",
+      "paymentStatus": "PENDING",
+      "publicTrackingToken": "tr_food_1786932926444_0ef600134bdcec65",
+      "orderStatus": "PENDING",
+      "createdAt": 1786932926445,
+      "updatedAt": 1786932926445
+    },
+    {
+      "id": "forder_1786932924397_4egoi",
+      "orderNumber": 1187,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Test Pago",
+      "recipientPhone": "+5491100002222",
+      "recipientLocation": null,
+      "paymentMethod": "CASH",
+      "paymentStatus": "APPROVED",
+      "pickupCode": "UCWKH",
+      "publicTrackingToken": "tr_food_1786932924396_32b180d169215a25",
+      "orderStatus": "PENDING",
+      "createdAt": 1786932924397,
+      "updatedAt": 1786932924410
+    },
+    {
+      "id": "forder_1786932125006_ktrqm",
+      "orderNumber": 1186,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_PICKUP",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 1,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 8000
+        }
+      ],
+      "subtotal": 8000,
+      "shippingCost": 0,
+      "totalAmount": 8000,
+      "recipientName": "Lionel Messi",
+      "recipientPhone": "+5491110101010",
+      "recipientLocation": null,
+      "paymentMethod": "TRANSFER",
+      "paymentStatus": "APPROVED",
+      "pickupCode": "6HTGW",
+      "publicTrackingToken": "tr_food_1786932125006_ad5f0444143867e3",
+      "orderStatus": "PICKED_UP",
+      "createdAt": 1786932125006,
+      "updatedAt": 1786932125078,
+      "bankTransferReportedAt": 1786932125023,
+      "pickedUpAt": 1786932125078,
+      "pickupCodeUsedAt": 1786932125078
+    },
+    {
+      "id": "forder_1786932124915_vprni",
+      "orderNumber": 1185,
+      "companyId": "comp_food_don_pedro_01",
+      "deliveryType": "FOOD_DELIVERY",
+      "items": [
+        {
+          "productId": "prod_burg_clasica",
+          "productName": "Hamburguesa Clásica",
+          "quantity": 2,
+          "unitPrice": 8000,
+          "selectedOptions": [],
+          "totalPrice": 16000
+        }
+      ],
+      "subtotal": 16000,
+      "shippingCost": 1500,
+      "totalAmount": 17500,
+      "recipientName": "Gonzalo Higuaín",
+      "recipientPhone": "+5491177778888",
+      "deliveryAddress": "Av. Libertador 2000",
+      "recipientLocation": {
+        "latitude": -34.6037,
+        "longitude": -58.3816,
+        "accuracy": 10,
+        "updatedAt": 1786932124915,
+        "addressHint": "Av. Libertador 2000"
+      },
+      "paymentMethod": "CASH",
+      "paymentStatus": "APPROVED",
+      "publicTrackingToken": "tr_food_1786932124915_732dbf800cc50541",
+      "orderStatus": "DELIVERED",
+      "createdAt": 1786932124915,
+      "updatedAt": 1786932124991,
+      "deliveryId": "del_food_1185_1786932124949",
+      "driverId": "drv_don_pedro_01",
+      "driverName": "Cadete Pedro Jr",
+      "driverPhone": "+5491188889999"
+    },
     {
       "id": "forder_1786932123394_k4il6",
       "orderNumber": 1184,

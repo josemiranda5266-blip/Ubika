@@ -1,0 +1,171 @@
+import React, { useState } from 'react';
+import { ShieldCheck, Lock, Mail, Loader2, Info } from 'lucide-react';
+import { setStoredAuth, StoredUser } from '../utils/api';
+
+interface LoginProps {
+  onLoginSuccess: (user: StoredUser, token: string) => void;
+}
+
+export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError('Por favor, ingresa tu correo y contraseña.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setStoredAuth(data.token, data.user);
+        onLoginSuccess(data.user, data.token);
+      } else {
+        const errData = await res.json();
+        setError(errData.error || 'Credenciales inválidas');
+      }
+    } catch (err) {
+      console.error('Error durante la autenticación:', err);
+      setError('Ocurrió un error al conectar con el servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div id="login-container" className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div id="login-card" className="w-full max-w-md bg-white rounded-2xl border border-slate-200/80 shadow-xl overflow-hidden p-8">
+        
+        {/* Brand Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex p-3.5 bg-orange-500 text-white rounded-2xl shadow-lg shadow-orange-100 mb-4">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
+            Plataforma Ubika
+          </h1>
+          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">
+            Control de Logística y Gastronomía
+          </p>
+        </div>
+
+        {error && (
+          <div id="login-error" className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-xs font-bold flex items-start gap-2.5">
+            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full mt-1.5 shrink-0" />
+            <div className="flex-1">{error}</div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email Input */}
+          <div>
+            <label htmlFor="email" className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+              Correo Electrónico
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="usuario@ejemplo.com"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Password Input */}
+          <div>
+            <label htmlFor="password" className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+              Contraseña
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            id="btn-login"
+            type="submit"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-orange-500 transition-all disabled:opacity-50 disabled:hover:bg-slate-900 active:scale-[0.98]"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Iniciando Sesión...</span>
+              </>
+            ) : (
+              <span>Ingresar a la Plataforma</span>
+            )}
+          </button>
+        </form>
+
+        {/* Platform Account Hints */}
+        <div className="mt-8 border-t border-slate-100 pt-6">
+          <div className="flex items-start gap-2 text-slate-500 mb-3">
+            <Info className="w-4 h-4 shrink-0 text-orange-500 mt-0.5" />
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+              Cuentas Registradas en el Sistema:
+            </span>
+          </div>
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+              <span className="font-bold text-slate-700">donpedro@ubikafood.com</span>
+              <span className="text-[10px] bg-amber-50 text-amber-700 font-black px-1.5 py-0.5 rounded border border-amber-200">
+                COMERCIO
+              </span>
+            </div>
+            <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+              <span className="font-bold text-slate-700">cocina@ubikafood.com</span>
+              <span className="text-[10px] bg-indigo-50 text-indigo-700 font-black px-1.5 py-0.5 rounded border border-indigo-200">
+                COCINA
+              </span>
+            </div>
+            <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+              <span className="font-bold text-slate-700">admin@ubikapiloto.com</span>
+              <span className="text-[10px] bg-orange-50 text-orange-700 font-black px-1.5 py-0.5 rounded border border-orange-200">
+                LOGÍSTICA
+              </span>
+            </div>
+            <div className="flex justify-between items-center bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+              <span className="font-bold text-slate-700">driver@ubikapiloto.com</span>
+              <span className="text-[10px] bg-emerald-50 text-emerald-700 font-black px-1.5 py-0.5 rounded border border-emerald-200">
+                CADETE
+              </span>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-3 text-center font-bold uppercase tracking-wider">
+            La contraseña se encuentra configurada en las variables de entorno.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+};

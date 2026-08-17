@@ -138,7 +138,7 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
               }}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-orange-50 hover:bg-orange-100 text-orange-700 font-black rounded-2xl text-xs border border-orange-200 transition-all"
             >
-              <span>Abrir como Cliente en este navegador (Probar Flujo)</span>
+              <span>Visualizar Vista del Cliente (Seguimiento)</span>
               <ArrowRight className="w-4 h-4 text-orange-600" />
             </button>
           )}

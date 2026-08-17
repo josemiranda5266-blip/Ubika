@@ -4,20 +4,12 @@ import {
   ShoppingBag,
   Store,
   ChevronDown,
-  Building2,
-  Phone,
-  MapPin,
-  ExternalLink,
-  ShieldCheck,
-  CheckCircle,
-  Clock,
-  Sparkles,
 } from 'lucide-react';
 import { FoodCustomerView } from './FoodCustomerView';
 import { FoodMerchantPanel } from './FoodMerchantPanel';
 import { KitchenPanel } from './KitchenPanel';
-import { Company, Driver, FoodStore } from '../../types';
-import { apiFetch, getStoredToken, setStoredAuth, getStoredUser } from '../../utils/api';
+import { Driver } from '../../types';
+import { apiFetch, getStoredToken, getStoredUser } from '../../utils/api';
 
 interface UbikaFoodAppProps {
   initialCompanyId?: string;
@@ -55,15 +47,25 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
       category: 'Gastronomía',
     },
   ]);
+
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(initialCompanyId);
   const [mode, setMode] = useState<'customer' | 'merchant'>(initialViewMode);
-  const [selectedRole, setSelectedRole] = useState<'COMPANY_ADMIN' | 'KITCHEN'>(() => {
-    const user = getStoredUser();
-    return (user?.role === 'KITCHEN') ? 'KITCHEN' : 'COMPANY_ADMIN';
-  });
-  const [foodToken, setFoodToken] = useState<string>('');
+  
+  // Real user and token from API helper
+  const currentUser = getStoredUser();
+  const foodToken = getStoredToken() || '';
+  
+  const selectedRole = currentUser?.role === 'KITCHEN' ? 'KITCHEN' : 'COMPANY_ADMIN';
+
   const [foodDrivers, setFoodDrivers] = useState<Driver[]>([]);
   const [loadingAuth, setLoadingAuth] = useState<boolean>(true);
+
+  // If the real user belongs to a food merchant company, lock selectedCompanyId to their company
+  useEffect(() => {
+    if (currentUser?.companyId && currentUser.companyId.startsWith('comp_food_')) {
+      setSelectedCompanyId(currentUser.companyId);
+    }
+  }, [currentUser]);
 
   // Load authorized food stores from server
   useEffect(() => {
@@ -74,57 +76,40 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
           const data: FoodStoreInfo[] = await res.json();
           if (Array.isArray(data) && data.length > 0) {
             setFoodStores(data);
-            if (!data.some((s) => s.companyId === selectedCompanyId)) {
+            // If the user's locked company is not loaded yet, or we need to respect it:
+            if (currentUser?.companyId && currentUser.companyId.startsWith('comp_food_')) {
+              setSelectedCompanyId(currentUser.companyId);
+            } else if (!data.some((s) => s.companyId === selectedCompanyId)) {
               setSelectedCompanyId(data[0].companyId);
             }
           }
         }
       } catch (err) {
-        console.error('Failed to load food stores:', err);
+        console.error('Failed to load food foodStores:', err);
       }
     };
     fetchStores();
-  }, []);
+  }, [currentUser]);
 
-  // Ensure authenticated session for the selected Food company
-  const ensureFoodAuth = async (companyId: string, roleToUse: 'COMPANY_ADMIN' | 'KITCHEN') => {
-    setLoadingAuth(true);
-    try {
-      // Obtain demo session specifically for this food company
-      const res = await fetch('/api/auth/demo-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: roleToUse, companyId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setFoodToken(data.token);
-        setStoredAuth(data.token, data.user);
-
-        // Fetch drivers for this specific food company
-        const resDrivers = await fetch(`/api/drivers?companyId=${companyId}`, {
-          headers: { Authorization: `Bearer ${data.token}` },
-        });
+  // Load drivers dynamically based on selectedCompanyId (strictly scoped and real)
+  useEffect(() => {
+    const fetchDrivers = async () => {
+      if (!selectedCompanyId) return;
+      setLoadingAuth(true);
+      try {
+        const resDrivers = await apiFetch(`/api/drivers?companyId=${selectedCompanyId}`);
         if (resDrivers.ok) {
           const driversData = await resDrivers.json();
           setFoodDrivers(driversData);
         }
-      } else {
-        const fallbackToken = getStoredToken();
-        if (fallbackToken) setFoodToken(fallbackToken);
+      } catch (e) {
+        console.error('Error fetching food drivers:', e);
+      } finally {
+        setLoadingAuth(false);
       }
-    } catch (e) {
-      console.error('Error establishing food auth:', e);
-      const fallbackToken = getStoredToken();
-      if (fallbackToken) setFoodToken(fallbackToken);
-    } finally {
-      setLoadingAuth(false);
-    }
-  };
-
-  useEffect(() => {
-    ensureFoodAuth(selectedCompanyId, selectedRole);
-  }, [selectedCompanyId, selectedRole]);
+    };
+    fetchDrivers();
+  }, [selectedCompanyId]);
 
   // Listen to hash changes for sub-navigation
   useEffect(() => {
@@ -142,6 +127,9 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
   }, []);
 
   const activeStore = foodStores.find((s) => s.companyId === selectedCompanyId) || foodStores[0];
+
+  // Disable dropdown if merchant is logged in and locked to their company
+  const isCompanyLocked = !!(currentUser?.companyId && currentUser.companyId.startsWith('comp_food_'));
 
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-[#F8FAFC]">
@@ -164,22 +152,30 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
                   </span>
                 </div>
                 <div className="relative mt-0.5">
-                  <select
-                    id="food-company-select"
-                    value={selectedCompanyId}
-                    onChange={(e) => {
-                      setSelectedCompanyId(e.target.value);
-                      window.location.hash = `#food/company/${e.target.value}`;
-                    }}
-                    className="appearance-none pr-7 text-sm font-black text-slate-900 bg-transparent focus:outline-none cursor-pointer hover:text-amber-600 transition-colors"
-                  >
-                    {foodStores.map((s) => (
-                      <option key={s.companyId} value={s.companyId}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  {isCompanyLocked ? (
+                    <span className="text-sm font-black text-slate-900 px-0.5 block">
+                      {activeStore?.name || 'Comercio Gastronómico'}
+                    </span>
+                  ) : (
+                    <>
+                      <select
+                        id="food-company-select"
+                        value={selectedCompanyId}
+                        onChange={(e) => {
+                          setSelectedCompanyId(e.target.value);
+                          window.location.hash = `#food/company/${e.target.value}`;
+                        }}
+                        className="appearance-none pr-7 text-sm font-black text-slate-900 bg-transparent focus:outline-none cursor-pointer hover:text-amber-600 transition-colors"
+                      >
+                        {foodStores.map((s) => (
+                          <option key={s.companyId} value={s.companyId}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-slate-400 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -187,38 +183,6 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
 
           {/* Right: Sub-View Toggle between Digital Menu (Customer) and Admin Panel (Merchant) */}
           <div className="flex flex-wrap items-center gap-3">
-            {mode === 'merchant' && (
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-inner">
-                <span className="text-[10px] font-black text-slate-400 px-2 uppercase tracking-wider hidden sm:inline">
-                  Simular Rol:
-                </span>
-                <button
-                  id="btn-role-admin"
-                  type="button"
-                  onClick={() => setSelectedRole('COMPANY_ADMIN')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
-                    selectedRole === 'COMPANY_ADMIN'
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Admin
-                </button>
-                <button
-                  id="btn-role-kitchen"
-                  type="button"
-                  onClick={() => setSelectedRole('KITCHEN')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
-                    selectedRole === 'KITCHEN'
-                      ? 'bg-amber-500 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Cocina
-                </button>
-              </div>
-            )}
-
             <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 shadow-inner">
               <button
                 id="food-view-merchant"

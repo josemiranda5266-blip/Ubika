@@ -1,3 +1,4 @@
+import './setup_env';
 import 'dotenv/config';
 import assert from 'assert';
 import { db } from '../server/db';

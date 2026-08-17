@@ -80,27 +80,8 @@ export const DriverApp: React.FC<DriverAppProps> = ({ onOpenCustomerLink }) => {
   const [historyFilter, setHistoryFilter] = useState<'all' | 'entregado' | 'cancelado'>('all');
 
   // Load Deliveries from Server
-  const ensureDriverAuth = async () => {
-    if (!getStoredToken()) {
-      try {
-        const res = await fetch('/api/auth/demo-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'DRIVER' }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setStoredAuth(data.token, data.user);
-        }
-      } catch (err) {
-        console.error('Driver auth bootstrap failed:', err);
-      }
-    }
-  };
-
   const fetchDeliveries = async () => {
     try {
-      await ensureDriverAuth();
       const res = await apiFetch('/api/deliveries');
       if (res.ok) {
         const data: Delivery[] = await res.json();

@@ -780,13 +780,10 @@ function runFoodMigration(db: DatabaseSchema): boolean {
 
   // Ensure admin user for comp_food_don_pedro_01 exists
   const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
-  let pwdHash = '';
-  if (adminPassword) {
-    pwdHash = bcrypt.hashSync(adminPassword, 10);
-  } else {
-    // Falls back to standard testing credential when INITIAL_ADMIN_PASSWORD is not set
-    pwdHash = bcrypt.hashSync('Ubika2026!Admin', 10);
+  if (!adminPassword) {
+    throw new Error('INITIAL_ADMIN_PASSWORD is required. Please set this environment variable.');
   }
+  const pwdHash = bcrypt.hashSync(adminPassword, 10);
   let donPedroUser = db.users.find((u) => u.companyId === 'comp_food_don_pedro_01' || u.email === 'donpedro@ubikafood.com');
   if (!donPedroUser) {
     db.users.push({
@@ -1032,6 +1029,11 @@ function runFoodMigration(db: DatabaseSchema): boolean {
  */
 export function loadDatabase(): DatabaseSchema {
   if (dbState) return dbState;
+
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  if (!adminPassword) {
+    throw new Error('INITIAL_ADMIN_PASSWORD is required. Please set this environment variable.');
+  }
 
   try {
     if (fs.existsSync(DB_FILE)) {

@@ -1,3 +1,4 @@
+import './setup_env';
 import 'dotenv/config';
 import assert from 'assert';
 import { db } from '../server/db';
@@ -485,7 +486,7 @@ async function runFoodSecurityAndFlowTests() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'donpedro@ubikafood.com',
-          password: process.env.INITIAL_ADMIN_PASSWORD || 'Ubika2026!Admin',
+          password: process.env.INITIAL_ADMIN_PASSWORD || 'test_secret_admin_2026_password',
         }),
       });
       assert(res.status === 200, `Respondió con status ${res.status}`);
