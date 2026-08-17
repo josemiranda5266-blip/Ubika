@@ -1858,6 +1858,16 @@ export function createUbikaApp(): express.Express {
     res.json(orders);
   });
 
+  // GET KITCHEN ORDERS (`GET /api/food/kitchen/orders`)
+  app.get("/api/food/kitchen/orders", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const allowedRoles: UserRole[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'KITCHEN'];
+    if (!allowedRoles.includes(req.user!.role)) {
+      return res.status(403).json({ error: "Rol no autorizado para consultar pedidos de cocina" });
+    }
+    const orders = db.getFoodOrdersByCompanyId(req.user!.companyId);
+    res.json(orders);
+  });
+
   // UPDATE ORDER STATUS (`PATCH /api/food/orders/:orderId/status`) - STRICT STATE MACHINE & DRIVER ISOLATION
   app.patch("/api/food/orders/:orderId/status", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     const { orderId } = req.params;
@@ -1876,12 +1886,22 @@ export function createUbikaApp(): express.Express {
       return res.status(403).json({ error: "Acceso denegado a pedido de otra empresa" });
     }
 
+    const isKitchen = req.user!.role === 'KITCHEN';
     const isMerchant = isAuthorizedFoodOrderStatusMerchant(req);
     const isDriver = req.user!.role === 'DRIVER';
     const isAssignedDriver = isDriver && !!req.user!.driverId && order.driverId === req.user!.driverId;
 
-    if (!isMerchant && !isAssignedDriver) {
+    if (!isMerchant && !isAssignedDriver && !isKitchen) {
       return res.status(403).json({ error: "Rol no autorizado para modificar el estado del pedido" });
+    }
+
+    if (isKitchen) {
+      if (!['PREPARING', 'READY'].includes(orderStatus)) {
+        return res.status(403).json({ error: "La cocina solo puede cambiar el estado a PREPARING o READY" });
+      }
+      if (driverId) {
+        return res.status(403).json({ error: "La cocina no tiene permisos para asignar repartidores" });
+      }
     }
 
     if (isDriver) {

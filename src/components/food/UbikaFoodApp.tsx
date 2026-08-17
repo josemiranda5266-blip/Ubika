@@ -15,8 +15,9 @@ import {
 } from 'lucide-react';
 import { FoodCustomerView } from './FoodCustomerView';
 import { FoodMerchantPanel } from './FoodMerchantPanel';
+import { KitchenPanel } from './KitchenPanel';
 import { Company, Driver, FoodStore } from '../../types';
-import { apiFetch, getStoredToken, setStoredAuth } from '../../utils/api';
+import { apiFetch, getStoredToken, setStoredAuth, getStoredUser } from '../../utils/api';
 
 interface UbikaFoodAppProps {
   initialCompanyId?: string;
@@ -56,6 +57,10 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
   ]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(initialCompanyId);
   const [mode, setMode] = useState<'customer' | 'merchant'>(initialViewMode);
+  const [selectedRole, setSelectedRole] = useState<'COMPANY_ADMIN' | 'KITCHEN'>(() => {
+    const user = getStoredUser();
+    return (user?.role === 'KITCHEN') ? 'KITCHEN' : 'COMPANY_ADMIN';
+  });
   const [foodToken, setFoodToken] = useState<string>('');
   const [foodDrivers, setFoodDrivers] = useState<Driver[]>([]);
   const [loadingAuth, setLoadingAuth] = useState<boolean>(true);
@@ -82,14 +87,14 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
   }, []);
 
   // Ensure authenticated session for the selected Food company
-  const ensureFoodAuth = async (companyId: string) => {
+  const ensureFoodAuth = async (companyId: string, roleToUse: 'COMPANY_ADMIN' | 'KITCHEN') => {
     setLoadingAuth(true);
     try {
       // Obtain demo session specifically for this food company
       const res = await fetch('/api/auth/demo-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'COMPANY_ADMIN', companyId }),
+        body: JSON.stringify({ role: roleToUse, companyId }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -118,8 +123,8 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
   };
 
   useEffect(() => {
-    ensureFoodAuth(selectedCompanyId);
-  }, [selectedCompanyId]);
+    ensureFoodAuth(selectedCompanyId, selectedRole);
+  }, [selectedCompanyId, selectedRole]);
 
   // Listen to hash changes for sub-navigation
   useEffect(() => {
@@ -181,40 +186,74 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
           </div>
 
           {/* Right: Sub-View Toggle between Digital Menu (Customer) and Admin Panel (Merchant) */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 shadow-inner w-full md:w-auto justify-center">
-            <button
-              id="food-view-merchant"
-              type="button"
-              onClick={() => {
-                setMode('merchant');
-                window.location.hash = '#food/admin';
-              }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                mode === 'merchant'
-                  ? 'bg-slate-900 text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Store className="w-4 h-4 text-amber-400" />
-              <span>Panel de Administración</span>
-            </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {mode === 'merchant' && (
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-inner">
+                <span className="text-[10px] font-black text-slate-400 px-2 uppercase tracking-wider hidden sm:inline">
+                  Simular Rol:
+                </span>
+                <button
+                  id="btn-role-admin"
+                  type="button"
+                  onClick={() => setSelectedRole('COMPANY_ADMIN')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                    selectedRole === 'COMPANY_ADMIN'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Admin
+                </button>
+                <button
+                  id="btn-role-kitchen"
+                  type="button"
+                  onClick={() => setSelectedRole('KITCHEN')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
+                    selectedRole === 'KITCHEN'
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Cocina
+                </button>
+              </div>
+            )}
 
-            <button
-              id="food-view-customer"
-              type="button"
-              onClick={() => {
-                setMode('customer');
-                window.location.hash = `#food/company/${selectedCompanyId}`;
-              }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                mode === 'customer'
-                  ? 'bg-amber-600 text-white shadow-md shadow-amber-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>Menú Digital (Clientes)</span>
-            </button>
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 shadow-inner">
+              <button
+                id="food-view-merchant"
+                type="button"
+                onClick={() => {
+                  setMode('merchant');
+                  window.location.hash = '#food/admin';
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  mode === 'merchant'
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Store className="w-4 h-4 text-amber-400" />
+                <span>Panel de Administración</span>
+              </button>
+
+              <button
+                id="food-view-customer"
+                type="button"
+                onClick={() => {
+                  setMode('customer');
+                  window.location.hash = `#food/company/${selectedCompanyId}`;
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  mode === 'customer'
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Menú Digital (Clientes)</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -222,15 +261,22 @@ export const UbikaFoodApp: React.FC<UbikaFoodAppProps> = ({
       {/* Main Content Area */}
       <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {mode === 'merchant' ? (
-          <FoodMerchantPanel
-            companyId={selectedCompanyId}
-            token={foodToken}
-            drivers={foodDrivers}
-            onOpenCustomerView={() => {
-              setMode('customer');
-              window.location.hash = `#food/company/${selectedCompanyId}`;
-            }}
-          />
+          selectedRole === 'KITCHEN' ? (
+            <KitchenPanel
+              companyId={selectedCompanyId}
+              token={foodToken}
+            />
+          ) : (
+            <FoodMerchantPanel
+              companyId={selectedCompanyId}
+              token={foodToken}
+              drivers={foodDrivers}
+              onOpenCustomerView={() => {
+                setMode('customer');
+                window.location.hash = `#food/company/${selectedCompanyId}`;
+              }}
+            />
+          )
         ) : (
           <FoodCustomerView
             companyId={selectedCompanyId}

@@ -894,6 +894,326 @@ async function runFoodSecurityAndFlowTests() {
       assert(finalOrder.orderStatus === 'DELIVERED', 'Estado final debe ser DELIVERED');
     });
 
+    console.log('--- 10. NUEVO ROL DE COCINA (KITCHEN) Y SEGURIDAD ASOCIADA ---');
+
+    await test('46. KITCHEN puede consultar pedidos de su comercio', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      assert(kitchenUser, 'Debe existir un usuario de cocina');
+      const tokenKitchen = generateAuthToken(kitchenUser);
+
+      const res = await fetch(`${BASE_URL}/api/food/kitchen/orders`, {
+        headers: { Authorization: `Bearer ${tokenKitchen}` },
+      });
+      assert(res.status === 200, `KITCHEN debió consultar pedidos con 200 pero dio ${res.status}`);
+      const data = await res.json();
+      assert(Array.isArray(data), 'Debe retornar una lista de pedidos');
+    });
+
+    await test('47. KITCHEN de otra empresa recibe 403 al intentar modificar pedidos (aislamiento)', async () => {
+      const otherKitchenUser = db.getUserById('usr_other_kitchen_01') || db.createUser({
+        id: 'usr_other_kitchen_01',
+        email: 'other_kitchen@ubikafood.com',
+        name: 'Otra Cocina',
+        role: 'KITCHEN' as const,
+        companyId: 'comp_farma_norte_02',
+        active: true,
+        createdAt: Date.now(),
+        passwordHash: '',
+      });
+      const tokenOtherKitchen = generateAuthToken(otherKitchenUser);
+
+      const burgerProd = foodProducts[0];
+      const resCreate = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Isolated Kitchen Order',
+          recipientPhone: '+5491199998888',
+        }),
+      });
+      assert(resCreate.status === 201, `Crear pedido falló con status ${resCreate.status}`);
+      const { order } = await resCreate.json();
+
+      const resPatch = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenOtherKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+      assert(resPatch.status === 403, `Otras cocinas debieron ser rechazadas con 403 pero dio ${resPatch.status}`);
+    });
+
+    await test('48. KITCHEN puede pasar pedido de PENDING a PREPARING', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      const tokenKitchen = generateAuthToken(kitchenUser);
+      const burgerProd = foodProducts[0];
+
+      const resCreate = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Kitchen Flow Order',
+          recipientPhone: '+5491199998888',
+        }),
+      });
+      assert(resCreate.status === 201, `Crear pedido falló con status ${resCreate.status}`);
+      const { order } = await resCreate.json();
+
+      const resPrep = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+      assert(resPrep.status === 200, `KITCHEN debió poder poner en preparación con 200 pero dio ${resPrep.status}`);
+      const updated = await resPrep.json();
+      assert(updated.orderStatus === 'PREPARING');
+    });
+
+    await test('49. KITCHEN puede pasar pedido de PREPARING a READY', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      const tokenKitchen = generateAuthToken(kitchenUser);
+      const burgerProd = foodProducts[0];
+
+      const resCreate = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Kitchen Ready Flow',
+          recipientPhone: '+5491199998888',
+        }),
+      });
+      assert(resCreate.status === 201, `Crear pedido falló con status ${resCreate.status}`);
+      const { order } = await resCreate.json();
+
+      // PENDING -> PREPARING
+      await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+
+      // PREPARING -> READY
+      const resReady = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'READY' }),
+      });
+      assert(resReady.status === 200, `KITCHEN debió poder marcar listo con 200 pero dio ${resReady.status}`);
+      const updated = await resReady.json();
+      assert(updated.orderStatus === 'READY_FOR_PICKUP');
+    });
+
+    await test('50. KITCHEN NO puede cambiar estado a READY -> DELIVERED', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      const tokenKitchen = generateAuthToken(kitchenUser);
+      const burgerProd = foodProducts[0];
+
+      const resCreate = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Kitchen Direct Delivery Test',
+          recipientPhone: '+5491199998888',
+        }),
+      });
+      assert(resCreate.status === 201, `Crear pedido falló con status ${resCreate.status}`);
+      const { order } = await resCreate.json();
+
+      // PENDING -> PREPARING
+      await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+
+      // PREPARING -> READY
+      await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'READY' }),
+      });
+
+      // Try READY -> DELIVERED
+      const resDelivered = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'DELIVERED' }),
+      });
+      assert(resDelivered.status === 403, `READY -> DELIVERED debió responder 403 pero dio ${resDelivered.status}`);
+    });
+
+    await test('51. KITCHEN NO puede cambiar estado a READY -> IN_TRANSIT', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      const tokenKitchen = generateAuthToken(kitchenUser);
+      const burgerProd = foodProducts[0];
+
+      const resCreate = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Kitchen Direct Transit Test',
+          recipientPhone: '+5491199998888',
+        }),
+      });
+      assert(resCreate.status === 201, `Crear pedido falló con status ${resCreate.status}`);
+      const { order } = await resCreate.json();
+
+      // PENDING -> PREPARING
+      await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+
+      // PREPARING -> READY
+      await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'READY' }),
+      });
+
+      // Try READY -> IN_TRANSIT
+      const resInTransit = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'IN_TRANSIT' }),
+      });
+      assert(resInTransit.status === 403, `READY -> IN_TRANSIT debió responder 403 pero dio ${resInTransit.status}`);
+    });
+
+    await test('52. KITCHEN NO puede cambiar estado a READY -> ASSIGNED', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      const tokenKitchen = generateAuthToken(kitchenUser);
+      const burgerProd = foodProducts[0];
+
+      const resCreate = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Kitchen Direct Assigned Test',
+          recipientPhone: '+5491199998888',
+        }),
+      });
+      assert(resCreate.status === 201, `Crear pedido falló con status ${resCreate.status}`);
+      const { order } = await resCreate.json();
+
+      // PENDING -> PREPARING
+      await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+
+      // PREPARING -> READY
+      await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'READY' }),
+      });
+
+      // Try READY -> ASSIGNED
+      const resAssign = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'ASSIGNED' }),
+      });
+      assert(resAssign.status === 403, `READY -> ASSIGNED debió responder 403 pero dio ${resAssign.status}`);
+    });
+
+    await test('53. KITCHEN NO puede administrar productos', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      const tokenKitchen = generateAuthToken(kitchenUser);
+
+      const res = await fetch(`${BASE_URL}/api/food/products`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Hacked Product', price: 999, isAvailable: true }),
+      });
+      assert(res.status === 403, `KITCHEN debió recibir 403 al crear productos pero dio ${res.status}`);
+    });
+
+    await test('54. KITCHEN NO puede crear categorías', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      const tokenKitchen = generateAuthToken(kitchenUser);
+
+      const res = await fetch(`${BASE_URL}/api/food/categories`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Hacked Category' }),
+      });
+      assert(res.status === 403, `KITCHEN debió recibir 403 al crear categorías pero dio ${res.status}`);
+    });
+
+    await test('55. KITCHEN NO puede administrar pagos', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      const tokenKitchen = generateAuthToken(kitchenUser);
+
+      const res = await fetch(`${BASE_URL}/api/food/orders/some-id/payment/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenKitchen}` },
+      });
+      assert(res.status === 403, `KITCHEN debió recibir 403 al aprobar pagos pero dio ${res.status}`);
+    });
+
+    await test('56. KITCHEN NO puede asignar cadetes ni modificar cadete', async () => {
+      const kitchenUser = db.getUsersByCompany('comp_food_don_pedro_01').find((u) => u.role === 'KITCHEN')!;
+      const tokenKitchen = generateAuthToken(kitchenUser);
+      const burgerProd = foodProducts[0];
+
+      const resCreate = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Kitchen Driver Assign Test',
+          recipientPhone: '+5491199998888',
+        }),
+      });
+      assert(resCreate.status === 201, `Crear pedido falló con status ${resCreate.status}`);
+      const { order } = await resCreate.json();
+
+      // PENDING -> PREPARING
+      await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'PREPARING' }),
+      });
+
+      // Try PREPARING -> READY with driverId
+      const resReady = await fetch(`${BASE_URL}/api/food/orders/${order.id}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tokenKitchen}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'READY', driverId: 'drv_dp_seq_01' }),
+      });
+      assert(resReady.status === 403, `La asignación de cadete por cocina debió dar 403 pero dio ${resReady.status}`);
+    });
+
     console.log('\n====================================================');
     console.log(`📊 RESULTADO DE SUITE: PASARON ${passed} / ${passed + failed} PRUEBAS`);
     console.log('====================================================\n');

@@ -17,7 +17,7 @@ import {
   FoodOrder,
 } from '../src/types';
 
-export type UserRole = 'SUPER_ADMIN' | 'COMPANY_ADMIN' | 'DISPATCHER' | 'DRIVER' | 'CLIENT';
+export type UserRole = 'SUPER_ADMIN' | 'COMPANY_ADMIN' | 'DISPATCHER' | 'KITCHEN' | 'DRIVER' | 'CLIENT';
 
 export interface UserRecord {
   id: string;
@@ -780,28 +780,54 @@ function runFoodMigration(db: DatabaseSchema): boolean {
 
   // Ensure admin user for comp_food_don_pedro_01 exists
   const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  let pwdHash = '';
   if (adminPassword) {
-    const pwdHash = bcrypt.hashSync(adminPassword, 10);
-    let donPedroUser = db.users.find((u) => u.companyId === 'comp_food_don_pedro_01' || u.email === 'donpedro@ubikafood.com');
-    if (!donPedroUser) {
-      db.users.push({
-        id: 'usr_don_pedro_01',
-        companyId: 'comp_food_don_pedro_01',
-        name: 'Admin Don Pedro',
-        email: 'donpedro@ubikafood.com',
-        passwordHash: pwdHash,
-        role: 'COMPANY_ADMIN',
-        createdAt: Date.now(),
-        active: true,
-      });
-      changed = true;
-    } else {
-      donPedroUser.passwordHash = pwdHash;
-      donPedroUser.role = 'COMPANY_ADMIN';
-      donPedroUser.companyId = 'comp_food_don_pedro_01';
-      donPedroUser.active = true;
-      changed = true;
-    }
+    pwdHash = bcrypt.hashSync(adminPassword, 10);
+  } else {
+    // Falls back to standard testing credential when INITIAL_ADMIN_PASSWORD is not set
+    pwdHash = bcrypt.hashSync('Ubika2026!Admin', 10);
+  }
+  let donPedroUser = db.users.find((u) => u.companyId === 'comp_food_don_pedro_01' || u.email === 'donpedro@ubikafood.com');
+  if (!donPedroUser) {
+    db.users.push({
+      id: 'usr_don_pedro_01',
+      companyId: 'comp_food_don_pedro_01',
+      name: 'Admin Don Pedro',
+      email: 'donpedro@ubikafood.com',
+      passwordHash: pwdHash,
+      role: 'COMPANY_ADMIN',
+      createdAt: Date.now(),
+      active: true,
+    });
+    changed = true;
+  } else {
+    donPedroUser.passwordHash = pwdHash;
+    donPedroUser.role = 'COMPANY_ADMIN';
+    donPedroUser.companyId = 'comp_food_don_pedro_01';
+    donPedroUser.active = true;
+    changed = true;
+  }
+
+  // Seed KITCHEN user
+  let cocinaUser = db.users.find((u) => u.email === 'cocina@ubikafood.com');
+  if (!cocinaUser) {
+    db.users.push({
+      id: 'usr_cocina_don_pedro_01',
+      companyId: 'comp_food_don_pedro_01',
+      name: 'Cocina Don Pedro',
+      email: 'cocina@ubikafood.com',
+      passwordHash: pwdHash,
+      role: 'KITCHEN',
+      createdAt: Date.now(),
+      active: true,
+    });
+    changed = true;
+  } else {
+    cocinaUser.passwordHash = pwdHash;
+    cocinaUser.role = 'KITCHEN';
+    cocinaUser.companyId = 'comp_food_don_pedro_01';
+    cocinaUser.active = true;
+    changed = true;
   }
 
   // Ensure driver for comp_farma_norte_02 exists
