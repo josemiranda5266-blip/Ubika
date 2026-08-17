@@ -372,41 +372,54 @@ export function loadDatabase(): DatabaseSchema {
     throw new Error('INITIAL_ADMIN_PASSWORD is required. Please set this environment variable.');
   }
 
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      const raw = fs.readFileSync(DB_FILE, 'utf-8');
-      dbState = JSON.parse(raw);
-      
-      // Ensure arrays exist
-      dbState.food_stores = dbState.food_stores || [];
-      dbState.food_categories = dbState.food_categories || [];
-      dbState.food_products = dbState.food_products || [];
-      dbState.food_shipping_rates = dbState.food_shipping_rates || [];
-      dbState.food_orders = dbState.food_orders || [];
-      dbState.invitations = dbState.invitations || [];
-      dbState.password_resets = dbState.password_resets || [];
-      dbState.commerce_categories = dbState.commerce_categories || [];
-      dbState.commerce_products = dbState.commerce_products || [];
-      dbState.commerce_customers = dbState.commerce_customers || [];
-      dbState.commerce_stock_movements = dbState.commerce_stock_movements || [];
-      dbState.commerce_cash_sessions = dbState.commerce_cash_sessions || [];
-      dbState.commerce_sales = dbState.commerce_sales || [];
-      dbState.commerce_invoices = dbState.commerce_invoices || [];
-
-      // Run Food multi-tenant isolation migration
-      const migrationChanged = runFoodMigration(dbState);
-      if (migrationChanged) {
-        saveDatabaseSync();
-      }
-
-      console.log(`[DB] Base de datos persistente cargada con éxito desde ${DB_FILE}`);
-      return dbState;
+  if (fs.existsSync(DB_FILE)) {
+    let raw: string;
+    try {
+      raw = fs.readFileSync(DB_FILE, 'utf-8');
+    } catch (readErr: any) {
+      console.error(`[DB FATAL ERROR] No se pudo leer el archivo existente de base de datos en ${DB_FILE}:`, readErr);
+      throw new Error(`FATAL_DB_READ_ERROR: Archivo existente en ${DB_FILE} no puede ser leído: ${readErr.message}`);
     }
-  } catch (err) {
-    console.error('[DB Error] Error leyendo base de datos existente, reconstruyendo semilla:', err);
+
+    try {
+      dbState = JSON.parse(raw);
+    } catch (parseErr: any) {
+      console.error(`[DB FATAL ERROR] Archivo de base de datos existente en ${DB_FILE} está corrupto y no pudo ser parseado como JSON. No se sobrescribirá para proteger los datos existentes.`);
+      throw new Error(`FATAL_DB_CORRUPTED: El archivo existente en ${DB_FILE} está corrupto. Inicialización detenida para preservar datos.`);
+    }
+
+    if (!dbState || typeof dbState !== 'object' || !Array.isArray(dbState.users) || !Array.isArray(dbState.companies)) {
+      console.error(`[DB FATAL ERROR] Archivo de base de datos existente en ${DB_FILE} no posee la estructura válida requerida (users/companies faltantes).`);
+      throw new Error(`FATAL_DB_INVALID_STRUCTURE: Archivo en ${DB_FILE} no posee estructura de base de datos válida.`);
+    }
+
+    // Ensure arrays exist
+    dbState.food_stores = dbState.food_stores || [];
+    dbState.food_categories = dbState.food_categories || [];
+    dbState.food_products = dbState.food_products || [];
+    dbState.food_shipping_rates = dbState.food_shipping_rates || [];
+    dbState.food_orders = dbState.food_orders || [];
+    dbState.invitations = dbState.invitations || [];
+    dbState.password_resets = dbState.password_resets || [];
+    dbState.commerce_categories = dbState.commerce_categories || [];
+    dbState.commerce_products = dbState.commerce_products || [];
+    dbState.commerce_customers = dbState.commerce_customers || [];
+    dbState.commerce_stock_movements = dbState.commerce_stock_movements || [];
+    dbState.commerce_cash_sessions = dbState.commerce_cash_sessions || [];
+    dbState.commerce_sales = dbState.commerce_sales || [];
+    dbState.commerce_invoices = dbState.commerce_invoices || [];
+
+    // Run Food multi-tenant isolation migration
+    const migrationChanged = runFoodMigration(dbState);
+    if (migrationChanged) {
+      saveDatabaseSync();
+    }
+
+    console.log(`[DB] Base de datos persistente cargada con éxito desde ${DB_FILE}`);
+    return dbState;
   }
 
-  // If file doesn't exist or failed to parse, initialize empty/admin seed and save
+  // If file doesn't exist, initialize empty/admin seed and save
   dbState = createInitialSeedData();
   saveDatabaseSync();
   console.log(`[DB] Archivo de persistencia inicial creado en ${DB_FILE}`);

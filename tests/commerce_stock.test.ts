@@ -7,10 +7,10 @@ import { CommerceService } from '../server/commerce/service';
 
 async function runTest() {
   injectTestFixtures();
-  const compId = 'comp_stock_1';
+  const compId = `comp_stock_${Date.now()}`;
 
   const product = CommerceRepository.createProduct({
-    id: 'prod_stk_1',
+    id: `prod_stk_${Date.now()}`,
     companyId: compId,
     name: 'Producto Stock',
     code: 'SKU-STK',
@@ -29,7 +29,7 @@ async function runTest() {
 
   await CommerceService.adjustStock(product.id, compId, 5, 'ENTRADA', 'Compra proveedor', 'usr_1');
   const updatedProd = CommerceRepository.getProductByIdForCompany(product.id, compId);
-  assert(updatedProd?.stock === 15, 'El stock debe aumentar a 15 tras entrada de 5');
+  assert(updatedProd?.stock === 15, `El stock debe aumentar a 15 tras entrada de 5, pero es ${updatedProd?.stock}`);
 
   console.log('✅ [PASÓ] UBIKA COMMERCE STOCK TEST');
 }

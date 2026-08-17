@@ -7,15 +7,14 @@ import { CommerceService } from '../server/commerce/service';
 
 async function runTest() {
   injectTestFixtures();
-  const compId = 'comp_conc_1';
+  const runId = Date.now();
+  const compId = `comp_conc_${runId}`;
+  const userId = `usr_conc_${runId}`;
 
-  const existingCash = CommerceRepository.getCurrentOpenCashSession(compId, 'usr_1');
-  if (!existingCash) {
-    CommerceService.openCashSession(compId, 'usr_1', 10000);
-  }
+  CommerceService.openCashSession(compId, userId, 10000);
 
   const product = CommerceRepository.createProduct({
-    id: 'prod_conc_1',
+    id: `prod_conc_${runId}`,
     companyId: compId,
     name: 'Producto Concurrente',
     code: 'SKU-CONC',
@@ -39,8 +38,8 @@ async function runTest() {
         companyId: compId,
         items: [{ productId: product.id, quantity: 1 }],
         payments: [{ method: 'CASH', amount: 121 }], // 100 + 21% tax = 121 total
-        userId: 'usr_1',
-        idempotencyKey: `idem_conc_${i}`
+        userId,
+        idempotencyKey: `idem_conc_${runId}_${i}`
       }).catch(err => {
         return { error: err.message };
       })

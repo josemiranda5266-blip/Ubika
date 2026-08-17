@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { CommerceRepository } from './repository';
 import {
   CommerceProduct,
@@ -14,26 +15,38 @@ const idempotencyLocks = new Map<string, Promise<Sale>>();
 
 // Product Concurrency Locks (Mutex per product ID for serialization)
 const productLocks = new Map<string, Promise<any>>();
+const lockContext = new AsyncLocalStorage<Set<string>>();
 
 async function withProductLock<T>(productId: string, fn: () => Promise<T> | T): Promise<T> {
-  const previousLock = productLocks.get(productId) || Promise.resolve();
-  let releaseLock: () => void = () => {};
-  const newLock = new Promise<void>((resolve) => {
-    releaseLock = resolve;
-  });
-
-  const chainedLock = previousLock.then(() => newLock);
-  productLocks.set(productId, chainedLock);
-
-  await previousLock;
-  try {
+  const activeLocks = lockContext.getStore() || new Set<string>();
+  if (activeLocks.has(productId)) {
+    // Already held in this async execution flow (re-entrant)
     return await fn();
-  } finally {
-    releaseLock();
-    if (productLocks.get(productId) === chainedLock) {
-      productLocks.delete(productId);
-    }
   }
+
+  const nextLocks = new Set(activeLocks);
+  nextLocks.add(productId);
+
+  return lockContext.run(nextLocks, async () => {
+    const previousLock = productLocks.get(productId) || Promise.resolve();
+    let releaseLock: () => void = () => {};
+    const newLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    const chainedLock = previousLock.then(() => newLock);
+    productLocks.set(productId, chainedLock);
+
+    await previousLock;
+    try {
+      return await fn();
+    } finally {
+      releaseLock();
+      if (productLocks.get(productId) === chainedLock) {
+        productLocks.delete(productId);
+      }
+    }
+  });
 }
 
 async function withMultipleProductLocks<T>(productIds: string[], fn: () => Promise<T> | T): Promise<T> {
@@ -486,7 +499,7 @@ export const CommerceService = {
           });
         }
 
-        const stockAdjustmentsMade: { productId: string; qty: number; previousStock: number }[] = [];
+        const stockAdjustmentsMade: { productId: string; qty: number; previousStock: number; movementId: string }[] = [];
         let saleCreated = false;
 
         try {
@@ -496,7 +509,7 @@ export const CommerceService = {
               throw new Error(`INSUFFICIENT_STOCK_DURING_ADJUSTMENT:${vItem.productId}`);
             }
             const prevStock = productBefore.stock;
-            await CommerceService.adjustStock(
+            const mov = await CommerceService.adjustStock(
               vItem.productId,
               companyId,
               vItem.quantity,
@@ -505,7 +518,12 @@ export const CommerceService = {
               userId,
               branchId
             );
-            stockAdjustmentsMade.push({ productId: vItem.productId, qty: vItem.quantity, previousStock: prevStock });
+            stockAdjustmentsMade.push({
+              productId: vItem.productId,
+              qty: vItem.quantity,
+              previousStock: prevStock,
+              movementId: mov.id
+            });
           }
 
           const sale: Sale = {
@@ -533,7 +551,8 @@ export const CommerceService = {
           return createdSale;
 
         } catch (txnErr) {
-          // Rollback stock adjustments
+          // Comprehensive Full Rollback
+          // 1. Revert product stocks
           for (const adj of stockAdjustmentsMade) {
             try {
               CommerceRepository.updateProduct(adj.productId, { stock: adj.previousStock });
@@ -541,6 +560,16 @@ export const CommerceService = {
               console.error('[CRITICAL ROLLBACK ERROR]: Failed to restore stock for product', adj.productId, rollbackErr);
             }
           }
+          // 2. Delete created StockMovements (no orphaned records)
+          const movementIds = stockAdjustmentsMade.map(adj => adj.movementId).filter(Boolean);
+          if (movementIds.length > 0) {
+            try {
+              CommerceRepository.deleteStockMovementsByIds(movementIds);
+            } catch (movErr) {
+              console.error('[CRITICAL ROLLBACK ERROR]: Failed to purge stock movements', movErr);
+            }
+          }
+          // 3. Purge partial sale if created
           if (saleCreated) {
             try {
               const state = db.getRawState() as any;

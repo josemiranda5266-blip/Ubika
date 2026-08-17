@@ -29,7 +29,12 @@ export const CommerceRepository = {
   createCategory: (category: CommerceCategory): CommerceCategory => {
     const state = db.getRawState() as any;
     if (!state.commerce_categories) state.commerce_categories = [];
-    state.commerce_categories.push(category);
+    const idx = state.commerce_categories.findIndex((c: CommerceCategory) => c.id === category.id);
+    if (idx >= 0) {
+      state.commerce_categories[idx] = category;
+    } else {
+      state.commerce_categories.push(category);
+    }
     saveDatabaseSync();
     return category;
   },
@@ -73,7 +78,12 @@ export const CommerceRepository = {
   createProduct: (product: CommerceProduct): CommerceProduct => {
     const state = db.getRawState() as any;
     if (!state.commerce_products) state.commerce_products = [];
-    state.commerce_products.push(product);
+    const idx = state.commerce_products.findIndex((p: CommerceProduct) => p.id === product.id);
+    if (idx >= 0) {
+      state.commerce_products[idx] = product;
+    } else {
+      state.commerce_products.push(product);
+    }
     saveDatabaseSync();
     return product;
   },
@@ -117,7 +127,12 @@ export const CommerceRepository = {
   createCustomer: (customer: CommerceCustomer): CommerceCustomer => {
     const state = db.getRawState() as any;
     if (!state.commerce_customers) state.commerce_customers = [];
-    state.commerce_customers.push(customer);
+    const idx = state.commerce_customers.findIndex((c: CommerceCustomer) => c.id === customer.id);
+    if (idx >= 0) {
+      state.commerce_customers[idx] = customer;
+    } else {
+      state.commerce_customers.push(customer);
+    }
     saveDatabaseSync();
     return customer;
   },
@@ -155,6 +170,24 @@ export const CommerceRepository = {
     saveDatabaseSync();
     return movement;
   },
+  deleteStockMovement: (id: string): boolean => {
+    const state = db.getRawState() as any;
+    const movements = state.commerce_stock_movements || [];
+    const initialLen = movements.length;
+    state.commerce_stock_movements = movements.filter((m: StockMovement) => m.id !== id);
+    if (state.commerce_stock_movements.length < initialLen) {
+      saveDatabaseSync();
+      return true;
+    }
+    return false;
+  },
+  deleteStockMovementsByIds: (ids: string[]): void => {
+    if (!ids || ids.length === 0) return;
+    const state = db.getRawState() as any;
+    const idsSet = new Set(ids);
+    state.commerce_stock_movements = (state.commerce_stock_movements || []).filter((m: StockMovement) => !idsSet.has(m.id));
+    saveDatabaseSync();
+  },
 
   // Cash Sessions
   getCashSessionsByCompany: (companyId: string): CashSession[] => {
@@ -180,7 +213,12 @@ export const CommerceRepository = {
   createCashSession: (session: CashSession): CashSession => {
     const state = db.getRawState() as any;
     if (!state.commerce_cash_sessions) state.commerce_cash_sessions = [];
-    state.commerce_cash_sessions.unshift(session);
+    const idx = state.commerce_cash_sessions.findIndex((c: CashSession) => c.id === session.id);
+    if (idx >= 0) {
+      state.commerce_cash_sessions[idx] = session;
+    } else {
+      state.commerce_cash_sessions.unshift(session);
+    }
     saveDatabaseSync();
     return session;
   },
@@ -218,7 +256,12 @@ export const CommerceRepository = {
   createSale: (sale: Sale): Sale => {
     const state = db.getRawState() as any;
     if (!state.commerce_sales) state.commerce_sales = [];
-    state.commerce_sales.unshift(sale);
+    const idx = state.commerce_sales.findIndex((s: Sale) => s.id === sale.id);
+    if (idx >= 0) {
+      state.commerce_sales[idx] = sale;
+    } else {
+      state.commerce_sales.unshift(sale);
+    }
     saveDatabaseSync();
     return sale;
   },
@@ -241,7 +284,12 @@ export const CommerceRepository = {
   createInvoice: (invoice: Invoice): Invoice => {
     const state = db.getRawState() as any;
     if (!state.commerce_invoices) state.commerce_invoices = [];
-    state.commerce_invoices.unshift(invoice);
+    const idx = state.commerce_invoices.findIndex((i: Invoice) => i.id === invoice.id);
+    if (idx >= 0) {
+      state.commerce_invoices[idx] = invoice;
+    } else {
+      state.commerce_invoices.unshift(invoice);
+    }
     saveDatabaseSync();
     return invoice;
   },

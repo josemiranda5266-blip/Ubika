@@ -10,8 +10,8 @@ async function runTest() {
   console.log('====================================================\n');
 
   injectTestFixtures();
-  const compId = 'comp_cash_1';
-  const userId = 'usr_cash_1';
+  const compId = `comp_cash_${Date.now()}`;
+  const userId = `usr_cash_${Date.now()}`;
 
   const session = CommerceService.openCashSession(compId, userId, 1000);
   assert(session && session.status === 'OPEN', 'La caja debe abrirse correctamente');

@@ -14,49 +14,21 @@ export const ArcaFiscalService = {
   }> {
     const cuit = process.env.ARCA_CUIT || '20333333339';
     const pointOfSale = parseInt(process.env.ARCA_POINT_OF_SALE || '1', 10);
-    const certBase64 = process.env.ARCA_CERTIFICATE_BASE64;
-    const privateKeyBase64 = process.env.ARCA_PRIVATE_KEY_BASE64;
 
-    const isProductionReady = !!(certBase64 && privateKeyBase64 && certBase64.trim() !== '' && privateKeyBase64.trim() !== '');
-
-    if (!isProductionReady) {
-      // Strict simulation notice: without valid ARCA production certificates, this is strictly SIMULATED and never APPROVED.
-      const mockCae = `SIMULATED${Math.floor(100000000 + Math.random() * 900000000)}`;
-      const expirationDate = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().split('T')[0].replace(/-/g, '');
-      const invoiceNumber = Math.floor(1000 + Math.random() * 9000);
-
-      return {
-        success: true,
-        status: 'SIMULATED',
-        cae: mockCae,
-        caeExpiration: expirationDate,
-        invoiceNumber,
-        pointOfSale,
-        response: {
-          warning: 'ARCA_WSFE_NOT_CONFIGURED_SIMULATED_MODE',
-          FeCabResp: { Resultado: 'S', Cuit: cuit, PtoVta: pointOfSale }
-        }
-      };
-    }
-
-    try {
-      // Real ARCA WSFE production integration placeholder
-      // When certificates are provided, real SOAP WSFE request is executed here.
-      return {
-        success: true,
-        status: 'APPROVED',
-        cae: `76${Math.floor(1000000000000 + Math.random() * 9000000000000)}`,
-        caeExpiration: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().split('T')[0].replace(/-/g, ''),
-        invoiceNumber: Math.floor(1000 + Math.random() * 9000),
-        pointOfSale,
-        response: { message: 'Authorized via ARCA WSFE Production' }
-      };
-    } catch (err) {
-      return {
-        success: false,
-        status: 'REJECTED',
-        error: String(err)
-      };
-    }
+    // STRICT ARCA RULE: Without a real WSFE SOAP production integration,
+    // we NEVER return APPROVED and NEVER generate or present a CAE.
+    return {
+      success: false,
+      status: 'SIMULATED',
+      cae: undefined,
+      caeExpiration: undefined,
+      invoiceNumber: undefined,
+      pointOfSale,
+      response: {
+        error: 'ARCA_WSFE_NOT_CONFIGURED',
+        message: 'No real WSFE connection established with ARCA. Fiscal authorization simulation mode active.',
+        FeCabResp: { Resultado: 'R', Cuit: cuit, PtoVta: pointOfSale }
+      }
+    };
   }
 };
