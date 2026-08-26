@@ -8,16 +8,11 @@ export interface RestaurantTableRepository {
   update(
     companyId: string,
     tableId: string,
-    patch: Partial<Pick<RestaurantTable, 'number' | 'name' | 'capacity' | 'area' | 'active' | 'publicQrToken' | 'updatedAt'>>,
+    patch: Partial<Pick<RestaurantTable, 'number' | 'name' | 'capacity' | 'area' | 'active' | 'publicQrToken' | 'status' | 'updatedAt'>>,
   ): Promise<RestaurantTable>;
   setStatus(companyId: string, tableId: string, status: RestaurantTableStatus): Promise<RestaurantTable>;
 }
 
-export function assertTableBelongsToCompany(
-  table: RestaurantTable,
-  companyId: string,
-): void {
-  if (table.companyId !== companyId) {
-    throw new Error('TABLE_ACCESS_DENIED');
-  }
+export function assertTableBelongsToCompany(table: RestaurantTable, companyId: string): void {
+  if (table.companyId !== companyId) throw new Error('TABLE_ACCESS_DENIED');
 }
