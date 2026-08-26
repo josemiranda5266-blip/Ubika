@@ -16,7 +16,7 @@ const email = `${userId}@example.test`;
 const company = {
   id: companyId,
   name: 'Salon HTTP Test',
-  category: 'Gastronomía',
+  category: 'Gastronomía' as const,
   address: '',
   phone: '',
   city: '',
