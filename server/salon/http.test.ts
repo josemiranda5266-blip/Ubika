@@ -60,7 +60,8 @@ try {
   const created = await createResponse.json() as { table: { id: string; companyId: string; publicQrToken: string }; qrUrl: string };
   assert.equal(created.table.companyId, companyId);
   assert.ok(created.table.publicQrToken);
-  assert.match(created.qrUrl, /\/api\/salon\/qr\//);
+  assert.match(created.qrUrl, /\/mesa\//);
+  assert.match(created.qrUrl, new RegExp(`/mesa/${created.table.publicQrToken}$`));
 
   const listResponse = await fetch(`${baseUrl}/api/salon/tables`, {
     headers: { authorization: `Bearer ${token}` },
