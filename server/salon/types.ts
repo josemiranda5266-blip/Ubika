@@ -12,10 +12,6 @@ export type DiningOrderStatus =
   | 'CLOSED'
   | 'CANCELLED';
 
-/**
- * Persistent configuration for a physical table in a business.
- * The QR token is public-facing and must never contain company/user secrets.
- */
 export interface RestaurantTable {
   id: string;
   companyId: string;
@@ -31,10 +27,6 @@ export interface RestaurantTable {
   updatedAt: number;
 }
 
-/**
- * Canonical salon command. This is operational state, not a financial sale.
- * A Sale is created only when the account is actually charged/finalized.
- */
 export interface DiningOrder {
   id: string;
   companyId: string;
@@ -71,10 +63,6 @@ export interface DiningOrderItem {
   }>;
 }
 
-/**
- * Public resolution result for a scanned table QR.
- * Never expose internal user identifiers, credentials, or private company data.
- */
 export interface PublicTableQrResolution {
   companyId: string;
   tableId: string;
@@ -85,18 +73,10 @@ export interface PublicTableQrResolution {
 }
 
 export const RESTAURANT_TABLE_STATUSES: readonly RestaurantTableStatus[] = [
-  'AVAILABLE',
-  'OCCUPIED',
-  'RESERVED',
+  'AVAILABLE', 'OCCUPIED', 'RESERVED',
 ] as const;
 
 export const DINING_ORDER_STATUSES: readonly DiningOrderStatus[] = [
-  'OPEN',
-  'SENT_TO_KITCHEN',
-  'PREPARING',
-  'READY',
-  'SERVED',
-  'REQUESTED_BILL',
-  'CLOSED',
-  'CANCELLED',
+  'OPEN', 'SENT_TO_KITCHEN', 'PREPARING', 'READY', 'SERVED',
+  'REQUESTED_BILL', 'CLOSED', 'CANCELLED',
 ] as const;
