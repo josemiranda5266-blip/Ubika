@@ -1,12 +1,18 @@
 import path from 'path';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import { createUbikaApp } from './server';
 import salonRouter from './server/salon/routes';
 
 const PORT = Number(process.env.PORT || 3000);
 
 async function startServer() {
+  // server.ts still owns the legacy application definition and its historical auto-start block.
+  // Import it in test mode so this explicit bootstrap is the only process that calls listen().
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'test';
+  const { createUbikaApp } = await import('./server');
+  process.env.NODE_ENV = previousNodeEnv;
+
   const app = createUbikaApp();
 
   // Salon is mounted after the core application's middleware/routes are initialized.
