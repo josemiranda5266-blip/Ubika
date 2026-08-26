@@ -1,5 +1,5 @@
 import type { Firestore } from 'firebase-admin/firestore';
-import type { RestaurantTable, TableStatus } from './types';
+import type { RestaurantTable, RestaurantTableStatus } from './types';
 import type { RestaurantTableRepository } from './repository';
 
 const TABLES_COLLECTION = 'tables';
@@ -41,17 +41,17 @@ export class FirestoreRestaurantTableRepository implements RestaurantTableReposi
   }
 
   async getByQrToken(token: string): Promise<RestaurantTable | null> {
-    if (!token || token.length !== 32) return null;
+    if (!/^[A-Za-z0-9_-]{32}$/.test(token)) return null;
 
     const snapshot = await this.db
       .collectionGroup(TABLES_COLLECTION)
       .where('publicQrToken', '==', token)
-      .where('active', '==', true)
       .limit(1)
       .get();
 
     if (snapshot.empty) return null;
-    return snapshot.docs[0].data() as RestaurantTable;
+    const table = snapshot.docs[0].data() as RestaurantTable;
+    return table.active ? table : null;
   }
 
   async list(companyId: string, branchId?: string): Promise<RestaurantTable[]> {
@@ -86,7 +86,7 @@ export class FirestoreRestaurantTableRepository implements RestaurantTableReposi
     return { ...current, ...patch } as RestaurantTable;
   }
 
-  async setStatus(companyId: string, tableId: string, status: TableStatus): Promise<RestaurantTable> {
+  async setStatus(companyId: string, tableId: string, status: RestaurantTableStatus): Promise<RestaurantTable> {
     return this.update(companyId, tableId, { status } as Partial<RestaurantTable>);
   }
 
