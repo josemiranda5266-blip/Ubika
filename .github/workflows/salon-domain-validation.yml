@@ -9,8 +9,11 @@ on:
       - feat/salon-tables-qr
 
 jobs:
-  salon-domain:
+  salon-validation:
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ci-salon-http-secret
+      INITIAL_ADMIN_PASSWORD: ci-test-password-123
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,3 +28,12 @@ jobs:
 
       - name: Salon domain tests
         run: npx tsx server/salon/service.test.ts
+
+      - name: Salon persistence test
+        run: npx tsx server/salon/persistence.test.ts
+
+      - name: Salon HTTP test
+        run: npx tsx server/salon/http.test.ts
+
+      - name: Production build
+        run: npm run build
