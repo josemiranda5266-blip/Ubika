@@ -61,12 +61,6 @@ export function isEmployeeInvitationRole(role: string): role is UbikaRole {
 }
 
 export function isCommerceStaffRole(role: UbikaRole | string): boolean {
-  return [
-    UBIKA_ROLES.SUPER_ADMIN,
-    UBIKA_ROLES.COMPANY_ADMIN,
-    UBIKA_ROLES.DISPATCHER,
-    UBIKA_ROLES.KITCHEN,
-    UBIKA_ROLES.MOZO,
-    UBIKA_ROLES.DRIVER,
-  ].includes(role as UbikaRole);
+  return (['SUPER_ADMIN', 'COMPANY_ADMIN', 'DISPATCHER', 'KITCHEN', 'MOZO', 'DRIVER'] as readonly UbikaRole[])
+    .includes(role as UbikaRole);
 }
