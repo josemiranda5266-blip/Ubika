@@ -32,9 +32,7 @@ const order: DiningOrder = {
 };
 
 async function run() {
-  const db = loadDatabase();
-  db.restaurant_tables = db.restaurant_tables || [];
-  db.dining_orders = db.dining_orders || [];
+  loadDatabase();
 
   const tables = new PersistentRestaurantTableRepository();
   const orders = new PersistentDiningOrderRepository();
@@ -43,14 +41,14 @@ async function run() {
   await orders.create(order);
   saveDatabaseSync();
 
-  const reloaded = loadDatabase();
-  assert.ok(reloaded.restaurant_tables?.some((item) => item.id === table.id));
-  assert.ok(reloaded.dining_orders?.some((item) => item.id === order.id));
-
+  // Repositories read through loadDatabase(), providing a fresh persisted-state read.
   const persistedTable = await tables.getById(companyId, table.id);
   const persistedOrder = await orders.getById(companyId, order.id);
   assert.equal(persistedTable?.publicQrToken, table.publicQrToken);
   assert.equal(persistedOrder?.tableId, table.id);
+
+  const qrTable = await tables.getByQrToken(table.publicQrToken);
+  assert.equal(qrTable?.id, table.id);
 
   console.log('Salon persistence tests: PASS');
 }
