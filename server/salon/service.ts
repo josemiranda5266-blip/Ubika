@@ -3,7 +3,7 @@ import type { RestaurantTableRepository } from './repository';
 import type { DiningOrder, RestaurantTable, RestaurantTableStatus } from './types';
 
 const OPEN_ORDER_STATUSES = new Set<DiningOrder['status']>(['OPEN', 'SENT_TO_KITCHEN', 'PREPARING', 'READY', 'SERVED', 'REQUESTED_BILL']);
-const TABLE_MUTABLE_STATUSES = new Set<RestaurantTableStatus>(['AVAILABLE', 'OCCUPIED', 'RESERVED', 'CLEANING', 'DISABLED']);
+const TABLE_MUTABLE_STATUSES = new Set<RestaurantTableStatus>(['AVAILABLE', 'OCCUPIED', 'RESERVED']);
 
 export class SalonService {
   constructor(
@@ -34,7 +34,6 @@ export class SalonService {
 
     const table = await this.tables.getById(order.companyId, order.tableId);
     if (!table || !table.active) throw new Error('TABLE_NOT_FOUND');
-    if (table.status === 'DISABLED') throw new Error('TABLE_DISABLED');
 
     const openOrders = await this.orders.getOpenByTable(order.companyId, order.tableId);
     if (order.status === 'OPEN' && openOrders.some(existing => existing.status === 'OPEN')) {
