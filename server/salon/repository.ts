@@ -8,7 +8,7 @@ export interface RestaurantTableRepository {
   update(
     companyId: string,
     tableId: string,
-    patch: Partial<Pick<RestaurantTable, 'number' | 'name' | 'capacity' | 'area' | 'active' | 'publicQrToken'>>,
+    patch: Partial<Pick<RestaurantTable, 'number' | 'name' | 'capacity' | 'area' | 'active' | 'publicQrToken' | 'updatedAt'>>,
   ): Promise<RestaurantTable>;
   setStatus(companyId: string, tableId: string, status: TableStatus): Promise<RestaurantTable>;
 }
