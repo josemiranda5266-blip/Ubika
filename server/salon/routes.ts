@@ -26,19 +26,11 @@ function publicQrUrl(req: AuthenticatedRequest, token: string): string {
   return `${base}${buildPublicTableQrPath(token)}`;
 }
 
-// Public endpoint: scanning a table QR resolves only the minimum table identity needed by the client app.
 salonRouter.get('/qr/:token', async (req, res) => {
   try {
     const table = await salon.resolveTableByQr(req.params.token);
-    if (!table) return res.status(404).json({ error: 'TABLE_QR_NOT_FOUND' });
-    return res.json({
-      companyId: table.companyId,
-      tableId: table.id,
-      tableNumber: table.number,
-      tableName: table.name,
-      area: table.area,
-      active: table.active,
-    });
+    if (!table || !table.active) return res.status(404).json({ error: 'TABLE_QR_NOT_FOUND' });
+    return res.json({ companyId: table.companyId, tableId: table.id, tableNumber: table.number, tableName: table.name, area: table.area, active: table.active });
   } catch (error) {
     return errorResponse(res, error);
   }
@@ -46,7 +38,6 @@ salonRouter.get('/qr/:token', async (req, res) => {
 
 salonRouter.use(authenticateUser);
 
-// Admin: list all tables for the authenticated company.
 salonRouter.get('/tables', requireRole([...MANAGEMENT_ROLES]), async (req: AuthenticatedRequest, res) => {
   try {
     const branchId = typeof req.query.branchId === 'string' ? req.query.branchId : undefined;
@@ -57,7 +48,6 @@ salonRouter.get('/tables', requireRole([...MANAGEMENT_ROLES]), async (req: Authe
   }
 });
 
-// Admin: create a distinct QR identity for each physical table.
 salonRouter.post('/tables', requireRole([...MANAGEMENT_ROLES]), async (req: AuthenticatedRequest, res) => {
   try {
     const { number, name, capacity, area, branchId } = req.body ?? {};
@@ -65,15 +55,9 @@ salonRouter.post('/tables', requireRole([...MANAGEMENT_ROLES]), async (req: Auth
       id: `table_${crypto.randomUUID()}`,
       companyId: req.user!.companyId,
       branchId: typeof branchId === 'string' && branchId.trim() ? branchId.trim() : undefined,
-      number: Number(number),
-      name: typeof name === 'string' && name.trim() ? name.trim() : undefined,
-      capacity: Number(capacity),
-      area: typeof area === 'string' && area.trim() ? area.trim() : undefined,
-      status: 'AVAILABLE',
-      active: true,
-      publicQrToken: generatePublicTableQrToken(),
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      number: Number(number), name: typeof name === 'string' && name.trim() ? name.trim() : undefined,
+      capacity: Number(capacity), area: typeof area === 'string' && area.trim() ? area.trim() : undefined,
+      status: 'AVAILABLE', active: true, publicQrToken: generatePublicTableQrToken(), createdAt: Date.now(), updatedAt: Date.now(),
     });
     return res.status(201).json({ table, qrUrl: publicQrUrl(req, table.publicQrToken) });
   } catch (error) {
@@ -81,15 +65,14 @@ salonRouter.post('/tables', requireRole([...MANAGEMENT_ROLES]), async (req: Auth
   }
 });
 
-// Admin: update metadata, activation and operational status. QR rotation is explicit.
 salonRouter.patch('/tables/:tableId', requireRole([...MANAGEMENT_ROLES]), async (req: AuthenticatedRequest, res) => {
   try {
     const { number, name, capacity, area, active, status, rotateQr } = req.body ?? {};
-    const patch: any = { updatedAt: Date.now() };
+    const patch: { number?: number; name?: string; capacity?: number; area?: string; active?: boolean; status?: RestaurantTableStatus; publicQrToken?: string; updatedAt: number } = { updatedAt: Date.now() };
     if (number !== undefined) patch.number = Number(number);
-    if (name !== undefined) patch.name = typeof name === 'string' && name.trim() ? name.trim() : undefined;
+    if (name !== undefined && typeof name === 'string' && name.trim()) patch.name = name.trim();
     if (capacity !== undefined) patch.capacity = Number(capacity);
-    if (area !== undefined) patch.area = typeof area === 'string' && area.trim() ? area.trim() : undefined;
+    if (area !== undefined && typeof area === 'string' && area.trim()) patch.area = area.trim();
     if (active !== undefined) patch.active = Boolean(active);
     if (status !== undefined) patch.status = status as RestaurantTableStatus;
     if (rotateQr === true) patch.publicQrToken = generatePublicTableQrToken();
@@ -100,7 +83,6 @@ salonRouter.patch('/tables/:tableId', requireRole([...MANAGEMENT_ROLES]), async 
   }
 });
 
-// Mozo/admin can see operational table state without managing the QR identity.
 salonRouter.get('/tables/operational', requireRole([...TABLE_OPERATOR_ROLES]), async (req: AuthenticatedRequest, res) => {
   try {
     const tables = await salon.listTables(req.user!.companyId);
