@@ -1,0 +1,33 @@
+name: Salon HTTP Validation
+
+on:
+  push:
+    branches:
+      - feat/salon-tables-qr
+  pull_request:
+    branches:
+      - feat/salon-tables-qr
+
+jobs:
+  validate-http:
+    runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: ci-salon-http-secret
+      INITIAL_ADMIN_PASSWORD: ci-test-password-123
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Salon HTTP test
+        run: npx tsx server/salon/http.test.ts
+
+      - name: Production build
+        run: npm run build
