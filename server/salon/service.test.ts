@@ -10,7 +10,7 @@ function table(overrides: Partial<RestaurantTable> = {}): RestaurantTable {
 }
 
 function order(overrides: Partial<DiningOrder> = {}): DiningOrder {
-  return { id: 'order-1', companyId, tableId: 'table-1', status: 'OPEN', items: [{ productId: 'p1', productName: 'Producto', quantity: 1, unitPrice: 100, total: 100 }], subtotal: 100, total: 100, createdAt: 1, updatedAt: 1, ...overrides };
+  return { id: 'order-1', companyId, tableId: 'table-1', origin: 'WAITER', status: 'OPEN', items: [{ productId: 'p1', name: 'Producto', quantity: 1, unitPrice: 100 }], subtotal: 100, total: 100, createdAt: 1, updatedAt: 1, ...overrides };
 }
 
 async function expectRejects(action: () => Promise<unknown>, message: string) {
