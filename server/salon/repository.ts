@@ -1,4 +1,4 @@
-import type { RestaurantTable, TableStatus } from './types';
+import type { RestaurantTable, RestaurantTableStatus } from './types';
 
 export interface RestaurantTableRepository {
   create(table: RestaurantTable): Promise<RestaurantTable>;
@@ -10,7 +10,7 @@ export interface RestaurantTableRepository {
     tableId: string,
     patch: Partial<Pick<RestaurantTable, 'number' | 'name' | 'capacity' | 'area' | 'active' | 'publicQrToken' | 'updatedAt'>>,
   ): Promise<RestaurantTable>;
-  setStatus(companyId: string, tableId: string, status: TableStatus): Promise<RestaurantTable>;
+  setStatus(companyId: string, tableId: string, status: RestaurantTableStatus): Promise<RestaurantTable>;
 }
 
 export function assertTableBelongsToCompany(
