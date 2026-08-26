@@ -27,21 +27,21 @@ function publicQrUrl(req: AuthenticatedRequest, token: string): string {
 }
 
 // Public endpoint: scanning a table QR resolves only the minimum table identity needed by the client app.
-salonRouter.get('/qr/:token', (req, res) => {
-  const tableRepo = salon['tables'] as { getByQrToken(token: string): Promise<any> };
-  tableRepo.getByQrToken(req.params.token)
-    .then((table) => {
-      if (!table) return res.status(404).json({ error: 'TABLE_QR_NOT_FOUND' });
-      return res.json({
-        companyId: table.companyId,
-        tableId: table.id,
-        tableNumber: table.number,
-        tableName: table.name,
-        area: table.area,
-        active: table.active,
-      });
-    })
-    .catch((error) => errorResponse(res, error));
+salonRouter.get('/qr/:token', async (req, res) => {
+  try {
+    const table = await salon.resolveTableByQr(req.params.token);
+    if (!table) return res.status(404).json({ error: 'TABLE_QR_NOT_FOUND' });
+    return res.json({
+      companyId: table.companyId,
+      tableId: table.id,
+      tableNumber: table.number,
+      tableName: table.name,
+      area: table.area,
+      active: table.active,
+    });
+  } catch (error) {
+    return errorResponse(res, error);
+  }
 });
 
 salonRouter.use(authenticateUser);
@@ -50,8 +50,8 @@ salonRouter.use(authenticateUser);
 salonRouter.get('/tables', requireRole([...MANAGEMENT_ROLES]), async (req: AuthenticatedRequest, res) => {
   try {
     const branchId = typeof req.query.branchId === 'string' ? req.query.branchId : undefined;
-    const tables = await (salon['tables'] as any).list(req.user!.companyId, branchId);
-    return res.json({ tables: tables.map((table: any) => ({ ...table, qrUrl: publicQrUrl(req, table.publicQrToken) })) });
+    const tables = await salon.listTables(req.user!.companyId, branchId);
+    return res.json({ tables: tables.map((table) => ({ ...table, qrUrl: publicQrUrl(req, table.publicQrToken) })) });
   } catch (error) {
     return errorResponse(res, error);
   }
@@ -93,7 +93,7 @@ salonRouter.patch('/tables/:tableId', requireRole([...MANAGEMENT_ROLES]), async 
     if (active !== undefined) patch.active = Boolean(active);
     if (status !== undefined) patch.status = status as RestaurantTableStatus;
     if (rotateQr === true) patch.publicQrToken = generatePublicTableQrToken();
-    const table = await (salon['tables'] as any).update(req.user!.companyId, req.params.tableId, patch);
+    const table = await salon.updateTable(req.user!.companyId, req.params.tableId, patch);
     return res.json({ table, qrUrl: publicQrUrl(req, table.publicQrToken) });
   } catch (error) {
     return errorResponse(res, error);
@@ -103,8 +103,8 @@ salonRouter.patch('/tables/:tableId', requireRole([...MANAGEMENT_ROLES]), async 
 // Mozo/admin can see operational table state without managing the QR identity.
 salonRouter.get('/tables/operational', requireRole([...TABLE_OPERATOR_ROLES]), async (req: AuthenticatedRequest, res) => {
   try {
-    const tables = await (salon['tables'] as any).list(req.user!.companyId);
-    return res.json({ tables: tables.map((table: any) => ({ id: table.id, number: table.number, name: table.name, capacity: table.capacity, area: table.area, status: table.status, active: table.active })) });
+    const tables = await salon.listTables(req.user!.companyId);
+    return res.json({ tables: tables.map((table) => ({ id: table.id, number: table.number, name: table.name, capacity: table.capacity, area: table.area, status: table.status, active: table.active })) });
   } catch (error) {
     return errorResponse(res, error);
   }
