@@ -60,7 +60,18 @@ export class DiningOrderService {
     };
 
     const created = await this.orders.create(order);
-    await this.tables.setStatus(input.companyId, table.id, 'OCCUPIED');
+    try {
+      await this.tables.setStatus(input.companyId, table.id, 'OCCUPIED');
+    } catch (error) {
+      // Compensate the order so a failed table update cannot leave a live order
+      // attached to a table that the system still considers available.
+      try {
+        await this.orders.update(input.companyId, created.id, { status: 'CANCELLED', updatedAt: Date.now() });
+      } catch {
+        // Preserve the original failure; operational reconciliation can inspect the order.
+      }
+      throw error;
+    }
     return created;
   }
 
