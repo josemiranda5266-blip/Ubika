@@ -8,7 +8,7 @@ export interface DiningOrderRepository {
   update(
     companyId: string,
     orderId: string,
-    patch: Partial<Pick<DiningOrder, 'status' | 'items' | 'subtotal' | 'discount' | 'total' | 'waiterId' | 'customerId' | 'foodOrderId' | 'saleId' | 'notes' | 'updatedAt'>>,
+    patch: Partial<Pick<DiningOrder, 'status' | 'items' | 'subtotal' | 'total' | 'waiterId' | 'customerId' | 'foodOrderId' | 'saleId' | 'notes' | 'updatedAt'>>,
   ): Promise<DiningOrder>;
 }
 
