@@ -1,272 +1,107 @@
 /**
- * @license
- * SPDX-License-Identifier: Apache-2.0
+ * UBIKA - Unified application shell
+ * Public tracking/menu links remain URL-addressable; authenticated users use one role-aware workspace.
  */
-
-import React, { useState, useEffect } from 'react';
-import { DriverApp } from './components/DriverApp';
+import React, { useEffect, useState } from 'react';
 import { CustomerWebApp } from './components/CustomerWebApp';
-import { UbikaControl } from './components/control/UbikaControl';
-import { UbikaFoodApp } from './components/food/UbikaFoodApp';
-import { UbikaCommerceApp } from './components/commerce/UbikaCommerceApp';
 import { Login } from './components/Login';
+import { UnifiedCommerceWorkspace } from './components/UnifiedCommerceWorkspace';
 import { getStoredToken, getStoredUser, clearStoredAuth, StoredUser } from './utils/api';
-import { Smartphone, Globe, LayoutDashboard, Truck, Utensils, Store, LogOut, User } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 
 export default function App() {
-  const [viewMode, setViewMode] = useState<'control' | 'driver' | 'customer' | 'food' | 'commerce'>('control');
-  const [customerToken, setCustomerToken] = useState<string>('');
-  const [foodCompanyId, setFoodCompanyId] = useState<string | undefined>(undefined);
-  const [foodOrderId, setFoodOrderId] = useState<string | undefined>(undefined);
-  
-  // Real authentication state
+  const [customerToken, setCustomerToken] = useState('');
   const [authToken, setAuthToken] = useState<string | null>(getStoredToken());
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(getStoredUser());
+  const [publicMode, setPublicMode] = useState<'none' | 'tracking' | 'food'>('none');
 
-  // Detect hash changes or URL params for #track/:token, #food, #food/admin, #food/company/:companyId, #food/order/:orderId
   useEffect(() => {
-    const checkHash = () => {
+    const checkPublicRoute = () => {
       const hash = window.location.hash;
       if (hash.startsWith('#track/')) {
         const token = hash.replace('#track/', '');
         if (token) {
           setCustomerToken(token);
-          setViewMode('customer');
+          setPublicMode('tracking');
           return;
         }
       }
-
-      if (hash === '#food' || hash === '#food/admin' || hash.startsWith('#food/')) {
-        setViewMode('food');
-        if (hash.startsWith('#food/company/')) {
-          const companyId = hash.replace('#food/company/', '');
-          if (companyId) setFoodCompanyId(companyId);
-        } else if (hash.startsWith('#food/order/')) {
-          const orderId = hash.replace('#food/order/', '');
-          if (orderId) setFoodOrderId(orderId);
-        }
+      if (hash === '#food' || hash === '#food/admin' || hash.startsWith('#food/company/') || hash.startsWith('#food/order/')) {
+        setPublicMode('food');
         return;
       }
-
-      if (hash === '#commerce') {
-        setViewMode('commerce');
-        return;
-      }
-
       const params = new URLSearchParams(window.location.search);
       const queryToken = params.get('token');
       if (queryToken) {
         setCustomerToken(queryToken);
-        setViewMode('customer');
+        setPublicMode('tracking');
+        return;
       }
+      setPublicMode('none');
     };
-
-    checkHash();
-    window.addEventListener('hashchange', checkHash);
-    return () => window.removeEventListener('hashchange', checkHash);
+    checkPublicRoute();
+    window.addEventListener('hashchange', checkPublicRoute);
+    return () => window.removeEventListener('hashchange', checkPublicRoute);
   }, []);
 
   const handleOpenCustomerLink = (token: string) => {
     setCustomerToken(token);
+    setPublicMode('tracking');
     window.location.hash = `#track/${token}`;
-    setViewMode('customer');
   };
 
-  const handleBackToDriver = () => {
-    window.location.hash = '';
-    setViewMode('driver');
-  };
-
-  const handleBackToControl = () => {
-    window.location.hash = '';
-    setViewMode('control');
-  };
-
-  const handleLoginSuccess = (user: StoredUser, tokenVal: string) => {
-    setAuthToken(tokenVal);
+  const handleLoginSuccess = (user: StoredUser, token: string) => {
+    setAuthToken(token);
     setCurrentUser(user);
-    
-    // Proactively route the authenticated user based on their role
-    if (user.role === 'DRIVER') {
-      setViewMode('driver');
-      window.location.hash = '';
-    } else if (user.role === 'KITCHEN') {
-      setViewMode('food');
-      window.location.hash = '#food/admin';
-    } else if (user.role === 'COMPANY_ADMIN') {
-      if (user.companyId && user.companyId.startsWith('comp_food_')) {
-        setViewMode('food');
-        window.location.hash = '#food/admin';
-      } else {
-        setViewMode('control');
-        window.location.hash = '';
-      }
-    }
+    setPublicMode('none');
+    window.location.hash = '';
   };
 
   const handleLogout = () => {
     clearStoredAuth();
     setAuthToken(null);
     setCurrentUser(null);
-    setViewMode('control');
+    setPublicMode('none');
     window.location.hash = '';
   };
 
-  // Determine if authentication is required for the current view
-  const isFoodCustomerMenu = viewMode === 'food' && window.location.hash.includes('/company/');
-  const isPublicTracking = viewMode === 'customer';
-  const authRequired = !isFoodCustomerMenu && !isPublicTracking;
-
-  // Render Login page if authentication is required and not present
-  if (authRequired && !authToken) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+  if (publicMode === 'tracking') {
+    return <CustomerWebApp token={customerToken} onBackToDriver={() => setPublicMode('none')} />;
   }
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
-      {/* Top Experience Switcher Bar */}
-      <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 z-50 shadow-xs">
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
-          <div className="flex items-center gap-3">
-            <div className="bg-orange-500 p-2 rounded-xl text-white shadow-md shadow-orange-200">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl sm:text-2xl font-black tracking-tighter text-slate-900">UBIKA</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-50 text-orange-600 border border-orange-200">
-                  PLATFORM
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">Coordinación Logística y Gastronomía</p>
-            </div>
-          </div>
+  if (publicMode === 'food' && !authToken) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md bg-white border border-slate-200 rounded-2xl p-8 shadow-sm text-center">
+          <div className="text-2xl font-black">UBIKA</div>
+          <h1 className="text-xl font-black mt-2">Menú público</h1>
+          <p className="text-sm text-slate-500 mt-2">El menú público permanece separado de las sesiones de empleados.</p>
         </div>
-
-        {/* 4-Way Experience Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 shadow-inner w-full sm:w-auto justify-center overflow-x-auto">
-          <button
-            id="app-mode-control"
-            type="button"
-            onClick={handleBackToControl}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-              viewMode === 'control'
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <LayoutDashboard className="w-3.5 h-3.5 text-orange-400" />
-            <span>UBIKA CONTROL</span>
-          </button>
-
-          <button
-            id="app-mode-driver"
-            type="button"
-            onClick={handleBackToDriver}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-              viewMode === 'driver'
-                ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Truck className="w-3.5 h-3.5" />
-            <span>UBIKA DRIVER</span>
-          </button>
-
-          <button
-            id="app-mode-customer"
-            type="button"
-            onClick={() => setViewMode('customer')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-              viewMode === 'customer'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>UBIKA CLIENT</span>
-          </button>
-
-          <button
-            id="app-mode-food"
-            type="button"
-            onClick={() => {
-              window.location.hash = '#food/admin';
-              setViewMode('food');
-            }}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-              viewMode === 'food'
-                ? 'bg-amber-600 text-white shadow-md shadow-amber-200'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Utensils className="w-3.5 h-3.5" />
-            <span>UBIKA FOOD 🍔</span>
-          </button>
-
-          <button
-            id="app-mode-commerce"
-            type="button"
-            onClick={() => {
-              window.location.hash = '#commerce';
-              setViewMode('commerce');
-            }}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-              viewMode === 'commerce'
-                ? 'bg-orange-600 text-white shadow-md shadow-orange-200'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Store className="w-3.5 h-3.5" />
-            <span>UBIKA COMMERCE 🛒</span>
-          </button>
-        </div>
-
-        {/* User profile & Logout */}
-        {authToken && currentUser && (
-          <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
-            <div className="text-right hidden md:block">
-              <div className="text-xs font-black text-slate-800 uppercase tracking-tight flex items-center gap-1">
-                <User className="w-3.5 h-3.5 text-slate-400" />
-                {currentUser.name}
-              </div>
-              <div className="text-[9px] font-black uppercase text-orange-500 tracking-wider">
-                {currentUser.role}
-              </div>
-            </div>
-            <button
-              id="btn-global-logout"
-              type="button"
-              onClick={handleLogout}
-              title="Cerrar Sesión"
-              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200/60 transition-all shadow-xs"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </header>
-
-      {/* App views */}
-      <div className="flex-1 flex flex-col">
-        {viewMode === 'control' && <UbikaControl onOpenCustomerLink={handleOpenCustomerLink} />}
-        {viewMode === 'driver' && <DriverApp onOpenCustomerLink={handleOpenCustomerLink} />}
-        {viewMode === 'customer' && (
-          <CustomerWebApp token={customerToken} onBackToDriver={handleBackToDriver} />
-        )}
-        {viewMode === 'food' && (
-          <UbikaFoodApp
-            initialCompanyId={foodCompanyId}
-            initialOrderId={foodOrderId}
-            initialViewMode="merchant"
-            onBackToControl={handleBackToControl}
-          />
-        )}
-        {viewMode === 'commerce' && <UbikaCommerceApp />}
       </div>
+    );
+  }
+
+  if (!authToken || !currentUser) return <Login onLoginSuccess={handleLoginSuccess} />;
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-3 flex items-center justify-between gap-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="bg-orange-500 p-2 rounded-xl text-white font-black">U</div>
+          <div>
+            <div className="text-xl font-black tracking-tighter">UBIKA</div>
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Plataforma unificada</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <div className="text-xs font-black text-slate-800 flex items-center justify-end gap-1"><User className="w-3.5 h-3.5 text-slate-400" />{currentUser.name}</div>
+            <div className="text-[9px] font-black uppercase text-orange-500 tracking-wider">{currentUser.role}</div>
+          </div>
+          <button id="btn-global-logout" type="button" onClick={handleLogout} title="Cerrar sesión" className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 transition-all"><LogOut className="w-4 h-4" /></button>
+        </div>
+      </header>
+      <UnifiedCommerceWorkspace user={currentUser} onOpenCustomerLink={handleOpenCustomerLink} />
     </div>
   );
 }
