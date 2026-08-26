@@ -1,6 +1,5 @@
 import type { RestaurantTable, RestaurantTableStatus } from './types';
 
-/** Persistence-safe representation used by the unified UBIKA database. */
 export interface RestaurantTableRecord {
   id: string;
   companyId: string;
@@ -17,17 +16,9 @@ export interface RestaurantTableRecord {
 }
 
 export function toRestaurantTableRecord(table: RestaurantTable): RestaurantTableRecord {
-  return {
-    ...table,
-    createdAt: table.createdAt.getTime(),
-    updatedAt: table.updatedAt.getTime(),
-  };
+  return { ...table };
 }
 
 export function fromRestaurantTableRecord(record: RestaurantTableRecord): RestaurantTable {
-  return {
-    ...record,
-    createdAt: new Date(record.createdAt),
-    updatedAt: new Date(record.updatedAt),
-  };
+  return { ...record };
 }
