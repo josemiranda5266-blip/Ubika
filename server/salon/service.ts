@@ -11,6 +11,22 @@ export class SalonService {
     private readonly orders: DiningOrderRepository,
   ) {}
 
+  async listTables(companyId: string, branchId?: string): Promise<RestaurantTable[]> {
+    if (!companyId) throw new Error('COMPANY_ID_REQUIRED');
+    return this.tables.list(companyId, branchId);
+  }
+
+  async resolveTableByQr(token: string): Promise<RestaurantTable | null> {
+    if (!token) throw new Error('TABLE_QR_TOKEN_REQUIRED');
+    return this.tables.getByQrToken(token);
+  }
+
+  async updateTable(companyId: string, tableId: string, patch: Partial<Pick<RestaurantTable, 'number' | 'name' | 'capacity' | 'area' | 'active' | 'publicQrToken' | 'status' | 'updatedAt'>>): Promise<RestaurantTable> {
+    if (!companyId) throw new Error('COMPANY_ID_REQUIRED');
+    if (!tableId) throw new Error('TABLE_ID_REQUIRED');
+    return this.tables.update(companyId, tableId, patch);
+  }
+
   async createTable(table: RestaurantTable): Promise<RestaurantTable> {
     if (!table.companyId) throw new Error('COMPANY_ID_REQUIRED');
     if (!table.publicQrToken) throw new Error('TABLE_QR_TOKEN_REQUIRED');
