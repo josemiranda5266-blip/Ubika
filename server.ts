@@ -174,6 +174,7 @@ function purgeCoordinatesIfFinished(delivery: Delivery): Delivery {
 
 export function createUbikaApp(): express.Express {
   const app = express();
+  app.set('trust proxy', 1); // Confía en el primer proxy para obtener la IP real del cliente
 
   // HITO 2: Security Headers & CORS Middleware (compatible with AI Studio Preview iframe)
   app.use((req, res, next) => {
@@ -1884,6 +1885,15 @@ export function createUbikaApp(): express.Express {
       return res.status(400).json({ error: "Faltan datos obligatorios para crear el pedido" });
     }
 
+    if (deliveryAddress !== undefined) {
+      if (typeof deliveryAddress !== 'string' || deliveryAddress.trim().length === 0) {
+        return res.status(400).json({ error: "La dirección de entrega debe ser un texto válido" });
+      }
+      if (deliveryAddress.length > 255) {
+        return res.status(400).json({ error: "La dirección de entrega excede el límite de 255 caracteres" });
+      }
+    }
+
     if (deliveryType !== 'FOOD_DELIVERY' && deliveryType !== 'FOOD_PICKUP') {
       return res.status(400).json({ error: "Tipo de entrega no válido (debe ser FOOD_DELIVERY o FOOD_PICKUP)" });
     }
@@ -2727,15 +2737,19 @@ export function createUbikaApp(): express.Express {
     rateLimit(60000, 30),
     authenticateUser,
     (req: AuthenticatedRequest, res: Response, next) => {
-      productImageUpload.any()(req, res, (err) => {
-        if (err) {
-          if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ error: 'El archivo supera el tamaño máximo permitido de 5MB.' });
+      try {
+        productImageUpload.any()(req, res, (err) => {
+          if (err) {
+            if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+              return res.status(400).json({ error: 'El archivo supera el tamaño máximo permitido de 5MB.' });
+            }
+            return res.status(400).json({ error: err.message || 'Error al procesar la imagen' });
           }
-          return res.status(400).json({ error: err.message || 'Error al procesar la imagen' });
-        }
-        next();
-      });
+          next(); // Solo se llama a next() si NO hay error
+        });
+      } catch (err: any) {
+        return res.status(400).json({ error: err?.message || 'Error al procesar la imagen' });
+      }
     },
     (req: AuthenticatedRequest, res: Response) => {
       if (!isAuthorizedFoodAdmin(req)) {

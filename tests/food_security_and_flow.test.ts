@@ -1216,6 +1216,28 @@ async function runFoodSecurityAndFlowTests() {
       assert(resReady.status === 403, `La asignación de cadete por cocina debió dar 403 pero dio ${resReady.status}`);
     });
 
+    await test('57. Validación de deliveryAddress > 255 caracteres o inválida es rechazada con 400', async () => {
+      const burgerProd = foodProducts[0];
+      const longAddress = 'Calle Falsa 123, Departamento 4B, Barrio Norte, Ciudad Autónoma de Buenos Aires, República Argentina, Entre Ríos y Corrientes, Código Postal 1045, Timbre que no anda, llamar al celular cuando esté en la puerta por favor, portón verde reja negra, dejar con encargado si no responde '.repeat(2); // > 400 chars
+      const res = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_DELIVERY',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Juan Pérez',
+          recipientPhone: '+5491112345678',
+          deliveryAddress: longAddress,
+          recipientLocation: { latitude: -34.6037, longitude: -58.3816 },
+        }),
+      });
+      assert(res.status === 400, `Respondió con status ${res.status}`);
+      const data = await res.json();
+      assert(data.error && data.error.includes('255 caracteres'), `Error inesperado: ${JSON.stringify(data)}`);
+    });
+
     console.log('\n====================================================');
     console.log(`📊 RESULTADO DE SUITE: PASARON ${passed} / ${passed + failed} PRUEBAS`);
     console.log('====================================================\n');
