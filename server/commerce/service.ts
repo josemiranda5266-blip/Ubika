@@ -6,6 +6,7 @@ import {
   Sale,
   StockMovement,
   CashSession,
+  Invoice,
 } from './types';
 import { PaymentProviderService } from './payments';
 import { ArcaFiscalService } from './fiscal';
@@ -197,6 +198,9 @@ export const CommerceService = {
     return CommerceRepository.getCustomerByIdForCompany(id, companyId) || null;
   },
   createCustomer(data: any, companyId: string) {
+    if (data.privacyPolicyAccepted !== true || data.termsOfServiceAccepted !== true) {
+      throw new Error('LEGAL_CONSENT_REQUIRED');
+    }
     if (!data.name || typeof data.name !== 'string' || !data.name.trim()) {
       throw new Error('CUSTOMER_NAME_REQUIRED');
     }
@@ -218,6 +222,10 @@ export const CommerceService = {
       accountBalance: Number(data.accountBalance || 0),
       creditLimit: Number(data.creditLimit || 0),
       taxCondition: data.taxCondition || 'CONSUMIDOR_FINAL',
+      privacyPolicyAccepted: true,
+      privacyPolicyAcceptedAt: Number(data.privacyPolicyAcceptedAt) || Date.now(),
+      termsOfServiceAccepted: true,
+      termsOfServiceAcceptedAt: Number(data.termsOfServiceAcceptedAt) || Date.now(),
       createdAt: Date.now(),
     };
     return CommerceRepository.createCustomer(customer);
@@ -637,10 +645,13 @@ export const CommerceService = {
     if (!arcaResult.success) {
       throw new Error(`ARCA_FISCALIZATION_FAILED:${arcaResult.error}`);
     }
+    if (!arcaResult.cae || !arcaResult.caeExpiration) {
+      throw new Error('FISCAL_MISSING_CAE');
+    }
 
     const isSimulated = process.env.NODE_ENV === 'test' || !process.env.ARCA_CERTIFICATE_BASE64;
 
-    const invoice = {
+    const invoice: Invoice = {
       id: generateEntityId('inv'),
       companyId,
       saleId,
@@ -653,8 +664,8 @@ export const CommerceService = {
       subtotal: sale.subtotal,
       tax: sale.tax,
       total: sale.total,
-      cae: arcaResult.cae || '00000000000000',
-      caeExpiration: arcaResult.caeExpiration || '20261231',
+      cae: arcaResult.cae,
+      caeExpiration: arcaResult.caeExpiration,
       status: (isSimulated ? 'SIMULATED' : 'APPROVED') as any,
       arcaResponse: arcaResult.response,
       createdAt: Date.now(),

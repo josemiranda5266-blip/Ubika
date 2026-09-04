@@ -30,7 +30,13 @@ export interface UserRecord {
   phone?: string;
   createdAt: number;
   active: boolean;
+  privacyPolicyAccepted: boolean;
+  privacyPolicyAcceptedAt: number;
+  termsOfServiceAccepted: boolean;
+  termsOfServiceAcceptedAt?: number;
 }
+
+export type UserRecordInput = Omit<UserRecord, 'privacyPolicyAccepted' | 'privacyPolicyAcceptedAt' | 'termsOfServiceAccepted'> & Partial<Pick<UserRecord, 'privacyPolicyAccepted' | 'privacyPolicyAcceptedAt' | 'termsOfServiceAccepted' | 'termsOfServiceAcceptedAt'>>;
 
 export interface InvitationRecord {
   id: string;
@@ -480,10 +486,12 @@ export const db = {
   getUsersByCompany: (companyId: string): UserRecord[] => {
     return dbState.users.filter((u) => u.companyId === companyId);
   },
-  createUser: (user: UserRecord): UserRecord => {
-    dbState.users.push(user);
+  createUser: (user: UserRecordInput): UserRecord => {
+    const createdAt = user.createdAt || Date.now();
+    const normalized: UserRecord = { ...user, privacyPolicyAccepted: user.privacyPolicyAccepted ?? true, privacyPolicyAcceptedAt: user.privacyPolicyAcceptedAt ?? createdAt, termsOfServiceAccepted: user.termsOfServiceAccepted ?? true, termsOfServiceAcceptedAt: user.termsOfServiceAcceptedAt ?? createdAt };
+    dbState.users.push(normalized);
     saveDatabaseSync();
-    return user;
+    return normalized;
   },
   updateUser: (userId: string, updates: Partial<UserRecord>): UserRecord | null => {
     const idx = dbState.users.findIndex((u) => u.id === userId);

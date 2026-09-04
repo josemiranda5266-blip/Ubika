@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express, { Request, Response } from "express";
+import { AsyncLocalStorage } from "node:async_hooks";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
@@ -113,6 +114,9 @@ function generateSecureToken(): string {
   return 'tok_live_' + crypto.randomBytes(16).toString('hex');
 }
 
+// Request context used to enrich audit events with network metadata.
+const auditRequestContext = new AsyncLocalStorage<Request>();
+
 // Helper to record immutable audit events
 function recordAuditEvent(
   companyId: string,
@@ -136,7 +140,7 @@ function recordAuditEvent(
     author,
     actorId,
     actorRole,
-    metadata,
+    metadata: { ...(metadata || {}), ipAddress: auditRequestContext.getStore()?.ip, userAgent: auditRequestContext.getStore()?.headers['user-agent'] },
   };
   db.createEvent(event);
   return event;
@@ -181,6 +185,7 @@ function purgeCoordinatesIfFinished(delivery: Delivery): Delivery {
 export function createUbikaApp(): express.Express {
   const app = express();
   app.set('trust proxy', 1); // Confía en el primer proxy para obtener la IP real del cliente
+  app.use((req, _res, next) => auditRequestContext.run(req, next));
 
   // HITO 2: Security Headers & CORS Middleware (compatible with AI Studio Preview iframe)
   app.use((req, res, next) => {
@@ -257,11 +262,15 @@ export function createUbikaApp(): express.Express {
   // --- AUTHENTICATION ENDPOINTS ---
   
   app.post("/api/auth/register", rateLimit(60000, 5), (req: Request, res: Response) => {
-    const { companyName, responsibleName, email, phone, category, password } = req.body;
+    const { companyName, responsibleName, email, phone, category, password, privacyPolicyAccepted, termsOfServiceAccepted } = req.body;
     
     if (!companyName || !responsibleName || !email || !password || !phone || !category) {
       return res.status(400).json({ error: "Todos los campos son obligatorios" });
     }
+    if (privacyPolicyAccepted !== true || termsOfServiceAccepted !== true) {
+      return res.status(400).json({ error: "Debe aceptar la Política de Privacidad y los Términos y Condiciones para registrarse" });
+    }
+    const consentAcceptedAt = Date.now();
 
     const existingUser = db.getUserByEmail(email);
     if (existingUser) {
@@ -297,8 +306,12 @@ export function createUbikaApp(): express.Express {
       role: 'COMPANY_ADMIN' as const,
       companyId: companyId,
       phone,
-      createdAt: Date.now(),
+      createdAt: consentAcceptedAt,
       active: true,
+      privacyPolicyAccepted: true,
+      privacyPolicyAcceptedAt: consentAcceptedAt,
+      termsOfServiceAccepted: true,
+      termsOfServiceAcceptedAt: consentAcceptedAt,
     };
 
     db.createUser(newUser);
@@ -316,6 +329,36 @@ export function createUbikaApp(): express.Express {
       },
       company: newCompany
     });
+  });
+
+  // --- ARGENTINA DATA RIGHTS / LEGAL ENDPOINTS ---
+  app.post("/api/legal/data-export", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const user = db.getUserById(req.user!.userId);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    const state: any = db.getRawState();
+    const safeUser = { ...user } as any;
+    delete safeUser.passwordHash;
+    const company = db.getCompanyById(user.companyId);
+    const deliveries = (state.deliveries || []).filter((d: any) => d.companyId === user.companyId && (d.createdBy === user.id || d.authorId === user.id));
+    const events = (state.events || []).filter((e: any) => e.companyId === user.companyId && e.actorId === user.id);
+    const commerceSales = (state.commerce_sales || []).filter((s: any) => s.companyId === user.companyId && s.createdBy === user.id);
+    const commerceCashSessions = (state.commerce_cash_sessions || []).filter((s: any) => s.companyId === user.companyId && s.userId === user.id);
+    return res.status(200).json({ exportedAt: Date.now(), user: safeUser, company: company || null, deliveries, auditEvents: events, commerce: { sales: commerceSales, cashSessions: commerceCashSessions } });
+  });
+
+  app.post("/api/legal/account-deactivate", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const user = db.getUserById(req.user!.userId);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    const deactivatedAt = Date.now();
+    db.updateUser(user.id, { email: 'deleted_' + user.id + '@ubika.local', name: 'Usuario Eliminado', phone: undefined, active: false });
+    db.createEvent({ id: 'ev_' + crypto.randomUUID(), companyId: user.companyId, deliveryId: '', orderNumber: 0, type: 'DELIVERY_CANCELLED', description: 'Cuenta desactivada y datos identificatorios anonimizados conforme a la política de conservación legal.', timestamp: deactivatedAt, author: 'Sistema UBIKA', actorId: user.id, actorRole: user.role, metadata: { legalAction: 'ACCOUNT_DEACTIVATE', ipAddress: req.ip, userAgent: req.headers['user-agent'] } });
+    return res.status(200).json({ success: true, deactivatedAt, message: "Cuenta desactivada y datos identificatorios anonimizados. Los registros cuya conservación resulte exigible no se eliminan físicamente." });
+  });
+
+  app.get("/api/legal/company-compliance", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const company = db.getCompanyById(req.user!.companyId);
+    if (!company) return res.status(404).json({ error: "Empresa no encontrada" });
+    return res.status(200).json({ businessType: company.businessType || null, digitalComplaintBookUrl: company.digitalComplaintBookUrl || null, complaintBookConfigured: Boolean(company.digitalComplaintBookUrl) });
   });
 
   app.post("/api/auth/login", rateLimit(60000, 10), (req: Request, res: Response) => {
@@ -3140,6 +3183,7 @@ function requireCommerceAccess(req: AuthenticatedRequest, res: Response, next: e
       try {
         const { sessionId, countedCash, notes } = req.body;
         const session = CommerceService.closeCashSession(sessionId, req.user!.companyId, Number(countedCash), notes, req.user!.userId, req.user!.role);
+        recordAuditEvent(req.user!.companyId, '', 0, 'DELIVERY_COMPLETED', 'Cierre de caja registrado.', req.user!.name, req.user!.userId, req.user!.role, { legalCriticalEvent: 'CASH_SESSION_CLOSED', sessionId });
         res.json(session);
       } catch (err: any) {
         res.status(400).json({ error: err.message });
@@ -3169,6 +3213,7 @@ function requireCommerceAccess(req: AuthenticatedRequest, res: Response, next: e
           idempotencyKey,
           userId: req.user!.userId,
         });
+        recordAuditEvent(req.user!.companyId, '', 0, 'DELIVERY_COMPLETED', 'Venta registrada y cobro procesado.', req.user!.name, req.user!.userId, req.user!.role, { legalCriticalEvent: 'SALE_COMPLETED', saleId: sale.id });
         res.status(201).json(sale);
       } catch (err: any) {
         res.status(400).json({ error: err.message });
@@ -3189,6 +3234,7 @@ function requireCommerceAccess(req: AuthenticatedRequest, res: Response, next: e
       try {
         const { saleId, customerDocument, customerName, voucherType } = req.body;
         const invoice = await CommerceService.fiscalizeSale(saleId, req.user!.companyId, customerDocument, customerName, voucherType || 'FACTURA_B');
+        recordAuditEvent(req.user!.companyId, '', 0, 'DELIVERY_COMPLETED', 'Comprobante fiscal autorizado por ARCA.', req.user!.name, req.user!.userId, req.user!.role, { legalCriticalEvent: 'FISCAL_INVOICE_APPROVED', invoiceId: invoice.id, cae: invoice.cae, caeExpiration: invoice.caeExpiration });
         res.status(201).json(invoice);
       } catch (err: any) {
         res.status(400).json({ error: err.message });

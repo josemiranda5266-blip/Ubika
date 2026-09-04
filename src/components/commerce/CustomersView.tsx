@@ -12,6 +12,7 @@ export function CustomersView() {
   const [documentType, setDocumentType] = useState('DNI');
   const [taxCondition, setTaxCondition] = useState('CONSUMIDOR_FINAL');
   const [address, setAddress] = useState('');
+  const [legalConsent, setLegalConsent] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -40,7 +41,7 @@ export function CustomersView() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ name, email, phone, documentNumber, documentType, taxCondition, address }),
+        body: JSON.stringify({ name, email, phone, documentNumber, documentType, taxCondition, address, privacyPolicyAccepted: legalConsent, termsOfServiceAccepted: legalConsent, privacyPolicyAcceptedAt: Date.now(), termsOfServiceAcceptedAt: Date.now() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al registrar cliente');
@@ -49,6 +50,7 @@ export function CustomersView() {
       setPhone('');
       setDocumentNumber('');
       setAddress('');
+      setLegalConsent(false);
       setShowModal(false);
       fetchCustomers();
     } catch (err: any) {
@@ -213,6 +215,11 @@ export function CustomersView() {
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
+
+              <label className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] leading-5 text-slate-600 font-medium">
+                <input type="checkbox" required checked={legalConsent} onChange={e => setLegalConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-orange-500" />
+                <span>El cliente acepta los Términos y Condiciones y la Política de Privacidad, y autoriza el tratamiento de sus datos personales conforme a la Ley 25.326.</span>
+              </label>
 
               <div className="flex gap-3 pt-2">
                 <button

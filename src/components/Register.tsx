@@ -15,6 +15,7 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess, onCancel 
   const [category, setCategory] = useState('Mensajería y Cadetería');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [legalConsent, setLegalConsent] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,13 +26,17 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess, onCancel 
       setError('Las contraseñas no coinciden.');
       return;
     }
+    if (!legalConsent) {
+      setError('Debe aceptar la Política de Privacidad y los Términos y Condiciones.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyName, responsibleName, email, phone, category, password }),
+        body: JSON.stringify({ companyName, responsibleName, email, phone, category, password, privacyPolicyAccepted: legalConsent, termsOfServiceAccepted: legalConsent }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -129,7 +134,11 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess, onCancel 
             </div>
           </div>
           
-          <button type="submit" disabled={loading} className="w-full mt-6 flex items-center justify-center gap-2 py-3 bg-orange-500 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-orange-600 transition-all disabled:opacity-50">
+          <label className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] leading-5 text-slate-600 font-medium">
+            <input type="checkbox" checked={legalConsent} onChange={e => setLegalConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-orange-500" />
+            <span>Acepto los Términos y Condiciones y la Política de Privacidad, y autorizo el tratamiento de mis datos personales conforme a la Ley 25.326.</span>
+          </label>
+          <button type="submit" disabled={loading || !legalConsent} className="w-full mt-6 flex items-center justify-center gap-2 py-3 bg-orange-500 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-orange-600 transition-all disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Completar Registro</span>}
           </button>
         </form>

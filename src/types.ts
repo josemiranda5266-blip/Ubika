@@ -60,6 +60,7 @@ export interface Company {
   totalDriversCount: number;
   businessType?: 'LOGISTICS' | 'FOOD' | 'HYBRID';
   foodEnabled?: boolean;
+  digitalComplaintBookUrl?: string;
 }
 
 export function isFoodAuthorizedCompany(company?: Company | null): boolean {

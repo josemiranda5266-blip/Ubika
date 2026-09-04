@@ -39,6 +39,10 @@ export interface CommerceCustomer {
   accountBalance: number;
   creditLimit: number;
   taxCondition: 'RESPONSABLE_INSCRIPTO' | 'MONOTRIBUTO' | 'CONSUMIDOR_FINAL' | 'EXENTO';
+  privacyPolicyAccepted: boolean;
+  privacyPolicyAcceptedAt: number;
+  termsOfServiceAccepted: boolean;
+  termsOfServiceAcceptedAt?: number;
   createdAt: number;
 }
 
