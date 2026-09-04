@@ -45,8 +45,8 @@ if (!db.getUsersByCompany('comp_farma_norte_02').some((u) => u.role === 'DRIVER'
 // Company A already has delivery data, but its test fixture lacked a matching
 // DRIVER user. Create both sides of the relationship so JWT/RBAC tests exercise
 // real tenant-scoped identities instead of relying on undefined users.
-if (!db.drivers.find((d) => d.id === 'drv_centro_01')) {
-  db.drivers.push({
+if (!db.getDriverById('drv_centro_01')) {
+  db.createDriver({
     id: 'drv_centro_01',
     companyId: 'comp_centro_logistico_01',
     name: 'Driver Centro Logístico',
