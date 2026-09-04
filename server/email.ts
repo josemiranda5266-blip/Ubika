@@ -29,13 +29,17 @@ class EmailServiceClass {
     const provider = (process.env.EMAIL_PROVIDER || (process.env.NODE_ENV === 'test' ? 'mock' : 'sendgrid')).toLowerCase();
     const from = process.env.EMAIL_FROM || 'no-reply@ubika.app';
 
-    if (process.env.NODE_ENV === 'test' || provider === 'mock') {
+    if (process.env.NODE_ENV === 'test') {
       this.sentEmails.push({ to, subject, text, html, createdAt: Date.now() });
       return true;
     }
 
+    if (provider === 'mock') {
+      console.error('[EmailService] Mock email provider is disabled outside tests.');
+      return false;
+    }
+
     if (provider === 'console') {
-      // Console delivery is explicitly development-only.
       if (process.env.NODE_ENV === 'production') {
         console.error('[EmailService] Console email provider is disabled in production.');
         return false;
@@ -77,8 +81,6 @@ class EmailServiceClass {
     }
 
     if (provider === 'smtp') {
-      // SMTP is intentionally not silently simulated. Add a real SMTP transport
-      // before enabling this provider in production.
       console.error('[EmailService] SMTP provider is not implemented.');
       return false;
     }
@@ -87,13 +89,8 @@ class EmailServiceClass {
     return false;
   }
 
-  getSentEmails(): SentEmail[] {
-    return this.sentEmails;
-  }
-
-  clearSentEmails(): void {
-    this.sentEmails = [];
-  }
+  getSentEmails(): SentEmail[] { return this.sentEmails; }
+  clearSentEmails(): void { this.sentEmails = []; }
 }
 
 export const EmailService = new EmailServiceClass();
