@@ -6,15 +6,15 @@ import { db, UserRecord, UserRole } from './db';
 const JWT_SECRET = process.env.JWT_SECRET?.trim();
 const isTest = process.env.NODE_ENV === 'test';
 
-if (!JWT_SECRET && !isTest) {
+if (!JWT_SECRET) {
   throw new Error('JWT_SECRET is not configured. Server cannot start.');
 }
 
-if (!isTest && JWT_SECRET && JWT_SECRET.length < 32) {
+if (!isTest && JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET must contain at least 32 characters in non-test environments.');
 }
 
-const SIGNING_SECRET = JWT_SECRET || 'test-only-ubika-jwt-secret-please-do-not-use';
+const SIGNING_SECRET = JWT_SECRET;
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '24h') as SignOptions['expiresIn'];
 
 export interface AuthenticatedUserPayload {
