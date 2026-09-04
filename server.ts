@@ -327,7 +327,8 @@ export function createUbikaApp(): express.Express {
         role: newUser.role,
         companyId: newUser.companyId,
       },
-      company: newCompany
+      company: newCompany,
+      message: "Al registrarse, usted acepta nuestros Términos y Condiciones y autoriza el tratamiento de sus datos personales según nuestra Política de Privacidad (Ley 25.326)."
     });
   });
 
