@@ -181,8 +181,11 @@ export function injectTestFixtures() {
   }
   const db: any = dbState;
   let changed = false;
-  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'test';
-  const driverPassword = process.env.INITIAL_DRIVER_PASSWORD || 'test';
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  const driverPassword = process.env.INITIAL_DRIVER_PASSWORD;
+  if (!adminPassword || !driverPassword) {
+    throw new Error('INITIAL_ADMIN_PASSWORD and INITIAL_DRIVER_PASSWORD are required for test fixtures');
+  }
   const salt = bcrypt.genSaltSync(10);
   const adminPasswordHash = bcrypt.hashSync(adminPassword, salt);
   const driverPasswordHash = bcrypt.hashSync(driverPassword, salt);
