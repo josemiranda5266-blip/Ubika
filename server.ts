@@ -1752,7 +1752,8 @@ export function createUbikaApp(): express.Express {
 
     const now = new Date();
     const currentDay = now.getDay();
-    const daySchedule = store!.schedule.find((s) => s.dayOfWeek === currentDay);
+    const schedule = Array.isArray(store!.schedule) ? store!.schedule : [];
+    const daySchedule = schedule.find((s) => s.dayOfWeek === currentDay);
     const isOpenSchedule = daySchedule ? daySchedule.isOpen : true;
     const isCurrentlyOpen = store!.isOpenManual && isOpenSchedule;
 
