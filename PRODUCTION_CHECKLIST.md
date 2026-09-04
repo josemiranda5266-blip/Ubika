@@ -7,7 +7,8 @@
 - [ ] Configurar `APP_URL` con HTTPS y el dominio real.
 - [ ] Configurar `EMAIL_PROVIDER=sendgrid` y `SENDGRID_API_KEY`, o implementar un transporte SMTP real.
 - [ ] No usar `console` ni `mock` como proveedor de correo en producción.
-- [ ] Configurar `MERCADO_PAGO_ACCESS_TOKEN` solo si se habilita el cobro online.
+- [ ] Configurar `MERCADO_PAGO_ACCESS_TOKEN` si se habilitan cobros online.
+- [ ] Verificar que, sin credenciales de Mercado Pago en producción, ningún pago pueda aprobarse mediante un mock.
 - [ ] No considerar la facturación ARCA habilitada hasta integrar WSFE real y credenciales de producción.
 - [ ] Confirmar que `data/ubika_persistent_db.json` y credenciales no estén versionados.
 - [ ] Configurar HTTPS delante de Express.
@@ -30,11 +31,11 @@ La persistencia actual utiliza un archivo JSON en disco. Es adecuada para un MVP
 ## Verificación final
 
 ```bash
-npm install
-npm run lint
-npm test
-npm run build
-NODE_ENV=production npm start
+bun install --frozen-lockfile
+bun run lint
+bun run test
+bun run build
+NODE_ENV=production bun run start
 ```
 
 Comprobar después del despliegue:
