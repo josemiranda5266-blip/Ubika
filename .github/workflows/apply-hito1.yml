@@ -1,0 +1,229 @@
+name: Apply UBIKA Hito 1
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: contains(github.event.head_commit.message, '[apply-hito1]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Apply critical sanitation patch
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          server_path = Path('server.ts')
+          text = server_path.read_text()
+
+          if 'import multer from "multer";' not in text:
+              text = text.replace('import express, { Request, Response } from "express";\n', 'import express, { Request, Response } from "express";\nimport multer from "multer";\n', 1)
+
+          text = text.replace('id: `ev_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`', 'id: `ev_${crypto.randomUUID()}`')
+          text = text.replace('const companyId = `comp_${Date.now()}`;', 'const companyId = `comp_${crypto.randomUUID()}`;')
+          text = text.replace('id: `usr_${Date.now()}`', 'id: `usr_${crypto.randomUUID()}`')
+          text = text.replace('id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`', 'id: `inv_${crypto.randomUUID()}`')
+          text = text.replace('id: id || `fprod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`', 'id: id || `fprod_${crypto.randomUUID()}`')
+
+          marker = 'const uploadTempDir = path.join(process.cwd(), \'data\', \'uploads\', \'.tmp\');'
+          if marker not in text:
+              anchor = 'export function createUbikaApp(): express.Express {\n'
+              storage = '''const uploadTempDir = path.join(process.cwd(), 'data', 'uploads', '.tmp');
+
+const productImageStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    fs.mkdirSync(uploadTempDir, { recursive: true });
+    cb(null, uploadTempDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `image_${crypto.randomUUID()}${ext}`);
+  },
+});
+
+const uploadProductImage = multer({
+  storage: productImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedMime = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    const allowedExt = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!allowedMime.has(file.mimetype) || !allowedExt.has(ext)) {
+      return cb(new Error('Formato de imagen no permitido. Use JPG, PNG o WEBP.'));
+    }
+    cb(null, true);
+  },
+});
+
+'''
+              if anchor not in text:
+                  raise SystemExit('No se encontró el punto de inserción de Multer')
+              text = text.replace(anchor, storage + anchor, 1)
+
+          upload_pattern = re.compile(r'  // UPLOAD PRODUCT IMAGE \(MULTI-TENANT SECURE FILE UPLOAD\).*?(?=  // DELETE PRODUCT IMAGE \(MULTI-TENANT SECURE FILE DELETION\))', re.S)
+          upload_replacement = '''  // UPLOAD PRODUCT IMAGE (MULTI-TENANT SECURE FILE UPLOAD)
+  app.post("/api/food/products/upload-image", authenticateUser, (req: AuthenticatedRequest, res: Response, next) => {
+    if (!isAuthorizedFoodAdmin(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+    }
+
+    uploadProductImage.single('image')(req, res, (err) => {
+      if (err) {
+        if (req.file?.path) fs.unlink(req.file.path, () => undefined);
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ error: "La imagen supera el límite de 5 MB" });
+        }
+        return res.status(400).json({ error: err.message || "No se pudo procesar la imagen" });
+      }
+
+      const uploadedPath = req.file?.path;
+      const productId = typeof req.body.productId === 'string' ? req.body.productId.trim() : '';
+      const companyId = req.user!.companyId;
+
+      if (!uploadedPath || !productId) {
+        if (uploadedPath) fs.unlink(uploadedPath, () => undefined);
+        return res.status(400).json({ error: "productId e imagen son obligatorios" });
+      }
+
+      const company = db.getCompanyById(companyId);
+      const product = db.getFoodProductById(productId);
+      if (!company || !isFoodAuthorizedCompany(company)) {
+        fs.unlink(uploadedPath, () => undefined);
+        return res.status(403).json({ error: "Comercio no autorizado para operar módulo gastronómico" });
+      }
+      if (!product || product.companyId !== companyId) {
+        fs.unlink(uploadedPath, () => undefined);
+        return res.status(404).json({ error: "Producto no encontrado o no pertenece a su empresa" });
+      }
+
+      const productDir = path.join(process.cwd(), 'data', 'uploads', 'companies', companyId, 'products', productId);
+      fs.mkdirSync(productDir, { recursive: true });
+      const filename = path.basename(uploadedPath);
+      const finalPath = path.join(productDir, filename);
+
+      try {
+        fs.renameSync(uploadedPath, finalPath);
+      } catch (moveError) {
+        fs.unlink(uploadedPath, () => undefined);
+        console.error('[UBIKA] Error moving uploaded image:', moveError);
+        return res.status(500).json({ error: "No se pudo guardar la imagen" });
+      }
+
+      const imageUrl = `/uploads/companies/${encodeURIComponent(companyId)}/products/${encodeURIComponent(productId)}/${encodeURIComponent(filename)}`;
+      db.updateFoodProduct(productId, { imageUrl, updatedAt: Date.now() });
+      return res.status(201).json({ imageUrl });
+    });
+  });
+
+'''
+          if not upload_pattern.search(text):
+              raise SystemExit('No se encontró el endpoint de upload existente')
+          text = upload_pattern.sub(upload_replacement, text, count=1)
+
+          delete_pattern = re.compile(r'  // DELETE PRODUCT IMAGE \(MULTI-TENANT SECURE FILE DELETION\).*?(?=\n  // )', re.S)
+          delete_replacement = '''  // DELETE PRODUCT IMAGE (MULTI-TENANT SECURE FILE DELETION)
+  app.post("/api/food/products/delete-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (!isAuthorizedFoodAdmin(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+    }
+
+    const companyId = req.user!.companyId;
+    const productId = typeof req.body.productId === 'string' ? req.body.productId.trim() : '';
+    const imageUrl = typeof req.body.imageUrl === 'string' ? req.body.imageUrl.trim() : '';
+    const company = db.getCompanyById(companyId);
+    const product = productId ? db.getFoodProductById(productId) : undefined;
+
+    if (!company || !isFoodAuthorizedCompany(company)) {
+      return res.status(403).json({ error: "Comercio no autorizado para operar módulo gastronómico" });
+    }
+    if (!product || product.companyId !== companyId) {
+      return res.status(404).json({ error: "Producto no encontrado o no pertenece a su empresa" });
+    }
+    if (!imageUrl.startsWith('/uploads/')) {
+      return res.status(400).json({ error: "Ruta de imagen no válida" });
+    }
+
+    const uploadsRoot = path.resolve(process.cwd(), 'data', 'uploads');
+    const productDir = path.resolve(uploadsRoot, 'companies', companyId, 'products', productId);
+    let relativeImagePath: string;
+    try {
+      relativeImagePath = decodeURIComponent(imageUrl.slice('/uploads/'.length));
+    } catch {
+      return res.status(400).json({ error: "Ruta de imagen no válida" });
+    }
+
+    const targetPath = path.resolve(uploadsRoot, relativeImagePath);
+    const relativeToProduct = path.relative(productDir, targetPath);
+    if (!relativeToProduct || relativeToProduct === '..' || relativeToProduct.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToProduct)) {
+      return res.status(403).json({ error: "Acceso denegado a una imagen fuera del producto" });
+    }
+
+    try {
+      if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+      if (product.imageUrl === imageUrl) {
+        db.updateFoodProduct(productId, { imageUrl: undefined, updatedAt: Date.now() });
+      }
+      return res.json({ success: true });
+    } catch (deleteError) {
+      console.error('[UBIKA] Error deleting product image:', deleteError);
+      return res.status(500).json({ error: "No se pudo eliminar la imagen" });
+    }
+  });
+'''
+          if not delete_pattern.search(text):
+              raise SystemExit('No se encontró el endpoint de delete existente')
+          text = delete_pattern.sub(delete_replacement, text, count=1)
+
+          server_path.write_text(text)
+
+          frontend_path = Path('src/components/food/FoodMerchantPanel.tsx')
+          frontend = frontend_path.read_text()
+          frontend = frontend.replace("  const [localImageBase64, setLocalImageBase64] = useState<string | null>(null);\n", '')
+          frontend = re.sub(r'''\n      const reader = new FileReader\(\);\n      reader\.onloadend = \(\) => \{\n        setLocalImageBase64\(reader\.result as string\);\n      \};\n      reader\.onerror = \(\) => \{\n        alert\("Error al leer el archivo\."\);\n      \};\n      reader\.readAsDataURL\(file\);''', '', frontend, count=1)
+          frontend = frontend.replace("        if (localImageFile && localImageBase64) {", "        if (localImageFile) {")
+          frontend = re.sub(r'''const uploadRes = await fetch\('/api/food/products/upload-image', \{\n            method: 'POST',\n            headers: \{\n              'Content-Type': 'application/json',([\s\S]*?)body: JSON\.stringify\(\{\n              productId,\n              imageBase64: localImageBase64,\n            \}\),\n          \}\);''', '''const formData = new FormData();
+          formData.append('productId', String(productId));
+          formData.append('image', localImageFile, localImageFile.name);
+          const uploadRes = await fetch('/api/food/products/upload-image', {
+            method: 'POST',
+            headers: {
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: formData,
+          });''', frontend, count=1)
+          frontend_path.write_text(frontend)
+          Path('.hito1-applied').unlink(missing_ok=True)
+          PY
+
+      - name: Install dependencies
+        run: bun install --no-progress
+
+      - name: Typecheck
+        run: bun run lint
+
+      - name: Tests
+        run: bun run test
+
+      - name: Production build
+        run: bun run build
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.ts src/components/food/FoodMerchantPanel.tsx
+          git commit -m "fix: harden product image uploads and identifiers" || true
+          git push
