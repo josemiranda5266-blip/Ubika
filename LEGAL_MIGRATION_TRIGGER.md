@@ -1,1 +1,1 @@
-Temporary migration trigger. Removed automatically after legal compliance changes are applied.
+Run deterministic legal compliance migration.
