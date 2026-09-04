@@ -1,0 +1,196 @@
+name: Finalize UBIKA Hito 1
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: contains(github.event.head_commit.message, '[finalize-hito1]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply verified security patches
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def read(p): return Path(p).read_text()
+          def write(p, s): Path(p).write_text(s)
+
+          # POS: cryptographically strong idempotency key.
+          p = 'src/components/commerce/POSView.tsx'
+          s = read(p)
+          s, n = re.subn(r"`pos_\$\{Date\.now\(\)\}_\$\{Math\.random\(\)\.toString\(36\).*?\}`", "`pos_${crypto.randomUUID()}`", s, count=1)
+          if n != 1:
+              raise SystemExit('POS idempotency key pattern not found exactly once')
+          write(p, s)
+
+          # Commerce service: UUID entity IDs and strict customer tenant validation.
+          p = 'server/commerce/service.ts'
+          s = read(p)
+          if "import crypto from 'node:crypto';" not in s:
+              s = "import crypto from 'node:crypto';\n" + s
+          if 'function generateEntityId(prefix: string)' not in s:
+              marker = 'const lockContext = new AsyncLocalStorage<Set<string>>();'
+              if marker not in s:
+                  raise SystemExit('Commerce lockContext marker not found')
+              s = s.replace(marker, marker + "\n\nfunction generateEntityId(prefix: string): string {\n  return `${prefix}_${crypto.randomUUID()}`;\n}", 1)
+          for prefix in ('cat', 'prod', 'cust', 'mov', 'cash'):
+              pattern = rf"`{prefix}_\$\{{Date\.now\(\)\}}_\$\{{Math\.random\(\)\.toString\(36\)\.substring\(2, 7\)\}}`"
+              s, _ = re.subn(pattern, f"generateEntityId('{prefix}')", s)
+
+          if 'CUSTOMER_NOT_FOUND_OR_UNAUTHORIZED' not in s:
+              customer_anchor = re.search(r"(const verifiedItems\s*=.*?)(\n\s*const openCash|\n\s*const cashSessionId|\n\s*let saleCreated|\n\s*try \{)", s, re.S)
+              if not customer_anchor:
+                  raise SystemExit('Could not locate finalizeSale validation boundary')
+              insertion = "\n\n    if (customerId) {\n      const customer = CommerceRepository.getCustomerByIdForCompany(customerId, companyId);\n      if (!customer) {\n        throw new Error('CUSTOMER_NOT_FOUND_OR_UNAUTHORIZED');\n      }\n    }"
+              s = s[:customer_anchor.end(1)] + insertion + s[customer_anchor.end(1):]
+          write(p, s)
+
+          # Food merchant: remove Base64/FileReader and use multipart FormData.
+          p = 'src/components/food/FoodMerchantPanel.tsx'
+          s = read(p)
+          s = re.sub(r"^\s*const \[localImageBase64, setLocalImageBase64\] = useState<string \| null>\(null\);\n", '', s, count=1, flags=re.M)
+          s, n = re.subn(r"\n\s*// Read file as Base64\s*\n\s*const reader = new FileReader\(\);.*?\n\s*reader\.readAsDataURL\(file\);", '', s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit('Food FileReader block not found exactly once')
+          s = s.replace('if (localImageFile && localImageBase64) {', 'if (localImageFile) {')
+          old = re.compile(r"const uploadRes = await fetch\('/api/food/products/upload-image', \{\s*method: 'POST',\s*headers: \{\s*'Content-Type': 'application/json',\s*Authorization: `Bearer \$\{token\}`,\s*\},\s*body: JSON\.stringify\(\{\s*productId,\s*fileName: localImageFile\.name,\s*fileType: localImageFile\.type,\s*base64Data: localImageBase64,\s*\}\),\s*\}\);", re.S)
+          new = """const formData = new FormData();
+          formData.append('productId', String(productId));
+          formData.append('image', localImageFile, localImageFile.name);
+          const uploadRes = await fetch('/api/food/products/upload-image', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });"""
+          s, n = old.subn(new, s, count=1)
+          if n != 1:
+              raise SystemExit('Food Base64 upload block not found exactly once')
+          write(p, s)
+
+          # Server: authenticated, tenant-checked multipart upload with memory storage.
+          p = 'server.ts'
+          s = read(p)
+          if 'import multer from "multer";' not in s and "import multer from 'multer';" not in s:
+              s = s.replace('import express, { Request, Response } from "express";\n', 'import express, { Request, Response } from "express";\nimport multer from "multer";\n', 1)
+          if 'const productImageUpload = multer(' not in s:
+              anchor = '  const app = express();'
+              cfg = """  const productImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
+      if (!allowed.has(file.mimetype)) return cb(new Error('UNSUPPORTED_IMAGE_TYPE'));
+      cb(null, true);
+    },
+  });
+
+"""
+              if anchor not in s:
+                  raise SystemExit('server app anchor not found')
+              s = s.replace(anchor, anchor + cfg, 1)
+
+          upload_pattern = re.compile(r'  // UPLOAD PRODUCT IMAGE \(MULTI-TENANT SECURE FILE UPLOAD\).*?(?=  // DELETE PRODUCT IMAGE \(MULTI-TENANT SECURE FILE DELETION\))', re.S)
+          upload_replacement = '''  // UPLOAD PRODUCT IMAGE (MULTI-TENANT SECURE FILE UPLOAD)
+  app.post("/api/food/products/upload-image", authenticateUser, productImageUpload.single('image'), (req: AuthenticatedRequest, res: Response) => {
+    if (!isAuthorizedFoodAdmin(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+    }
+    const productId = typeof req.body.productId === 'string' ? req.body.productId.trim() : '';
+    if (!productId) return res.status(400).json({ error: 'productId es requerido' });
+    const companyId = req.user!.companyId;
+    const product = db.getFoodProductById(productId);
+    if (!product || product.companyId !== companyId) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Imagen requerida' });
+
+    const extensionByMime: Record<string, string> = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp',
+    };
+    const extension = extensionByMime[req.file.mimetype];
+    if (!extension) return res.status(400).json({ error: 'Tipo de imagen no permitido' });
+
+    const filename = `${crypto.randomUUID()}${extension}`;
+    const companyDir = path.join(process.cwd(), 'data', 'uploads', 'companies', companyId, 'products', productId);
+    fs.mkdirSync(companyDir, { recursive: true });
+    const filePath = path.join(companyDir, filename);
+    fs.writeFileSync(filePath, req.file.buffer, { flag: 'wx' });
+
+    const imageUrl = `/uploads/companies/${encodeURIComponent(companyId)}/products/${encodeURIComponent(productId)}/${encodeURIComponent(filename)}`;
+    db.updateFoodProduct(productId, { imageUrl, updatedAt: Date.now() });
+    return res.status(201).json({ imageUrl });
+  });
+
+'''
+          if not upload_pattern.search(s):
+              raise SystemExit('server upload marker not found')
+          s = upload_pattern.sub(upload_replacement, s, count=1)
+
+          delete_pattern = re.compile(r'  // DELETE PRODUCT IMAGE \(MULTI-TENANT SECURE FILE DELETION\).*?(?=\n  // )', re.S)
+          delete_replacement = '''  // DELETE PRODUCT IMAGE (MULTI-TENANT SECURE FILE DELETION)
+  app.post("/api/food/products/delete-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    if (!isAuthorizedFoodAdmin(req)) {
+      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+    }
+    const productId = typeof req.body.productId === 'string' ? req.body.productId.trim() : '';
+    if (!productId) return res.status(400).json({ error: 'productId es requerido' });
+    const companyId = req.user!.companyId;
+    const product = db.getFoodProductById(productId);
+    if (!product || product.companyId !== companyId) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    const imageUrl = typeof product.imageUrl === 'string' ? product.imageUrl : '';
+    const prefix = `/uploads/companies/${encodeURIComponent(companyId)}/products/${encodeURIComponent(productId)}/`;
+    if (!imageUrl.startsWith(prefix)) return res.status(400).json({ error: 'Imagen inválida' });
+    let filename: string;
+    try {
+      filename = decodeURIComponent(imageUrl.slice(prefix.length));
+    } catch {
+      return res.status(400).json({ error: 'Ruta de imagen inválida' });
+    }
+    if (!filename || filename.includes('/') || filename.includes('\\\\')) {
+      return res.status(400).json({ error: 'Nombre de archivo inválido' });
+    }
+    const uploadRoot = path.resolve(process.cwd(), 'data', 'uploads');
+    const targetPath = path.resolve(uploadRoot, 'companies', companyId, 'products', productId, filename);
+    const relative = path.relative(uploadRoot, targetPath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+      return res.status(400).json({ error: 'Ruta de archivo inválida' });
+    }
+    if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
+    db.updateFoodProduct(productId, { imageUrl: '', updatedAt: Date.now() });
+    return res.json({ success: true });
+  });
+'''
+          if not delete_pattern.search(s):
+              raise SystemExit('server delete marker not found')
+          s = delete_pattern.sub(delete_replacement, s, count=1)
+          write(p, s)
+          PY
+
+      - name: Verify
+        run: |
+          bun install --no-progress
+          bun run lint
+          bun run test
+          bun run build
+
+      - name: Commit and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.ts server/commerce/service.ts src/components/food/FoodMerchantPanel.tsx src/components/commerce/POSView.tsx
+          git commit -m "fix: apply final hito 1 security hardening" || true
+          git rm .github/workflows/finalize-hito1.yml
+          git commit -m "chore: remove one-time hito 1 finalization workflow"
+          git push
