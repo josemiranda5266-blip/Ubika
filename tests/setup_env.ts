@@ -42,4 +42,40 @@ if (!db.getUsersByCompany('comp_farma_norte_02').some((u) => u.role === 'DRIVER'
   });
 }
 
+// Company A already has delivery data, but its test fixture lacked a matching
+// DRIVER user. Create both sides of the relationship so JWT/RBAC tests exercise
+// real tenant-scoped identities instead of relying on undefined users.
+if (!db.drivers.find((d) => d.id === 'drv_centro_01')) {
+  db.drivers.push({
+    id: 'drv_centro_01',
+    companyId: 'comp_centro_logistico_01',
+    name: 'Driver Centro Logístico',
+    email: 'driver@logisticaexpress.com',
+    phone: '',
+    vehicle: 'moto',
+    status: 'disponible',
+    internalId: 'CL-01',
+    createdAt: Date.now(),
+    totalDeliveries: 0,
+    rating: 5,
+    lastActiveAt: Date.now(),
+    speedKmH: 0,
+  });
+}
+
+if (!db.getUsersByCompany('comp_centro_logistico_01').some((u) => u.role === 'DRIVER')) {
+  const passwordHash = bcryptModule.default.hashSync(process.env.INITIAL_DRIVER_PASSWORD!, 10);
+  db.createUser({
+    id: 'usr_driver_centro_01',
+    email: 'driver@logisticaexpress.com',
+    passwordHash,
+    name: 'Driver Centro Logístico',
+    role: 'DRIVER',
+    companyId: 'comp_centro_logistico_01',
+    driverId: 'drv_centro_01',
+    createdAt: Date.now(),
+    active: true,
+  });
+}
+
 saveDatabaseSync();
