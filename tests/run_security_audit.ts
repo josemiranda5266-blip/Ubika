@@ -7,6 +7,12 @@ import './ensure_audit_fixtures';
 const { db, injectTestFixtures, saveDatabaseSync } = await import('../server/db');
 injectTestFixtures();
 
+// Force the DB module to re-read the exact fixture state persisted by the
+// bootstrap helpers. This also protects the audit from a stale in-memory state
+// when another test process has previously touched the JSON persistence file.
+db.reloadFromDisk();
+injectTestFixtures();
+
 const state = db.getRawState() as any;
 state.companies = state.companies || [];
 state.users = state.users || [];
