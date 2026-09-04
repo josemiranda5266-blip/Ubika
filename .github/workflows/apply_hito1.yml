@@ -1,5 +1,7 @@
 name: Apply Hito 1
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 jobs:
   patch:
@@ -30,92 +32,59 @@ jobs:
               'id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`': 'id: `inv_${crypto.randomUUID()}`',
               'id: id || `fprod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`': 'id: id || `fprod_${crypto.randomUUID()}`',
           }
-          for a,b in replacements.items():
-              s = s.replace(a,b)
+          for a,b in replacements.items(): s = s.replace(a,b)
 
           upload = r'''  // UPLOAD PRODUCT IMAGE (MULTI-TENANT SECURE FILE UPLOAD)
   app.post("/api/food/products/upload-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodAdmin(req)) {
-      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
-    }
-
+    if (!isAuthorizedFoodAdmin(req)) return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
     uploadProductImage.single('image')(req, res, (err) => {
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: "La imagen supera el límite de 5 MB" });
         return res.status(400).json({ error: "Error al procesar la imagen" });
       }
       if (err) return res.status(400).json({ error: "Formato de imagen no permitido. Use JPG, PNG o WebP." });
-
       const productId = String(req.body?.productId || '').trim();
-      if (!productId || !req.file) {
-        return res.status(400).json({ error: "productId e imagen son obligatorios" });
-      }
-
+      if (!productId || !req.file) return res.status(400).json({ error: "productId e imagen son obligatorios" });
       const product = db.getFoodProductById(productId);
       if (!product) return res.status(404).json({ error: "Producto no encontrado" });
-      if (req.user!.role !== 'SUPER_ADMIN' && product.companyId !== req.user!.companyId) {
-        return res.status(403).json({ error: "Acceso denegado al producto de otra empresa" });
-      }
-
+      if (req.user!.role !== 'SUPER_ADMIN' && product.companyId !== req.user!.companyId) return res.status(403).json({ error: "Acceso denegado al producto de otra empresa" });
       const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'companies', product.companyId, 'products', product.id);
       fs.mkdirSync(uploadDir, { recursive: true });
       const ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' }[req.file.mimetype] || '';
       const filename = `image_${crypto.randomUUID()}${ext}`;
       const targetPath = path.join(uploadDir, filename);
       fs.writeFileSync(targetPath, req.file.buffer, { flag: 'wx' });
-
       const imageUrl = `/uploads/companies/${encodeURIComponent(product.companyId)}/products/${encodeURIComponent(product.id)}/${encodeURIComponent(filename)}`;
       return res.json({ success: true, imageUrl });
     });
   });
 '''
-          pattern = r'  // UPLOAD PRODUCT IMAGE \(MULTI-TENANT SECURE FILE UPLOAD\)\n  app\.post\("/api/food/products/upload-image".*?(?=\n  // DELETE PRODUCT IMAGE)'
-          s, n = re.subn(pattern, upload + '\n', s, count=1, flags=re.S)
+          s, n = re.subn(r'  // UPLOAD PRODUCT IMAGE \(MULTI-TENANT SECURE FILE UPLOAD\)\n  app\.post\("/api/food/products/upload-image".*?(?=\n  // DELETE PRODUCT IMAGE)', upload + '\n', s, count=1, flags=re.S)
           if n != 1: raise SystemExit('upload route not found')
 
           delete = r'''  // DELETE PRODUCT IMAGE (MULTI-TENANT SECURE FILE DELETION)
   app.post("/api/food/products/delete-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodAdmin(req)) {
-      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
-    }
-
+    if (!isAuthorizedFoodAdmin(req)) return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
     const { productId, imageUrl } = req.body || {};
-    if (!productId || !imageUrl || typeof imageUrl !== 'string') {
-      return res.status(400).json({ error: "productId e imageUrl son obligatorios" });
-    }
-
+    if (!productId || !imageUrl || typeof imageUrl !== 'string') return res.status(400).json({ error: "productId e imageUrl son obligatorios" });
     const product = db.getFoodProductById(String(productId));
     if (!product) return res.status(404).json({ error: "Producto no encontrado" });
-    if (req.user!.role !== 'SUPER_ADMIN' && product.companyId !== req.user!.companyId) {
-      return res.status(403).json({ error: "Acceso denegado al producto de otra empresa" });
-    }
-
+    if (req.user!.role !== 'SUPER_ADMIN' && product.companyId !== req.user!.companyId) return res.status(403).json({ error: "Acceso denegado al producto de otra empresa" });
     const prefix = `/uploads/companies/${product.companyId}/products/${product.id}/`;
-    if (!imageUrl.startsWith(prefix)) {
-      return res.status(403).json({ error: "La imagen no pertenece al producto" });
-    }
-
+    if (!imageUrl.startsWith(prefix)) return res.status(403).json({ error: "La imagen no pertenece al producto" });
     const relativeName = imageUrl.slice(prefix.length);
-    if (!relativeName || relativeName.includes('/') || relativeName.includes('\\') || relativeName.includes('..')) {
-      return res.status(400).json({ error: "Ruta de imagen inválida" });
-    }
-
+    if (!relativeName || relativeName.includes('/') || relativeName.includes('\\') || relativeName.includes('..')) return res.status(400).json({ error: "Ruta de imagen inválida" });
     const productDir = path.resolve(process.cwd(), 'data', 'uploads', 'companies', product.companyId, 'products', product.id);
     const targetPath = path.resolve(productDir, relativeName);
     const relative = path.relative(productDir, targetPath);
-    if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
-      return res.status(400).json({ error: "Ruta de imagen inválida" });
-    }
-
+    if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) return res.status(400).json({ error: "Ruta de imagen inválida" });
     if (!fs.existsSync(targetPath)) return res.status(404).json({ error: "Imagen no encontrada" });
     fs.unlinkSync(targetPath);
     return res.json({ success: true });
   });
 '''
-          pattern = r'  // DELETE PRODUCT IMAGE \(MULTI-TENANT SECURE FILE DELETION\)\n  app\.post\("/api/food/products/delete-image".*?(?=\n  app\.)'
-          s, n = re.subn(pattern, delete + '\n', s, count=1, flags=re.S)
+          s, n = re.subn(r'  // DELETE PRODUCT IMAGE \(MULTI-TENANT SECURE FILE DELETION\)\n  app\.post\("/api/food/products/delete-image".*?(?=\n  app\.)', delete + '\n', s, count=1, flags=re.S)
           if n != 1: raise SystemExit('delete route not found')
-
           p.write_text(s)
 
           p = Path('src/components/food/FoodMerchantPanel.tsx')
@@ -149,13 +118,13 @@ jobs:
             body: formData,
           });'''
           if old not in s: raise SystemExit('frontend upload block not found')
-          s = s.replace(old,new,1)
+          s = s.replace(old, new, 1)
           p.write_text(s)
           PY
-          if git diff --quiet; then echo 'No changes produced'; exit 1; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add server.ts src/components/food/FoodMerchantPanel.tsx
+          git diff --cached --quiet && { echo 'No changes'; exit 0; }
           git commit -m 'fix: harden food image uploads and identifier generation'
           git push
       - name: Remove patch workflow
