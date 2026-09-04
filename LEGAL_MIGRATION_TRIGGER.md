@@ -1,0 +1,1 @@
+Temporary trigger for the Argentine legal compliance migration. This file is removed by the migration workflow after the production changes are committed.
