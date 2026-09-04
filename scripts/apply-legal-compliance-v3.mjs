@@ -4,8 +4,8 @@ import path from 'node:path';
 const sourcePath = path.join(process.cwd(), 'scripts', 'apply-legal-compliance-v2.mjs');
 const fixedPath = path.join(process.cwd(), 'scripts', '.apply-legal-compliance-fixed.mjs');
 let source = fs.readFileSync(sourcePath, 'utf8');
-// v2 is valid except for literal backticks embedded in its README template literal.
-source = source.replaceAll('\\`digitalComplaintBookUrl\\`', 'digitalComplaintBookUrl');
+// Strip escaped backticks around the README identifier before parsing v2.
+source = source.replace(/\\+`digitalComplaintBookUrl\\+`/g, 'digitalComplaintBookUrl');
 fs.writeFileSync(fixedPath, source, 'utf8');
 try {
   await import('file://' + fixedPath);
