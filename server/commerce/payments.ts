@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
 
 export interface PaymentProcessOptions {
   companyId: string;
@@ -9,22 +10,34 @@ export interface PaymentProcessOptions {
   externalReference?: string;
 }
 
+function getMercadoPagoAccessToken(): string {
+  const token = process.env.MERCADO_PAGO_ACCESS_TOKEN?.trim();
+  if (token) return token;
+  if (process.env.NODE_ENV === 'test') return 'TEST-MOCK-ACCESS-TOKEN';
+  throw new Error('MERCADO_PAGO_ACCESS_TOKEN is required outside test environments');
+}
+
+function generateExternalReference(): string {
+  return `ubika_pay_${crypto.randomUUID()}`;
+}
+
 export const PaymentProviderService = {
   async createPayment(options: PaymentProcessOptions): Promise<{ success: boolean; externalReference: string; providerResponse: any }> {
-    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || 'TEST-MOCK-ACCESS-TOKEN';
+    const accessToken = getMercadoPagoAccessToken();
     const isTest = process.env.NODE_ENV === 'test' || accessToken.startsWith('TEST-');
 
-    // Idempotency simulation or real integration call
-    const externalReference = options.externalReference || `ubika_pay_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    // Keep a stable caller-supplied reference when available; otherwise generate
+    // an unpredictable identifier instead of relying on timestamp + Math.random.
+    const externalReference = options.externalReference || generateExternalReference();
 
-    if (isTest || process.env.NODE_ENV === 'test') {
+    if (isTest) {
       return {
         success: true,
         externalReference,
         providerResponse: {
           status: 'approved',
           status_detail: 'accredited',
-          id: `mp_${Date.now()}`,
+          id: `mp_${crypto.randomUUID()}`,
           payment_method_id: options.paymentMethod,
           transaction_amount: options.amount,
           idempotency_key: options.idempotencyKey,
@@ -36,7 +49,7 @@ export const PaymentProviderService = {
       const response = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           ...(options.idempotencyKey ? { 'X-Idempotency-Key': options.idempotencyKey } : {}),
         },
@@ -55,13 +68,13 @@ export const PaymentProviderService = {
           externalReference,
           providerResponse: data,
         };
-      } else {
-        return {
-          success: false,
-          externalReference,
-          providerResponse: data,
-        };
       }
+
+      return {
+        success: false,
+        externalReference,
+        providerResponse: data,
+      };
     } catch (err) {
       console.error('[PaymentProviderService Error]:', err);
       return {
@@ -73,15 +86,16 @@ export const PaymentProviderService = {
   },
 
   async refundPayment(paymentId: string): Promise<{ success: boolean; response: any }> {
-    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || 'TEST-MOCK-ACCESS-TOKEN';
+    const accessToken = getMercadoPagoAccessToken();
     if (process.env.NODE_ENV === 'test') {
       return { success: true, response: { status: 'refunded', id: paymentId } };
     }
+
     try {
       const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}/refunds`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       });
