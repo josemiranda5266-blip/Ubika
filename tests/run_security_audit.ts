@@ -1,9 +1,11 @@
 // Preload test-only persistence fixtures before importing the audit suite.
-// This avoids ESM dependency evaluation loading server/db before setup_env writes fixtures.
+// Then materialize them through the DB module and reload from disk so the audit
+// always observes the exact same tenant fixtures in memory.
 import './setup_env';
 import './ensure_audit_fixtures';
 
-const { db } = await import('../server/db');
+const { db, injectTestFixtures } = await import('../server/db');
+injectTestFixtures();
 db.reloadFromDisk();
 
 await import('./security_and_flow.test');
