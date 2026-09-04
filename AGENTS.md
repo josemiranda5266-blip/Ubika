@@ -58,3 +58,5 @@ Hay áreas que requieren revisión antes de declarar UBIKA lista para producció
 
 ## Criterio de finalización
 No declarar UBIKA "lista para publicar" solamente porque compile. Debe compilar, pasar las pruebas relevantes, mantener aislamiento por tenant, proteger rutas sensibles, gestionar errores correctamente y tener identificadas explícitamente las dependencias de infraestructura que todavía impidan producción real.
+
+<!-- [finalize-hito1] controlled security hardening trigger -->
