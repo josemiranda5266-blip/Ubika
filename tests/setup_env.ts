@@ -28,6 +28,58 @@ if (donPedroStore) {
   });
 }
 
+// Keep the Don Pedro DRIVER user and Driver record consistent. Older fixtures can
+// contain a DRIVER user whose driverId points to a missing legacy record, which
+// makes an otherwise valid FOOD_DELIVERY assignment fail with HTTP 404.
+const donPedroDrivers = db.getDriversByCompany('comp_food_don_pedro_01');
+const donPedroDriverUsers = db.getUsersByCompany('comp_food_don_pedro_01').filter((u) => u.role === 'DRIVER');
+const firstDonPedroDriverUser = donPedroDriverUsers[0];
+if (firstDonPedroDriverUser && firstDonPedroDriverUser.driverId && !db.getDriverById(firstDonPedroDriverUser.driverId)) {
+  db.createDriver({
+    id: firstDonPedroDriverUser.driverId,
+    companyId: 'comp_food_don_pedro_01',
+    name: firstDonPedroDriverUser.name,
+    email: firstDonPedroDriverUser.email,
+    phone: firstDonPedroDriverUser.phone || '',
+    vehicle: 'moto',
+    status: 'disponible',
+    internalId: 'DP-LEGACY-01',
+    createdAt: Date.now(),
+    totalDeliveries: 0,
+    rating: 5,
+    lastActiveAt: Date.now(),
+    speedKmH: 0,
+  });
+} else if (!firstDonPedroDriverUser && !donPedroDrivers.some((d) => d.id === 'drv_don_pedro_01')) {
+  const passwordHash = bcryptModule.default.hashSync(process.env.INITIAL_DRIVER_PASSWORD!, 10);
+  db.createDriver({
+    id: 'drv_don_pedro_01',
+    companyId: 'comp_food_don_pedro_01',
+    name: 'Cadete Pedro Jr',
+    email: 'pedrojr@ubikafood.com',
+    phone: '',
+    vehicle: 'moto',
+    status: 'disponible',
+    internalId: 'DP-01',
+    createdAt: Date.now(),
+    totalDeliveries: 0,
+    rating: 5,
+    lastActiveAt: Date.now(),
+    speedKmH: 0,
+  });
+  db.createUser({
+    id: 'usr_driver_don_pedro_01',
+    email: 'pedrojr@ubikafood.com',
+    passwordHash,
+    name: 'Cadete Pedro Jr',
+    role: 'DRIVER',
+    companyId: 'comp_food_don_pedro_01',
+    driverId: 'drv_don_pedro_01',
+    createdAt: Date.now(),
+    active: true,
+  });
+}
+
 if (!db.getUsersByCompany('comp_farma_norte_02').some((u) => u.role === 'COMPANY_ADMIN')) {
   const passwordHash = bcryptModule.default.hashSync(process.env.INITIAL_ADMIN_PASSWORD!, 10);
   db.createUser({
