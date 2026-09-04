@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { Request, Response, NextFunction } from 'express';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 import { db, UserRecord, UserRole } from './db';
 
 const JWT_SECRET = process.env.JWT_SECRET?.trim();
@@ -15,7 +15,7 @@ if (!isTest && JWT_SECRET && JWT_SECRET.length < 32) {
 }
 
 const SIGNING_SECRET = JWT_SECRET || 'test-only-ubika-jwt-secret-please-do-not-use';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '24h') as SignOptions['expiresIn'];
 
 export interface AuthenticatedUserPayload {
   userId: string;
@@ -130,8 +130,6 @@ export function rateLimit(limitWindowMs: number, maxRequests: number) {
       lastRateLimitCleanup = now;
     }
 
-    // Express' req.ip is preferred; the forwarded header is only trusted when
-    // the deployment explicitly configures a trusted proxy.
     const key = req.ip || 'anonymous';
     const entry = rateLimitMap.get(key);
 
