@@ -1238,6 +1238,27 @@ async function runFoodSecurityAndFlowTests() {
       assert(data.error && data.error.includes('255 caracteres'), `Error inesperado: ${JSON.stringify(data)}`);
     });
 
+    await test('58. Validación de generalNotes > 500 caracteres es rechazada con 400', async () => {
+      const burgerProd = foodProducts[0];
+      const longNotes = 'Nota de entrega muy larga con instrucciones redundantes para la cocina y el repartidor... '.repeat(10); // > 800 chars
+      const res = await fetch(`${BASE_URL}/api/food/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: 'comp_food_don_pedro_01',
+          deliveryType: 'FOOD_PICKUP',
+          paymentMethod: 'CASH',
+          items: [{ productId: burgerProd.id, quantity: 1 }],
+          recipientName: 'Juan Pérez',
+          recipientPhone: '+5491112345678',
+          generalNotes: longNotes,
+        }),
+      });
+      assert(res.status === 400, `Respondió con status ${res.status}`);
+      const data = await res.json();
+      assert(data.error && data.error.includes('500 caracteres'), `Error inesperado: ${JSON.stringify(data)}`);
+    });
+
     console.log('\n====================================================');
     console.log(`📊 RESULTADO DE SUITE: PASARON ${passed} / ${passed + failed} PRUEBAS`);
     console.log('====================================================\n');

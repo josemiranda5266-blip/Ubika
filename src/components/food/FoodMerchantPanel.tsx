@@ -445,7 +445,7 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
 
     try {
       const isNew = !editingProduct.id;
-      const productId = editingProduct.id || `fprod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+      const productId = editingProduct.id || `fprod_${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
       let finalImageUrl = editingProduct.imageUrl || '';
 
       if (imageUploadMethod === 'upload') {

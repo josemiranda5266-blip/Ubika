@@ -114,7 +114,8 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 export function rateLimit(limitWindowMs: number, maxRequests: number) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = req.ip || req.headers['x-forwarded-for']?.toString() || 'anonymous';
+    // req.ip ya está sanitizado por Express gracias a app.set('trust proxy', 1)
+    const key = req.ip || 'anonymous';
     const now = Date.now();
     const entry = rateLimitMap.get(key);
 

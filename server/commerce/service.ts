@@ -109,6 +109,12 @@ export const CommerceService = {
     if (!data.name || typeof data.name !== 'string' || !data.name.trim()) {
       throw new Error('PRODUCT_NAME_REQUIRED');
     }
+    if (data.name.length > 255) {
+      throw new Error('PRODUCT_NAME_TOO_LONG');
+    }
+    if (data.description && typeof data.description === 'string' && data.description.length > 1000) {
+      throw new Error('PRODUCT_DESCRIPTION_TOO_LONG');
+    }
     const salePrice = Number(data.salePrice);
     const costPrice = Number(data.costPrice || 0);
     const taxRate = Number(data.taxRate ?? 21);
@@ -193,6 +199,12 @@ export const CommerceService = {
   createCustomer(data: any, companyId: string) {
     if (!data.name || typeof data.name !== 'string' || !data.name.trim()) {
       throw new Error('CUSTOMER_NAME_REQUIRED');
+    }
+    if (data.name.length > 255) {
+      throw new Error('CUSTOMER_NAME_TOO_LONG');
+    }
+    if (data.address && typeof data.address === 'string' && data.address.length > 255) {
+      throw new Error('CUSTOMER_ADDRESS_TOO_LONG');
     }
     const customer = {
       id: generateEntityId('cust'),

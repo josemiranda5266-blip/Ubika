@@ -41,6 +41,12 @@ import type {
 } from "./src/types";
 import { isFoodAuthorizedCompany } from "./src/types";
 
+// Validación de entorno crítica al iniciar
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  console.error('❌ ERROR CRÍTICO: JWT_SECRET no está definida o es demasiado corta (< 32 caracteres).');
+  process.exit(1);
+}
+
 const FOOD_ADMIN_ROLES: (UserRole | string)[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'OPERATOR'];
 const FOOD_PICKUP_ROLES: (UserRole | string)[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'OPERATOR'];
 const FOOD_PAYMENT_ROLES: (UserRole | string)[] = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'OPERATOR'];
@@ -1891,6 +1897,12 @@ export function createUbikaApp(): express.Express {
       }
       if (deliveryAddress.length > 255) {
         return res.status(400).json({ error: "La dirección de entrega excede el límite de 255 caracteres" });
+      }
+    }
+
+    if (generalNotes !== undefined && generalNotes !== null) {
+      if (typeof generalNotes !== 'string' || generalNotes.length > 500) {
+        return res.status(400).json({ error: "Las notas generales no pueden exceder los 500 caracteres" });
       }
     }
 
