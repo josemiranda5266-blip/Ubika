@@ -6,13 +6,15 @@ process.env.SEED_DEMO_DATA = process.env.SEED_DEMO_DATA || 'true';
 
 // The security suite needs two complete tenants. Keep this repair isolated to tests
 // so production startup never creates demo accounts implicitly.
-import bcrypt from 'bcryptjs';
-import { db, injectTestFixtures, saveDatabaseSync } from '../server/db';
+const [{ db, injectTestFixtures, saveDatabaseSync }, bcryptModule] = await Promise.all([
+  import('../server/db'),
+  import('bcryptjs'),
+]);
 
 injectTestFixtures();
 
 if (!db.getUsersByCompany('comp_farma_norte_02').some((u) => u.role === 'COMPANY_ADMIN')) {
-  const passwordHash = bcrypt.hashSync(process.env.INITIAL_ADMIN_PASSWORD!, 10);
+  const passwordHash = bcryptModule.default.hashSync(process.env.INITIAL_ADMIN_PASSWORD!, 10);
   db.createUser({
     id: 'usr_admin_farma_02',
     email: 'admin@farmanorte.com',
@@ -26,7 +28,7 @@ if (!db.getUsersByCompany('comp_farma_norte_02').some((u) => u.role === 'COMPANY
 }
 
 if (!db.getUsersByCompany('comp_farma_norte_02').some((u) => u.role === 'DRIVER')) {
-  const passwordHash = bcrypt.hashSync(process.env.INITIAL_DRIVER_PASSWORD!, 10);
+  const passwordHash = bcryptModule.default.hashSync(process.env.INITIAL_DRIVER_PASSWORD!, 10);
   db.createUser({
     id: 'usr_driver_farma_02',
     email: 'driver@farmanorte.com',
