@@ -1259,6 +1259,36 @@ async function runFoodSecurityAndFlowTests() {
       assert(data.error && data.error.includes('500 caracteres'), `Error inesperado: ${JSON.stringify(data)}`);
     });
 
+    await test('59. Intento de path traversal o escape de directorio en delete-image es rechazado', async () => {
+      // Intento con ../../
+      const resTraversal = await fetch(`${BASE_URL}/api/food/products/delete-image`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenAdminFood}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productId: 'prod_burg_clasica',
+          imageUrl: '/uploads/companies/comp_food_don_pedro_01/products/prod_burg_clasica/../../../etc/passwd',
+        }),
+      });
+      assert(resTraversal.status === 400 || resTraversal.status === 403, `Path traversal debe dar 400 o 403, dio status: ${resTraversal.status}`);
+
+      // Intento de manipular prefijo de otra empresa
+      const resCrossTenant = await fetch(`${BASE_URL}/api/food/products/delete-image`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenAdminFood}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productId: 'prod_burg_clasica',
+          imageUrl: '/uploads/companies/comp_other_company/products/prod_other/image.jpg',
+        }),
+      });
+      assert(resCrossTenant.status === 403, `Cross-tenant delete-image debe dar 403, dio status: ${resCrossTenant.status}`);
+    });
+
     console.log('\n====================================================');
     console.log(`📊 RESULTADO DE SUITE: PASARON ${passed} / ${passed + failed} PRUEBAS`);
     console.log('====================================================\n');

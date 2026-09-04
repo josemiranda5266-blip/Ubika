@@ -1900,7 +1900,7 @@ export function createUbikaApp(): express.Express {
       }
     }
 
-    if (generalNotes !== undefined && generalNotes !== null) {
+    if (generalNotes !== undefined) {
       if (typeof generalNotes !== 'string' || generalNotes.length > 500) {
         return res.status(400).json({ error: "Las notas generales no pueden exceder los 500 caracteres" });
       }
@@ -2818,8 +2818,8 @@ export function createUbikaApp(): express.Express {
     }
   );
 
-  // DELETE PRODUCT IMAGE (MULTI-TENANT SECURE FILE DELETION)
-  app.post("/api/food/products/delete-image", rateLimit(60000, 30), authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+  // REEMPLAZAR TODO EL BLOQUE DE DELETE-image CON ESTO:
+  app.post("/api/food/products/delete-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
     }
@@ -2834,23 +2834,23 @@ export function createUbikaApp(): express.Express {
       return res.status(400).json({ error: "Faltan parámetros para eliminar la imagen" });
     }
 
-    // HITO 2: Validación estricta contra Path Traversal
+    // 1. Validación estricta de prefijo (evita manipulación de URL)
     const expectedPrefix = `/uploads/companies/${encodeURIComponent(companyId)}/products/${encodeURIComponent(productId)}/`;
     if (!imageUrl.startsWith(expectedPrefix)) {
       return res.status(403).json({ error: "No tiene permisos para eliminar esta imagen o la ruta es inválida" });
     }
 
-    // Extraer solo el nombre del archivo, rechazando cualquier intento de directorio
+    // 2. Extraer solo el nombre del archivo, rechazando cualquier intento de directorio
     const filename = decodeURIComponent(imageUrl.slice(expectedPrefix.length));
     if (!filename || filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
       return res.status(400).json({ error: "Nombre de archivo inválido" });
     }
 
-    // Resolver ruta absoluta y verificar que no escape del directorio de uploads
+    // 3. Resolver ruta absoluta y verificar que no escape del directorio de uploads
     const uploadRoot = path.resolve(process.cwd(), 'data', 'uploads');
     const targetPath = path.resolve(uploadRoot, 'companies', companyId, 'products', productId, filename);
     const relativePathCheck = path.relative(uploadRoot, targetPath);
-
+    
     if (relativePathCheck.startsWith('..') || path.isAbsolute(relativePathCheck)) {
       return res.status(400).json({ error: "Ruta de archivo inválida o intento de acceso no autorizado" });
     }
@@ -2861,7 +2861,6 @@ export function createUbikaApp(): express.Express {
       }
       // Actualizar la BD para quitar la referencia a la imagen huérfana
       db.updateFoodProduct(productId, { imageUrl: '' });
-      
       res.json({ success: true, message: "Imagen eliminada del servidor" });
     } catch (err: any) {
       console.error('[Delete Image Error]:', err);
