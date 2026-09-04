@@ -14,13 +14,17 @@ const [{ db, injectTestFixtures, saveDatabaseSync }, bcryptModule] = await Promi
 injectTestFixtures();
 
 // Normalize legacy Don Pedro fixtures created by older DB migrations. The current
-// Food contract requires foodEnabled=true; keeping this repair in the test fixture
-// avoids weakening production authorization checks for malformed stores.
+// Food contract requires foodEnabled=true plus a complete store shape, including
+// schedule and bankInfo, because the public store endpoint reads schedule directly.
 const donPedroStore = db.getFoodStoreByCompanyId('comp_food_don_pedro_01');
-if (donPedroStore && donPedroStore.foodEnabled !== true) {
+if (donPedroStore) {
   db.upsertFoodStore({
     ...donPedroStore,
     foodEnabled: true,
+    schedule: Array.isArray(donPedroStore.schedule) ? donPedroStore.schedule : [],
+    bankInfo: donPedroStore.bankInfo || { bankName: '', alias: '', cbu: '', holderName: '' },
+    createdAt: donPedroStore.createdAt || Date.now(),
+    updatedAt: Date.now(),
   });
 }
 
