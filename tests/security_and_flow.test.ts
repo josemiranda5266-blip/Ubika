@@ -140,6 +140,10 @@ async function runAuditSuite() {
   const JWT_SECRET = process.env.JWT_SECRET!;
   assert(!!JWT_SECRET && JWT_SECRET.length >= 16, 'JWT_SECRET está configurado desde variables de entorno');
 
+  // Los fixtures demo deben estar disponibles antes de generar tokens de prueba.
+  // Se mantiene la inyección explícita para no activar seeds demo en producción.
+  injectTestFixtures();
+
   const adminUserA = db.getUsersByCompany('comp_centro_logistico_01')[0];
   assert(!!adminUserA, 'Existe usuario Administrador para Empresa A');
 
@@ -192,7 +196,6 @@ async function runAuditSuite() {
   // ----------------------------------------------------
   // CONFIGURACIÓN DE SERVIDOR HTTP PARA TESTS REALES
   // ----------------------------------------------------
-  injectTestFixtures();
   const app = createUbikaApp();
   const server = app.listen(0);
   const address = server.address() as any;
