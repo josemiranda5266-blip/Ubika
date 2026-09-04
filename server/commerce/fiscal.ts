@@ -12,8 +12,14 @@ export const ArcaFiscalService = {
     error?: string;
     response?: any;
   }> {
-    const cuit = process.env.ARCA_CUIT || '20333333339';
-    const pointOfSale = parseInt(process.env.ARCA_POINT_OF_SALE || '1', 10);
+    void sale;
+    void customerDocument;
+    void customerName;
+    void voucherType;
+
+    const cuit = process.env.ARCA_CUIT?.trim();
+    const configuredPointOfSale = process.env.ARCA_POINT_OF_SALE?.trim();
+    const pointOfSale = configuredPointOfSale ? Number.parseInt(configuredPointOfSale, 10) : undefined;
 
     // STRICT ARCA RULE: Without a real WSFE SOAP production integration,
     // we NEVER return APPROVED and NEVER generate or present a CAE.
@@ -27,8 +33,12 @@ export const ArcaFiscalService = {
       response: {
         error: 'ARCA_WSFE_NOT_CONFIGURED',
         message: 'No real WSFE connection established with ARCA. Fiscal authorization simulation mode active.',
-        FeCabResp: { Resultado: 'R', Cuit: cuit, PtoVta: pointOfSale }
-      }
+        FeCabResp: {
+          Resultado: 'R',
+          ...(cuit ? { Cuit: cuit } : {}),
+          ...(pointOfSale !== undefined && Number.isFinite(pointOfSale) ? { PtoVta: pointOfSale } : {}),
+        },
+      },
     };
-  }
+  },
 };
