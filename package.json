@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "NODE_ENV=test tsx tests/auth_phase3_email.test.ts && NODE_ENV=test tsx tests/auth_phase2_security.test.ts && NODE_ENV=test tsx tests/security_and_flow.test.ts && NODE_ENV=test tsx tests/food_tenant_isolation.test.ts && NODE_ENV=test tsx tests/food_security_and_flow.test.ts && NODE_ENV=test tsx tests/food_e2e_flow.test.ts && NODE_ENV=test tsx tests/commerce_tenant_isolation.test.ts && NODE_ENV=test tsx tests/commerce_rbac.test.ts && NODE_ENV=test tsx tests/commerce_idempotency.test.ts && NODE_ENV=test tsx tests/commerce_concurrency.test.ts && NODE_ENV=test tsx tests/commerce_multi_lock.test.ts && NODE_ENV=test tsx tests/commerce_stock.test.ts && NODE_ENV=test tsx tests/commerce_cash.test.ts && NODE_ENV=test tsx tests/commerce_persistence.test.ts && NODE_ENV=test tsx tests/commerce_rollback.test.ts && NODE_ENV=test tsx tests/commerce_rollback_idempotency.test.ts && NODE_ENV=test tsx tests/commerce_fiscal.test.ts"
+    "test": "NODE_ENV=test tsx tests/auth_phase3_email.test.ts && NODE_ENV=test tsx tests/auth_phase2_security.test.ts && NODE_ENV=test tsx tests/security_and_flow.test.ts && NODE_ENV=test tsx tests/food_tenant_isolation.test.ts && NODE_ENV=test tsx tests/food_security_and_flow.test.ts && NODE_ENV=test tsx tests/food_e2e_flow.test.ts && NODE_ENV=test tsx tests/commerce_tenant_isolation.test.ts && NODE_ENV=test tsx tests/commerce_rbac.test.ts && NODE_ENV=test tsx tests/commerce_idempotency.test.ts && NODE_ENV=test tsx tests/commerce_concurrency.test.ts && NODE_ENV=test tsx tests/commerce_multi_lock.test.ts && NODE_ENV=test tsx tests/commerce_stock.test.ts && NODE_ENV=test tsx tests/commerce_cash.test.ts && NODE_ENV=test tsx tests/commerce_persistence.test.ts && NODE_ENV=test tsx tests/commerce_rollback.test.ts && NODE_ENV=test tsx tests/commerce_rollback_idempotency.test.ts && NODE_ENV=test tsx tests/commerce_fiscal.test.ts",
+    "verify": "tsx scripts/verify-release.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -36,8 +37,8 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
+    "esbuild": "^0.25.0",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
   }
