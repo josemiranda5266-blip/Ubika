@@ -11,13 +11,13 @@ export interface PaymentProcessOptions {
 
 export const PaymentProviderService = {
   async createPayment(options: PaymentProcessOptions): Promise<{ success: boolean; externalReference: string; providerResponse: any }> {
-    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || 'TEST-MOCK-ACCESS-TOKEN';
-    const isTest = process.env.NODE_ENV === 'test' || accessToken.startsWith('TEST-');
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN?.trim();
+    const isTest = process.env.NODE_ENV === 'test';
 
-    // Idempotency simulation or real integration call
+    // Mock payments are strictly limited to the test environment.
     const externalReference = options.externalReference || `ubika_pay_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    if (isTest || process.env.NODE_ENV === 'test') {
+    if (isTest) {
       return {
         success: true,
         externalReference,
@@ -29,6 +29,14 @@ export const PaymentProviderService = {
           transaction_amount: options.amount,
           idempotency_key: options.idempotencyKey,
         },
+      };
+    }
+
+    if (!accessToken) {
+      return {
+        success: false,
+        externalReference,
+        providerResponse: { error: 'Payment provider is not configured' },
       };
     }
 
@@ -73,10 +81,15 @@ export const PaymentProviderService = {
   },
 
   async refundPayment(paymentId: string): Promise<{ success: boolean; response: any }> {
-    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || 'TEST-MOCK-ACCESS-TOKEN';
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN?.trim();
     if (process.env.NODE_ENV === 'test') {
       return { success: true, response: { status: 'refunded', id: paymentId } };
     }
+
+    if (!accessToken) {
+      return { success: false, response: { error: 'Payment provider is not configured' } };
+    }
+
     try {
       const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}/refunds`, {
         method: 'POST',
