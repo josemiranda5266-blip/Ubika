@@ -1,6 +1,6 @@
 // Preload test-only persistence fixtures before running the audit suite.
-// The audit is executed in a fresh process so its server/db module instance
-// reads exactly the persisted fixture state prepared here.
+// The audit is imported dynamically after fixtures are materialized so the
+// security suite shares the exact same server/db module instance and state.
 import './setup_env';
 import './ensure_audit_fixtures';
 
@@ -66,10 +66,6 @@ if (!auditAdminB || !auditDriverB) {
 
 console.log('[TEST FIXTURES] Empresa B verificada antes de ejecutar la auditoría HTTP.');
 
-// Run the actual audit in a fresh process. This avoids any module-instance/cache
-// ambiguity between this bootstrapper and security_and_flow.test.ts.
-const { execFileSync } = await import('child_process');
-execFileSync('npx', ['tsx', 'tests/security_and_flow.test.ts'], {
-  stdio: 'inherit',
-  env: { ...process.env, NODE_ENV: 'test' },
-});
+// Run the actual audit in the same prepared process. This guarantees that
+// security_and_flow.test.ts reuses the already-loaded db module instance.
+await import('./security_and_flow.test');
