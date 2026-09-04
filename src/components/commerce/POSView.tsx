@@ -91,7 +91,7 @@ export function POSView() {
         items: cart.map(i => ({ productId: i.product.id, quantity: i.quantity, discount: i.discount })),
         payments: [{ method: paymentMethod, amount: grandTotal }],
         discount: netDiscount,
-        idempotencyKey: `pos_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        idempotencyKey: `pos_${crypto.randomUUID()}`,
       };
 
       const res = await fetch('/api/v1/commerce/sales', {

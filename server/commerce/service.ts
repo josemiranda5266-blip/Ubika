@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import crypto from 'node:crypto';
 import { CommerceRepository } from './repository';
 import {
   CommerceProduct,
@@ -9,6 +10,10 @@ import {
 import { PaymentProviderService } from './payments';
 import { ArcaFiscalService } from './fiscal';
 import { db, saveDatabaseSync } from '../db';
+
+function generateEntityId(prefix: string): string {
+  return `${prefix}_${crypto.randomUUID()}`;
+}
 
 // Mutex map for idempotency keys (SINGLE INSTANCE ONLY - in-memory per Node process)
 const idempotencyLocks = new Map<string, Promise<Sale>>();
@@ -70,7 +75,7 @@ export const CommerceService = {
       throw new Error('CATEGORY_NAME_REQUIRED');
     }
     const category = {
-      id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: generateEntityId('cat'),
       companyId,
       branchId: data.branchId,
       name: data.name.trim(),
@@ -115,7 +120,7 @@ export const CommerceService = {
     if (!Number.isFinite(initialStock) || initialStock < 0) throw new Error('INVALID_STOCK');
 
     const product: CommerceProduct = {
-      id: `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: generateEntityId('prod'),
       companyId,
       branchId: data.branchId,
       name: data.name.trim(),
@@ -190,7 +195,7 @@ export const CommerceService = {
       throw new Error('CUSTOMER_NAME_REQUIRED');
     }
     const customer = {
-      id: `cust_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: generateEntityId('cust'),
       companyId,
       name: data.name.trim(),
       email: data.email || '',
@@ -255,7 +260,7 @@ export const CommerceService = {
       CommerceRepository.updateProduct(productId, { stock: newStock });
 
       const movement: StockMovement = {
-        id: `mov_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        id: generateEntityId('mov'),
         productId,
         companyId,
         branchId,
@@ -286,7 +291,7 @@ export const CommerceService = {
     if (!Number.isFinite(initCash) || initCash < 0) throw new Error('INVALID_INITIAL_CASH');
 
     const session: CashSession = {
-      id: `cash_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: generateEntityId('cash'),
       companyId,
       branchId,
       userId,
@@ -441,6 +446,13 @@ export const CommerceService = {
           });
         }
 
+        if (customerId) {
+          const customer = CommerceRepository.getCustomerByIdForCompany(customerId, companyId);
+          if (!customer) {
+            throw new Error('CUSTOMER_NOT_FOUND_OR_UNAUTHORIZED');
+          }
+        }
+
         const netDiscount = Number(discount || 0);
         if (!Number.isFinite(netDiscount) || netDiscount < 0 || netDiscount > subtotal) {
           throw new Error('INVALID_DISCOUNT_AMOUNT');
@@ -462,7 +474,7 @@ export const CommerceService = {
           throw new Error('PAYMENT_AMOUNT_MISMATCH_WITH_TOTAL');
         }
 
-        const saleId = `sale_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const saleId = generateEntityId('sale');
 
         const processedPayments = [];
         for (const p of payments) {
@@ -489,7 +501,7 @@ export const CommerceService = {
           }
 
           processedPayments.push({
-            id: `pay_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            id: generateEntityId('pay'),
             method: p.method,
             amount: pAmount,
             status: payStatus,
@@ -610,7 +622,7 @@ export const CommerceService = {
     const isSimulated = process.env.NODE_ENV === 'test' || !process.env.ARCA_CERTIFICATE_BASE64;
 
     const invoice = {
-      id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: generateEntityId('inv'),
       companyId,
       saleId,
       voucherType,

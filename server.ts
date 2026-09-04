@@ -3,6 +3,7 @@ import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import multer from "multer";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
 import { db, hashToken, validatePassword, UserRole } from "./server/db";
@@ -174,17 +175,50 @@ function purgeCoordinatesIfFinished(delivery: Delivery): Delivery {
 export function createUbikaApp(): express.Express {
   const app = express();
 
-  // Security & CORS configuration
+  // HITO 2: Security Headers Middleware
   app.use((req, res, next) => {
+    // Previene MIME type sniffing
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    
+    // Previene clickjacking
+    res.setHeader('X-Frame-Options', 'DENY');
+    
+    // Activa filtro XSS del navegador (legacy pero útil)
     res.setHeader('X-XSS-Protection', '1; mode=block');
+    
+    // Controla información enviada en Referer header
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    
+    // Content Security Policy - restringe fuentes de contenido
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
+    );
+    
+    // Previene que el navegador guarde datos sensibles en caché
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
     }
     next();
+  });
+
+  const productImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    fileFilter: (_req, file, cb) => {
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (allowedMimes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Formato no soportado. Usa JPG, PNG o WEBP.'));
+      }
+    },
   });
 
   // JSON Body Parser with reasonable limits (increased for base64 uploads)
@@ -2676,67 +2710,75 @@ export function createUbikaApp(): express.Express {
     res.json({ success: true, message: "Categoría eliminada exitosamente" });
   });
 
-  // UPLOAD PRODUCT IMAGE (MULTI-TENANT SECURE FILE UPLOAD)
-  app.post("/api/food/products/upload-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
-    if (!isAuthorizedFoodAdmin(req)) {
-      return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
-    }
-    const companyId = req.user!.companyId;
-    const company = db.getCompanyById(companyId);
-    if (!company || !isFoodAuthorizedCompany(company)) {
-      return res.status(403).json({ error: "Comercio no autorizado para administrar productos gastronómicos" });
-    }
+  // UPLOAD PRODUCT IMAGE (MULTI-TENANT SECURE FILE UPLOAD VIA MULTER / FORMDATA)
+  app.post(
+    "/api/food/products/upload-image",
+    authenticateUser,
+    (req: AuthenticatedRequest, res: Response, next) => {
+      productImageUpload.any()(req, res, (err) => {
+        if (err) {
+          if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ error: 'El archivo supera el tamaño máximo permitido de 5MB.' });
+          }
+          return res.status(400).json({ error: err.message || 'Error al procesar la imagen' });
+        }
+        next();
+      });
+    },
+    (req: AuthenticatedRequest, res: Response) => {
+      if (!isAuthorizedFoodAdmin(req)) {
+        return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
+      }
+      const companyId = req.user!.companyId;
+      const company = db.getCompanyById(companyId);
+      if (!company || !isFoodAuthorizedCompany(company)) {
+        return res.status(403).json({ error: "Comercio no autorizado para administrar productos gastronómicos" });
+      }
 
-    const { productId, fileName, fileType, base64Data } = req.body;
-    if (!productId || !fileName || !fileType || !base64Data) {
-      return res.status(400).json({ error: "Faltan parámetros requeridos para la carga de imagen" });
+      const { productId } = req.body;
+      const file = (req.files as Express.Multer.File[])?.[0] || req.file;
+
+      if (!productId || !file) {
+        return res.status(400).json({ error: "Faltan parámetros requeridos (productId y archivo file)" });
+      }
+
+      // Security check: If product already exists, verify ownership
+      const existingProd = db.getFoodProductsByCompanyId(companyId).find((p) => p.id === productId);
+      if (existingProd && existingProd.companyId !== companyId) {
+        return res.status(403).json({ error: "No tiene permisos sobre este producto" });
+      }
+
+      // Validate real MIME type
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedMimes.includes(file.mimetype)) {
+        return res.status(400).json({ error: "Formato de archivo no soportado. Permitidos: JPG, PNG, WEBP." });
+      }
+
+      // Validate extension
+      const extMap: Record<string, string> = {
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/webp': '.webp',
+      };
+      const ext = extMap[file.mimetype] || '.jpg';
+
+      // Target directory: data/uploads/companies/{companyId}/products/{productId}
+      const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'companies', companyId, 'products', productId);
+      try {
+        fs.mkdirSync(uploadDir, { recursive: true });
+        const safeFileName = `image_${Date.now()}${ext}`;
+        const filePath = path.join(uploadDir, safeFileName);
+        fs.writeFileSync(filePath, file.buffer);
+
+        // Return the public URL for this image
+        const publicUrl = `/uploads/companies/${companyId}/products/${productId}/${safeFileName}`;
+        res.json({ publicUrl, imageUrl: publicUrl });
+      } catch (err: any) {
+        console.error('[Upload Error]:', err);
+        res.status(500).json({ error: "Error al guardar la imagen en el servidor" });
+      }
     }
-
-    // Security check: If product already exists, verify ownership
-    const existingProd = db.getFoodProductsByCompanyId(companyId).find((p) => p.id === productId);
-    if (existingProd && existingProd.companyId !== companyId) {
-      return res.status(403).json({ error: "No tiene permisos sobre este producto" });
-    }
-
-    // Validate type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(fileType.toLowerCase())) {
-      return res.status(400).json({ error: "Formato de archivo no soportado. Permitidos: JPG, JPEG, PNG, WEBP." });
-    }
-
-    // Validate extension
-    const ext = path.extname(fileName).toLowerCase();
-    const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
-    if (!allowedExts.includes(ext)) {
-      return res.status(400).json({ error: "Extensión de archivo no permitida." });
-    }
-
-    // Extract base64 payload
-    const base64Content = base64Data.replace(/^data:image\/\w+;base64,/, "");
-    const buffer = Buffer.from(base64Content, 'base64');
-
-    // Validate size (max 5MB)
-    const MAX_SIZE = 5 * 1024 * 1024;
-    if (buffer.length > MAX_SIZE) {
-      return res.status(400).json({ error: "El archivo supera el tamaño máximo permitido de 5MB." });
-    }
-
-    // Target directory: data/uploads/companies/{companyId}/products/{productId}
-    const uploadDir = path.join(process.cwd(), 'data', 'uploads', 'companies', companyId, 'products', productId);
-    try {
-      fs.mkdirSync(uploadDir, { recursive: true });
-      const safeFileName = `image_${Date.now()}${ext}`;
-      const filePath = path.join(uploadDir, safeFileName);
-      fs.writeFileSync(filePath, buffer);
-
-      // Return the public URL for this image
-      const publicUrl = `/uploads/companies/${companyId}/products/${productId}/${safeFileName}`;
-      res.json({ publicUrl });
-    } catch (err: any) {
-      console.error('[Upload Error]:', err);
-      res.status(500).json({ error: "Error al guardar la imagen en el servidor" });
-    }
-  });
+  );
 
   // DELETE PRODUCT IMAGE (MULTI-TENANT SECURE FILE DELETION)
   app.post("/api/food/products/delete-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {

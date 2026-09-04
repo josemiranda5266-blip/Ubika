@@ -75,7 +75,6 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
   const [imageUploadMethod, setImageUploadMethod] = useState<'upload' | 'url'>('url');
   const [localImageFile, setLocalImageFile] = useState<File | null>(null);
   const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
-  const [localImageBase64, setLocalImageBase64] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -86,7 +85,6 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
     }
     setLocalImageFile(null);
     setLocalImagePreview(null);
-    setLocalImageBase64(null);
     setUploadError(null);
     setImageUploadMethod('url');
     setEditingProduct({
@@ -101,7 +99,6 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
 
   const handleOpenEditProduct = (p: FoodProduct) => {
     setLocalImageFile(null);
-    setLocalImageBase64(null);
     setUploadError(null);
     if (p.imageUrl && p.imageUrl.startsWith('/uploads/')) {
       setImageUploadMethod('upload');
@@ -117,42 +114,26 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validation of type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type.toLowerCase())) {
-      alert("Formato de archivo no soportado. Permitidos: JPG, JPEG, PNG, WEBP.");
+      setUploadError("Formato no soportado. Permitidos: JPG, PNG, WEBP.");
       return;
     }
 
-    // Validation of size (max 5MB)
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      alert("El archivo supera el tamaño máximo permitido de 5MB.");
+      setUploadError("El archivo supera el tamaño máximo de 5MB.");
       return;
     }
 
     setLocalImageFile(file);
     setUploadError(null);
-
-    // Create a local preview
-    const previewUrl = URL.createObjectURL(file);
-    setLocalImagePreview(previewUrl);
-
-    // Read file as Base64
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setLocalImageBase64(reader.result as string);
-    };
-    reader.onerror = () => {
-      alert("Error al leer el archivo.");
-    };
-    reader.readAsDataURL(file);
+    setLocalImagePreview(URL.createObjectURL(file));
   };
 
   const handleRemoveImage = () => {
     setLocalImageFile(null);
     setLocalImagePreview(null);
-    setLocalImageBase64(null);
   };
 
   // Form states
@@ -468,20 +449,17 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
       let finalImageUrl = editingProduct.imageUrl || '';
 
       if (imageUploadMethod === 'upload') {
-        if (localImageFile && localImageBase64) {
-          // Upload local image to server first
+        if (localImageFile) {
+          const formData = new FormData();
+          formData.append('productId', String(productId));
+          formData.append('image', localImageFile);
+
           const uploadRes = await fetch('/api/food/products/upload-image', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({
-              productId,
-              fileName: localImageFile.name,
-              fileType: localImageFile.type,
-              base64Data: localImageBase64,
-            }),
+            body: formData,
           });
 
           if (!uploadRes.ok) {
@@ -490,7 +468,7 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
           }
 
           const uploadData = await uploadRes.json();
-          finalImageUrl = uploadData.publicUrl;
+          finalImageUrl = uploadData.imageUrl || uploadData.publicUrl || '';
         } else if (!localImagePreview) {
           // Image was cleared/deleted
           finalImageUrl = '';
@@ -520,7 +498,6 @@ export const FoodMerchantPanel: React.FC<FoodMerchantPanelProps> = ({
         setEditingProduct(null);
         setLocalImageFile(null);
         setLocalImagePreview(null);
-        setLocalImageBase64(null);
         fetchConfig();
       } else {
         const data = await res.json();
