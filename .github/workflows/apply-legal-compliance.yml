@@ -1,0 +1,33 @@
+name: Apply UBIKA Argentina Legal Compliance
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply compliance migration
+        run: |
+          if [ ! -f scripts/apply-legal-compliance.mjs ]; then
+            echo "Migration script not present; nothing to apply."
+            exit 0
+          fi
+          node scripts/apply-legal-compliance.mjs
+      - name: Commit compliance changes and remove migration runner
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "feat: add Argentine legal compliance controls"
+          git push
