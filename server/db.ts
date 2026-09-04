@@ -633,7 +633,7 @@ export const db = {
     timestamp: number;
   }): void => {
     dbState.driver_locations.push({
-      id: `loc_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      id: `loc_${crypto.randomUUID()}`,
       ...record,
     });
     // Cap in-memory history per driver to reasonable limits (last 1000 points)

@@ -453,6 +453,13 @@ export const CommerceService = {
           }
         }
 
+        if (branchId) {
+          const branch = CommerceRepository.getBranchByIdForCompany(branchId, companyId);
+          if (!branch) {
+            throw new Error('BRANCH_NOT_FOUND_OR_UNAUTHORIZED');
+          }
+        }
+
         const netDiscount = Number(discount || 0);
         if (!Number.isFinite(netDiscount) || netDiscount < 0 || netDiscount > subtotal) {
           throw new Error('INVALID_DISCOUNT_AMOUNT');

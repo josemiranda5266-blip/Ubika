@@ -293,4 +293,17 @@ export const CommerceRepository = {
     saveDatabaseSync();
     return invoice;
   },
+
+  // Branches
+  getBranchByIdForCompany: (id: string, companyId: string): any => {
+    const state = db.getRawState() as any;
+    const branches = state.commerce_branches || [];
+    const found = branches.find((b: any) => b.id === id && b.companyId === companyId);
+    if (found) return found;
+    const company = db.getCompanyById(companyId) as any;
+    if (company && Array.isArray(company.branches)) {
+      return company.branches.find((b: any) => (typeof b === 'string' ? b === id : b.id === id));
+    }
+    return null;
+  },
 };

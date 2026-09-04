@@ -120,7 +120,7 @@ function recordAuditEvent(
   metadata?: Record<string, any>
 ) {
   const event: DeliveryEvent = {
-    id: `ev_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+    id: `ev_${crypto.randomUUID()}`,
     companyId,
     deliveryId,
     orderNumber,
@@ -175,35 +175,36 @@ function purgeCoordinatesIfFinished(delivery: Delivery): Delivery {
 export function createUbikaApp(): express.Express {
   const app = express();
 
-  // HITO 2: Security Headers Middleware
+  // HITO 2: Security Headers & CORS Middleware (compatible with AI Studio Preview iframe)
   app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
     // Previene MIME type sniffing
     res.setHeader('X-Content-Type-Options', 'nosniff');
     
-    // Previene clickjacking
-    res.setHeader('X-Frame-Options', 'DENY');
-    
-    // Activa filtro XSS del navegador (legacy pero útil)
+    // Activa filtro XSS del navegador
     res.setHeader('X-XSS-Protection', '1; mode=block');
     
     // Controla información enviada en Referer header
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     
-    // Content Security Policy - restringe fuentes de contenido
+    // Content Security Policy adaptada para permitir la renderización en el iframe del sandbox
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
+      "default-src 'self' 'unsafe-inline' https: http: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:; style-src 'self' 'unsafe-inline' https: http:; img-src 'self' data: blob: https: http:; font-src 'self' data: https: http:; connect-src 'self' https: http: ws: wss:; frame-ancestors *;"
     );
     
-    // Previene que el navegador guarde datos sensibles en caché
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+    // Previene almacenamiento sensible en caché exclusivamente para la API
+    if (req.path.startsWith('/api')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
 
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
+      return res.sendStatus(204);
     }
     next();
   });
@@ -221,13 +222,22 @@ export function createUbikaApp(): express.Express {
     },
   });
 
-  // JSON Body Parser with reasonable limits (increased for base64 uploads)
-  app.use(express.json({ limit: '10mb' }));
+  // HITO 2: JSON Body Parser with strict 1MB limit for security
+  app.use(express.json({ limit: '1mb' }));
 
   // Serve uploaded images statically
   app.use('/uploads', express.static(path.join(process.cwd(), 'data', 'uploads')));
 
   // --- HEALTH & STATUS ---
+  app.get("/health", (_req, res) => {
+    res.json({
+      status: "ok",
+      version: "2.0.0-prod",
+      storage: "persistent-disk-json",
+      timestamp: Date.now(),
+    });
+  });
+
   app.get("/api/health", (_req, res) => {
     res.json({
       status: "ok",
@@ -341,7 +351,8 @@ export function createUbikaApp(): express.Express {
     if (!user) {
       return res.status(401).json({ error: "Usuario no encontrado" });
     }
-    return res.json({ user, company });
+    const { passwordHash: _hash, ...safeUser } = user as any;
+    return res.json({ user: safeUser, company });
   });
 
   // --- PHASE 2 AUTH ENDPOINTS: INVITATIONS & RECOVERY ---
@@ -371,7 +382,7 @@ export function createUbikaApp(): express.Express {
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
 
     const invitation = {
-      id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: `inv_${crypto.randomUUID()}`,
       email: email.trim().toLowerCase(),
       tokenHash,
       companyId: cid,
@@ -491,7 +502,7 @@ export function createUbikaApp(): express.Express {
     const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
     const passwordReset = {
-      id: `pr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: `pr_${crypto.randomUUID()}`,
       email: user.email.toLowerCase(),
       tokenHash,
       expiresAt,
@@ -694,7 +705,7 @@ export function createUbikaApp(): express.Express {
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
 
     const invitation = {
-      id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: `inv_${crypto.randomUUID()}`,
       email: email.trim().toLowerCase(),
       tokenHash,
       companyId: cid,
@@ -2055,7 +2066,7 @@ export function createUbikaApp(): express.Express {
     const publicTrackingToken = generatePublicTrackingToken();
 
     const newOrder: FoodOrder = {
-      id: `forder_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      id: `forder_${crypto.randomUUID()}`,
       orderNumber: nextOrderNum,
       companyId,
       deliveryType,
@@ -2338,7 +2349,7 @@ export function createUbikaApp(): express.Express {
         let coreDelivery = order.deliveryId ? db.getDeliveryById(order.deliveryId) : undefined;
 
         if (!coreDelivery) {
-          const sessionToken = `tok_food_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+          const sessionToken = `tok_food_${crypto.randomBytes(16).toString('hex')}`;
           const itemsSummary = order.items.map((i) => `${i.quantity}x ${i.productName}`).join(', ');
 
           coreDelivery = db.createDelivery({
@@ -2608,7 +2619,7 @@ export function createUbikaApp(): express.Express {
     const effectiveActive = active !== undefined ? Boolean(active) : (isActive !== undefined ? Boolean(isActive) : true);
 
     const newCat: FoodCategory = {
-      id: `fcat_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      id: `fcat_${crypto.randomUUID()}`,
       companyId,
       name: trimmedName,
       description: typeof description === 'string' ? description.trim() : '',
@@ -2713,6 +2724,7 @@ export function createUbikaApp(): express.Express {
   // UPLOAD PRODUCT IMAGE (MULTI-TENANT SECURE FILE UPLOAD VIA MULTER / FORMDATA)
   app.post(
     "/api/food/products/upload-image",
+    rateLimit(60000, 30),
     authenticateUser,
     (req: AuthenticatedRequest, res: Response, next) => {
       productImageUpload.any()(req, res, (err) => {
@@ -2781,7 +2793,7 @@ export function createUbikaApp(): express.Express {
   );
 
   // DELETE PRODUCT IMAGE (MULTI-TENANT SECURE FILE DELETION)
-  app.post("/api/food/products/delete-image", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+  app.post("/api/food/products/delete-image", rateLimit(60000, 30), authenticateUser, (req: AuthenticatedRequest, res: Response) => {
     if (!isAuthorizedFoodAdmin(req)) {
       return res.status(403).json({ error: "Rol no autorizado para administrar productos" });
     }
@@ -2796,19 +2808,34 @@ export function createUbikaApp(): express.Express {
       return res.status(400).json({ error: "Faltan parámetros para eliminar la imagen" });
     }
 
-    // Security check: Only delete if the imageUrl belongs to this company's products
-    if (!imageUrl.startsWith(`/uploads/companies/${companyId}/products/${productId}/`)) {
-      return res.status(403).json({ error: "No tiene permisos para eliminar esta imagen" });
+    // HITO 2: Validación estricta contra Path Traversal
+    const expectedPrefix = `/uploads/companies/${encodeURIComponent(companyId)}/products/${encodeURIComponent(productId)}/`;
+    if (!imageUrl.startsWith(expectedPrefix)) {
+      return res.status(403).json({ error: "No tiene permisos para eliminar esta imagen o la ruta es inválida" });
     }
 
-    // Translate URL to file path
-    const relativePath = imageUrl.replace(/^\/uploads\//, "");
-    const filePath = path.join(process.cwd(), 'data', 'uploads', relativePath);
+    // Extraer solo el nombre del archivo, rechazando cualquier intento de directorio
+    const filename = decodeURIComponent(imageUrl.slice(expectedPrefix.length));
+    if (!filename || filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+      return res.status(400).json({ error: "Nombre de archivo inválido" });
+    }
+
+    // Resolver ruta absoluta y verificar que no escape del directorio de uploads
+    const uploadRoot = path.resolve(process.cwd(), 'data', 'uploads');
+    const targetPath = path.resolve(uploadRoot, 'companies', companyId, 'products', productId, filename);
+    const relativePathCheck = path.relative(uploadRoot, targetPath);
+
+    if (relativePathCheck.startsWith('..') || path.isAbsolute(relativePathCheck)) {
+      return res.status(400).json({ error: "Ruta de archivo inválida o intento de acceso no autorizado" });
+    }
 
     try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (fs.existsSync(targetPath)) {
+        fs.unlinkSync(targetPath);
       }
+      // Actualizar la BD para quitar la referencia a la imagen huérfana
+      db.updateFoodProduct(productId, { imageUrl: '' });
+      
       res.json({ success: true, message: "Imagen eliminada del servidor" });
     } catch (err: any) {
       console.error('[Delete Image Error]:', err);
@@ -2840,7 +2867,7 @@ export function createUbikaApp(): express.Express {
     }
 
     const newProd: FoodProduct = {
-      id: id || `fprod_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      id: id || `fprod_${crypto.randomUUID()}`,
       companyId,
       categoryId,
       name: trimmedName,
@@ -3103,7 +3130,7 @@ function requireCommerceAccess(req: AuthenticatedRequest, res: Response, next: e
       }
     });
 
-    app.post("/api/v1/commerce/sales", authenticateUser, requireCommerceAccess, async (req: AuthenticatedRequest, res: Response) => {
+    app.post("/api/v1/commerce/sales", rateLimit(60000, 60), authenticateUser, requireCommerceAccess, async (req: AuthenticatedRequest, res: Response) => {
       try {
         const idempotencyKey = req.headers['x-idempotency-key'] as string || req.body.idempotencyKey;
         const sale = await CommerceService.finalizeSale({
