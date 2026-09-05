@@ -1,0 +1,200 @@
+name: Apply UBIKA Consumer Rights Compliance
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: contains(github.event.head_commit.message, '[apply-legal-next]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply legal compliance patch
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          server = Path('server.ts')
+          text = server.read_text()
+
+          # Never fabricate consent for legacy accounts. Missing historical evidence means
+          # the account must be treated as not having accepted the current legal documents.
+          text = text.replace(
+              "if (typeof user.privacyPolicyAccepted !== 'boolean') user.privacyPolicyAccepted = true;",
+              "if (typeof user.privacyPolicyAccepted !== 'boolean') user.privacyPolicyAccepted = false;"
+          )
+          text = text.replace(
+              "if (typeof user.privacyPolicyAcceptedAt !== 'number') user.privacyPolicyAcceptedAt = user.createdAt || now;",
+              "if (typeof user.privacyPolicyAcceptedAt !== 'number') user.privacyPolicyAcceptedAt = 0;"
+          )
+          text = text.replace(
+              "if (typeof user.termsOfServiceAccepted !== 'boolean') user.termsOfServiceAccepted = true;",
+              "if (typeof user.termsOfServiceAccepted !== 'boolean') user.termsOfServiceAccepted = false;"
+          )
+          text = text.replace(
+              "if (typeof user.termsOfServiceAcceptedAt !== 'number') user.termsOfServiceAcceptedAt = user.createdAt || now;",
+              "if (typeof user.termsOfServiceAcceptedAt !== 'number') user.termsOfServiceAcceptedAt = 0;"
+          )
+
+          # Add a first-class legal request store to the persistent state without changing
+          # the existing database implementation contract.
+          state_init = "state.password_resets = Array.isArray(state.password_resets) ? state.password_resets : [];"
+          state_repl = state_init + "\n  state.legal_requests = Array.isArray(state.legal_requests) ? state.legal_requests : [];"
+          if state_init in text and 'state.legal_requests = Array.isArray(state.legal_requests)' not in text:
+              text = text.replace(state_init, state_repl, 1)
+
+          # Public consumer-rights endpoints. The regret button must be usable without login.
+          marker = '  app.get("/api/legal/company-compliance", authenticateUser, (req: AuthenticatedRequest, res: Response) => {'
+          if marker not in text:
+              raise SystemExit('No se encontró el bloque legal existente en server.ts')
+
+          insertion = r'''  // --- CONSUMER DIGITAL RIGHTS ---
+  // These endpoints intentionally do not require authentication so consumers can exercise
+  // the statutory digital withdrawal channel without creating an account or signing in.
+  app.post("/api/legal/withdrawal-request", rateLimit(60000, 10), (req: Request, res: Response) => {
+    const saleId = typeof req.body?.saleId === 'string' ? req.body.saleId.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 2000) : '';
+    if (!saleId || !email) {
+      return res.status(400).json({ error: "saleId y email son obligatorios" });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Correo electrónico inválido" });
+    }
+
+    const state: any = db.getRawState();
+    if (!Array.isArray(state.legal_requests)) state.legal_requests = [];
+    const requestId = `lr_${crypto.randomUUID()}`;
+    const request = {
+      id: requestId,
+      type: 'WITHDRAWAL',
+      saleId,
+      email,
+      reason,
+      status: 'PENDING',
+      createdAt: Date.now(),
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    };
+    state.legal_requests.unshift(request);
+    db.saveDatabaseSync();
+    return res.status(200).json({ success: true, requestId, status: request.status, message: "Solicitud de arrepentimiento recibida." });
+  });
+
+  // Digital complaint channel. It creates a traceable case even when the merchant has not
+  // configured an external complaint-book URL yet.
+  app.post("/api/legal/consumer-complaints", rateLimit(60000, 10), (req: Request, res: Response) => {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 200) : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const companyId = typeof req.body?.companyId === 'string' ? req.body.companyId.trim() : '';
+    const orderReference = typeof req.body?.orderReference === 'string' ? req.body.orderReference.trim().slice(0, 100) : '';
+    const description = typeof req.body?.description === 'string' ? req.body.description.trim().slice(0, 5000) : '';
+    if (!name || !email || !companyId || !description) {
+      return res.status(400).json({ error: "name, email, companyId y description son obligatorios" });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Correo electrónico inválido" });
+    }
+    if (!db.getCompanyById(companyId)) {
+      return res.status(404).json({ error: "Empresa no encontrada" });
+    }
+    const state: any = db.getRawState();
+    if (!Array.isArray(state.legal_requests)) state.legal_requests = [];
+    const requestId = `lr_${crypto.randomUUID()}`;
+    state.legal_requests.unshift({
+      id: requestId,
+      type: 'CONSUMER_COMPLAINT',
+      name,
+      email,
+      companyId,
+      orderReference,
+      description,
+      status: 'OPEN',
+      createdAt: Date.now(),
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    db.saveDatabaseSync();
+    return res.status(200).json({ success: true, requestId, message: "Reclamo recibido y registrado." });
+  });
+
+  // Authenticated rectification endpoint, complementing access and deactivation.
+  app.post("/api/legal/data-rectification", authenticateUser, rateLimit(60000, 10), (req: AuthenticatedRequest, res: Response) => {
+    const user = db.getUserById(req.user!.userId);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 200) : undefined;
+    const phone = typeof req.body?.phone === 'string' ? req.body.phone.trim().slice(0, 50) : undefined;
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : undefined;
+    if (email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Correo electrónico inválido" });
+    }
+    if (email && email !== user.email && db.getUserByEmail(email)) {
+      return res.status(409).json({ error: "El correo electrónico ya está registrado" });
+    }
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (phone !== undefined) updates.phone = phone;
+    if (email !== undefined) updates.email = email;
+    if (Object.keys(updates).length === 0) return res.status(400).json({ error: "No se recibieron datos para rectificar" });
+    const updated = db.updateUser(user.id, updates);
+    const state: any = db.getRawState();
+    if (!Array.isArray(state.legal_requests)) state.legal_requests = [];
+    state.legal_requests.unshift({
+      id: `lr_${crypto.randomUUID()}`,
+      type: 'DATA_RECTIFICATION',
+      userId: user.id,
+      companyId: user.companyId,
+      fields: Object.keys(updates),
+      status: 'COMPLETED',
+      createdAt: Date.now(),
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    db.saveDatabaseSync();
+    return res.status(200).json({ success: true, user: updated });
+  });
+
+'''
+          text = text.replace(marker, insertion + marker, 1)
+
+          # Make account deactivation explicitly reset active consent flags instead of
+          # retaining a misleading affirmative consent state after anonymization.
+          text = text.replace(
+              "db.updateUser(user.id, { email: 'deleted_' + user.id + '@ubika.local', name: 'Usuario Eliminado', phone: undefined, active: false });",
+              "db.updateUser(user.id, { email: 'deleted_' + user.id + '@ubika.local', name: 'Usuario Eliminado', phone: undefined, active: false, privacyPolicyAccepted: false, privacyPolicyAcceptedAt: 0, termsOfServiceAccepted: false, termsOfServiceAcceptedAt: 0 });"
+          )
+          server.write_text(text)
+
+          types = Path('src/types.ts')
+          t = types.read_text()
+          if 'export interface LegalRequest {' not in t:
+              t += '''\n\n// ==========================================\n// ARGENTINA CONSUMER / DATA RIGHTS\n// ==========================================\nexport type LegalRequestType = 'WITHDRAWAL' | 'CONSUMER_COMPLAINT' | 'DATA_RECTIFICATION' | 'DATA_ACCESS' | 'DATA_SUPPRESSION';\n\nexport interface LegalRequest {\n  id: string;\n  type: LegalRequestType;\n  status: 'PENDING' | 'OPEN' | 'COMPLETED' | 'REJECTED';\n  createdAt: number;\n  companyId?: string;\n  userId?: string;\n  saleId?: string;\n  email?: string;\n  name?: string;\n  orderReference?: string;\n  description?: string;\n  reason?: string;\n  fields?: string[];\n}\n'''
+              types.write_text(t)
+
+          # README compliance section: make the current scope explicit and avoid claiming
+          # full legal compliance where jurisdiction/configuration still matters.
+          readme = Path('README.md')
+          r = readme.read_text()
+          section = '''\n## ⚖️ Cumplimiento Legal Argentino\n\nUBIKA incorpora controles técnicos orientados al marco argentino vigente: consentimiento y trazabilidad de aceptación de Política de Privacidad y Términos, mecanismos de acceso/rectificación/supresión, desactivación y anonimización, canal digital de arrepentimiento, recepción de reclamos de consumidores, registro de IP/User-Agent para eventos críticos y almacenamiento explícito de CAE y vencimiento de CAE para comprobantes fiscales.\n\nLos mecanismos digitales no sustituyen las obligaciones legales específicas del comercio, jurisdicción, condición fiscal ni las políticas y textos jurídicos que correspondan. El responsable del tratamiento debe mantener actualizada su información de contacto, política de privacidad y, cuando corresponda, la inscripción de sus bases de datos y los canales de ejercicio de derechos.\n'''
+          if '## ⚖️ Cumplimiento Legal Argentino' not in r:
+              readme.write_text(r.rstrip() + section)
+
+          # Remove this one-shot workflow after applying the patch.
+          wf = Path('.github/workflows/apply-legal-next.yml')
+          if wf.exists(): wf.unlink()
+          PY
+
+      - name: Commit legal patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.ts src/types.ts README.md .github/workflows/apply-legal-next.yml
+          git commit -m "fix: implement consumer digital rights and legal request traceability"
+          git push
