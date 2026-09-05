@@ -16,6 +16,7 @@ import {
   FoodShippingRate,
   FoodOrder,
 } from '../src/types';
+import { WithdrawalRequest } from './legal/types';
 
 export type UserRole = 'SUPER_ADMIN' | 'COMPANY_ADMIN' | 'DISPATCHER' | 'KITCHEN' | 'DRIVER' | 'CLIENT';
 
@@ -120,6 +121,7 @@ export interface DatabaseSchema {
   commerce_cash_sessions?: any[];
   commerce_sales?: any[];
   commerce_invoices?: any[];
+  withdrawal_requests?: WithdrawalRequest[];
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -218,6 +220,10 @@ function createInitialSeedData(): DatabaseSchema {
     companyId: 'comp_default_admin',
     createdAt: Date.now(),
     active: true,
+    privacyPolicyAccepted: true,
+    privacyPolicyAcceptedAt: Date.now(),
+    termsOfServiceAccepted: true,
+    termsOfServiceAcceptedAt: Date.now(),
   };
 
   return {
@@ -788,6 +794,36 @@ export const db = {
     dbState.food_orders[idx] = { ...dbState.food_orders[idx], ...updates, updatedAt: Date.now() };
     saveDatabaseSync();
     return dbState.food_orders[idx];
+  },
+
+  // Withdrawal Requests (Disposición 954/2025 & Disposición 3/2026)
+  createWithdrawalRequest: (req: WithdrawalRequest): WithdrawalRequest => {
+    if (!dbState.withdrawal_requests) dbState.withdrawal_requests = [];
+    dbState.withdrawal_requests.unshift(req);
+    saveDatabaseSync();
+    return req;
+  },
+  getWithdrawalRequest: (id: string): WithdrawalRequest | null => {
+    const list = dbState.withdrawal_requests || [];
+    return list.find((r) => r.id === id) || null;
+  },
+  updateWithdrawalRequest: (id: string, updates: Partial<WithdrawalRequest>): WithdrawalRequest | null => {
+    if (!dbState.withdrawal_requests) return null;
+    const idx = dbState.withdrawal_requests.findIndex((r) => r.id === id);
+    if (idx === -1) return null;
+    dbState.withdrawal_requests[idx] = {
+      ...dbState.withdrawal_requests[idx],
+      ...updates,
+      updatedAt: Date.now(),
+    };
+    saveDatabaseSync();
+    return dbState.withdrawal_requests[idx];
+  },
+  getWithdrawalRequestsByCompany: (companyId: string): WithdrawalRequest[] => {
+    return (dbState.withdrawal_requests || []).filter((r) => r.companyId === companyId);
+  },
+  getAllWithdrawalRequests: (): WithdrawalRequest[] => {
+    return dbState.withdrawal_requests || [];
   },
 
   // Raw Export for backup or tests

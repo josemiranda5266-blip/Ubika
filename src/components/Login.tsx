@@ -131,6 +131,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             )}
           </button>
         </form>
+        <div className="mb-5 rounded-xl border border-orange-200 bg-orange-50 p-3 text-center">
+          <a href="#legal/consumer" className="text-xs font-black uppercase tracking-wider text-orange-700 hover:text-orange-900">
+            BOTÓN DE ARREPENTIMIENTO / BAJA DE SERVICIO
+          </a>
+        </div>
         <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col gap-3">
           <button type="button" onClick={() => alert('Para recuperar su contraseña, por favor contacte a soporte técnico en soporte@ubika.app (Funcionalidad en desarrollo)')} className="text-[11px] font-bold text-slate-500 hover:text-orange-500 transition-colors uppercase tracking-wider">
             ¿Olvidaste tu contraseña?

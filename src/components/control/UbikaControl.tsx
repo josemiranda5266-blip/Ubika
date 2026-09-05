@@ -150,7 +150,6 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
     { id: 'map', label: 'Mapa de Flota', icon: Map, badge: drivers.filter((d) => d.status === 'disponible').length },
     { id: 'drivers', label: 'Repartidores', icon: Users, badge: drivers.length },
     { id: 'routes', label: 'Recorridos', icon: Route, badge: null },
-    { id: 'audit', label: 'Auditoría', icon: Activity, badge: null },
   ] as const;
 
   return (
@@ -462,26 +461,6 @@ export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }
                   <div className="text-left">
                     <span>Historial de Recorridos</span>
                     <p className="text-[11px] text-slate-400 font-medium">Trazabilidad de rutas y tiempos</p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentTab('audit');
-                  setIsMoreMenuOpen(false);
-                }}
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 hover:bg-orange-50 text-slate-900 font-bold text-sm border border-slate-100 transition-colors min-h-[48px]"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                    <Activity className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <span>Registro de Auditoría</span>
-                    <p className="text-[11px] text-slate-400 font-medium">{events.length} eventos registrados</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400" />

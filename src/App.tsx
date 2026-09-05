@@ -10,23 +10,29 @@ import { UbikaControl } from './components/control/UbikaControl';
 import { UbikaFoodApp } from './components/food/UbikaFoodApp';
 import { UbikaCommerceApp } from './components/commerce/UbikaCommerceApp';
 import { Login } from './components/Login';
+import { ConsumerRights } from './components/ConsumerRights';
+import { WithdrawalModal } from './components/legal/WithdrawalModal';
 import { getStoredToken, getStoredUser, clearStoredAuth, StoredUser } from './utils/api';
-import { Smartphone, Globe, LayoutDashboard, Truck, Utensils, Store, LogOut, User } from 'lucide-react';
+import { Smartphone, Globe, LayoutDashboard, Truck, Utensils, Store, LogOut, User, RotateCcw } from 'lucide-react';
 
 export default function App() {
   const [viewMode, setViewMode] = useState<'control' | 'driver' | 'customer' | 'food' | 'commerce'>('control');
   const [customerToken, setCustomerToken] = useState<string>('');
   const [foodCompanyId, setFoodCompanyId] = useState<string | undefined>(undefined);
   const [foodOrderId, setFoodOrderId] = useState<string | undefined>(undefined);
+  const [isWithdrawalOpen, setIsWithdrawalOpen] = useState(false);
+  const [currentHash, setCurrentHash] = useState<string>(() => (typeof window !== 'undefined' ? window.location.hash : ''));
   
   // Real authentication state
   const [authToken, setAuthToken] = useState<string | null>(getStoredToken());
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(getStoredUser());
 
-  // Detect hash changes or URL params for #track/:token, #food, #food/admin, #food/company/:companyId, #food/order/:orderId
+  // Detect hash changes or URL params for #track/:token, #food, #food/admin, #food/company/:companyId, #food/order/:orderId, #legal/consumer
   useEffect(() => {
     const checkHash = () => {
       const hash = window.location.hash;
+      setCurrentHash(hash);
+
       if (hash.startsWith('#track/')) {
         const token = hash.replace('#track/', '');
         if (token) {
@@ -51,6 +57,10 @@ export default function App() {
       if (hash === '#commerce') {
         setViewMode('commerce');
         return;
+      }
+
+      if (hash === '#arrepentimiento' || hash === '#desistimiento') {
+        setIsWithdrawalOpen(true);
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -111,6 +121,11 @@ export default function App() {
     setViewMode('control');
     window.location.hash = '';
   };
+
+  // Consumer rights are intentionally public and reachable from the first access without login.
+  if (currentHash === '#legal/consumer') {
+    return <ConsumerRights />;
+  }
 
   // Determine if authentication is required for the current view
   const isFoodCustomerMenu = viewMode === 'food' && window.location.hash.includes('/company/');
@@ -248,6 +263,21 @@ export default function App() {
             </button>
           </div>
         )}
+
+        {/* Botón de Arrepentimiento - Acceso directo legal sin barreras (Disp. 954/2025) */}
+        <div className="border-l border-slate-200 pl-3">
+          <button
+            id="btn-withdrawal-legal"
+            type="button"
+            onClick={() => setIsWithdrawalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 border border-slate-200 transition-all shadow-xs"
+            title="Botón de Arrepentimiento (Defensa del Consumidor - Ley 24.240 y Disp. 954/2025)"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-orange-600" />
+            <span className="hidden md:inline">Botón de</span>
+            <span>Arrepentimiento</span>
+          </button>
+        </div>
       </header>
 
       {/* App views */}
@@ -267,6 +297,12 @@ export default function App() {
         )}
         {viewMode === 'commerce' && <UbikaCommerceApp />}
       </div>
+
+      {/* Modal de Desistimiento / Arrepentimiento */}
+      <WithdrawalModal
+        isOpen={isWithdrawalOpen}
+        onClose={() => setIsWithdrawalOpen(false)}
+      />
     </div>
   );
 }

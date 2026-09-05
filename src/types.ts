@@ -393,3 +393,39 @@ export interface WhatsAppMessagePayload {
   orderNumber: number;
   description: string;
 }
+
+export type WithdrawalRequestType = 'PURCHASE_WITHDRAWAL' | 'SERVICE_CANCELLATION';
+export type WithdrawalRequestStatus = 'PENDING' | 'PROCESSING' | 'APPROVED' | 'REJECTED';
+export interface WithdrawalRequest {
+  id: string;
+  companyId: string;
+  customerId?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  saleId?: string;
+  subscriptionId?: string;
+  orderNumber?: number;
+  type: WithdrawalRequestType;
+  status: WithdrawalRequestStatus;
+  consumerName: string;
+  consumerDocument?: string;
+  consumerEmail: string;
+  consumerPhone: string;
+  reason: string;
+  additionalNotes?: string;
+  createdAt: number;
+  updatedAt: number;
+  processedAt?: number;
+  processedBy?: string;
+  exceptionApplied?: 'PERISHABLE_PRODUCT' | 'DIGITAL_SERVICE_CONSUMED' | 'CUSTOM_MADE' | 'USED_OR_CONSUMED' | 'RESALE_OR_PRODUCTION' | null;
+  exceptionJustification?: string;
+  responseMessage?: string;
+  refundAmount?: number;
+  refundMethod?: 'ORIGINAL_PAYMENT' | 'STORE_CREDIT' | 'BANK_TRANSFER';
+  ipAddress: string;
+  userAgent: string;
+  consentAccepted: boolean;
+  consentAcceptedAt: number;
+  legalResponseDueAt?: number;
+}
+

@@ -7,9 +7,12 @@ import crypto from "crypto";
 import multer from "multer";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
-import { db, hashToken, validatePassword, UserRole } from "./server/db";
+import { db, hashToken, validatePassword, UserRole, UserRecord } from "./server/db";
 import { EmailService } from "./server/email";
 import { CommerceService } from "./server/commerce/service";
+import { CommerceRepository } from "./server/commerce/repository";
+import { WithdrawalRequest } from "./server/legal/types";
+import { processRefund } from "./server/legal/refunds";
 import {
   authenticateUser,
   requireRole,
@@ -362,6 +365,258 @@ export function createUbikaApp(): express.Express {
     return res.status(200).json({ businessType: company.businessType || null, digitalComplaintBookUrl: company.digitalComplaintBookUrl || null, complaintBookConfigured: Boolean(company.digitalComplaintBookUrl) });
   });
 
+  // --- BOTÓN DE ARREPENTIMIENTO Y DESISTIMIENTO (Disposición 954/2025 + Disposición 3/2026) ---
+
+  // 1. Endpoint Público para Solicitar Desistimiento (Sin registro obligatorio ni barreras de acceso)
+  app.post("/api/legal/withdrawal-request", rateLimit(60000, 10), async (req: Request, res: Response) => {
+    try {
+      const {
+        type,
+        saleId,
+        subscriptionId,
+        companyId: customCompanyId,
+        consumerName,
+        consumerEmail,
+        consumerPhone,
+        consumerDocument,
+        reason,
+        additionalNotes,
+        consentAccepted,
+      } = req.body;
+
+      if (!type || !['PURCHASE_WITHDRAWAL', 'SERVICE_CANCELLATION'].includes(type)) {
+        return res.status(400).json({ error: "Tipo de desistimiento inválido (debe ser PURCHASE_WITHDRAWAL o SERVICE_CANCELLATION)" });
+      }
+
+      if (!consumerName || typeof consumerName !== 'string' || !consumerName.trim()) {
+        return res.status(400).json({ error: "Nombre del consumidor es obligatorio" });
+      }
+
+      if (!consumerEmail || typeof consumerEmail !== 'string' || !consumerEmail.includes('@')) {
+        return res.status(400).json({ error: "Correo electrónico válido del consumidor es obligatorio" });
+      }
+
+      if (!consumerPhone || typeof consumerPhone !== 'string' || !consumerPhone.trim()) {
+        return res.status(400).json({ error: "Teléfono de contacto es obligatorio" });
+      }
+
+      if (!reason || typeof reason !== 'string' || reason.trim().length < 10) {
+        return res.status(400).json({ error: "Debe indicar el motivo del desistimiento (mínimo 10 caracteres)" });
+      }
+
+      if (consentAccepted !== true) {
+        return res.status(400).json({ error: "Debe aceptar el tratamiento de datos personales conforme a la Ley 25.326" });
+      }
+
+      let targetCompanyId = customCompanyId || '';
+      let exceptionApplied: 'PERISHABLE_PRODUCT' | 'DIGITAL_SERVICE_CONSUMED' | 'CUSTOM_MADE' | null = null;
+      let exceptionJustification = '';
+
+      if (type === 'PURCHASE_WITHDRAWAL') {
+        if (!saleId || typeof saleId !== 'string') {
+          return res.status(400).json({ error: "Debe identificar la compra o número de pedido para el arrepentimiento" });
+        }
+
+        // Buscar en ventas de comercio o pedidos gastronómicos
+        const commerceSale = CommerceRepository.getSaleById(saleId);
+        const foodOrder = !commerceSale ? db.getFoodOrderById(saleId) : undefined;
+
+        if (!commerceSale && !foodOrder) {
+          return res.status(404).json({ error: "Compra o pedido no encontrado en el sistema" });
+        }
+
+        const purchaseRecord = commerceSale || foodOrder!;
+        targetCompanyId = targetCompanyId || purchaseRecord.companyId;
+
+        // Verificar plazo legal de 10 días corridos (Ley 24.240 art. 34 / Disp. 954/2025)
+        const purchaseTimestamp = purchaseRecord.createdAt || Date.now();
+        const daysSincePurchase = (Date.now() - purchaseTimestamp) / (1000 * 60 * 60 * 24);
+        if (daysSincePurchase > 10) {
+          return res.status(400).json({
+            error: "El plazo legal de 10 días corridos para ejercer el derecho de desistimiento ha vencido",
+            purchaseDate: purchaseTimestamp,
+            daysElapsed: Math.floor(daysSincePurchase),
+          });
+        }
+
+        // Evaluación de excepciones legales para productos perecederos
+        const company = db.getCompanyById(targetCompanyId);
+        if (foodOrder || (company && company.businessType === 'FOOD')) {
+          exceptionApplied = 'PERISHABLE_PRODUCT';
+          exceptionJustification = 'Alimentos preparados para consumo inmediato (producto perecedero sujeto a excepción legal).';
+        }
+      } else {
+        // SERVICE_CANCELLATION
+        if (!targetCompanyId) {
+          const companies = db.getAllCompanies();
+          targetCompanyId = companies[0]?.id || 'comp_default';
+        }
+      }
+
+      const withdrawalRequest: WithdrawalRequest = {
+        id: `wdrl_${crypto.randomUUID()}`,
+        companyId: targetCompanyId,
+        guestEmail: consumerEmail.trim(),
+        guestPhone: consumerPhone.trim(),
+        saleId: saleId || undefined,
+        subscriptionId: subscriptionId || undefined,
+        type,
+        status: 'PENDING',
+        consumerName: consumerName.trim(),
+        consumerDocument: consumerDocument ? String(consumerDocument).trim() : undefined,
+        consumerEmail: consumerEmail.trim(),
+        consumerPhone: consumerPhone.trim(),
+        reason: reason.trim(),
+        additionalNotes: additionalNotes ? String(additionalNotes).trim() : '',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        exceptionApplied,
+        exceptionJustification: exceptionJustification || undefined,
+        ipAddress: req.ip || 'anonymous',
+        userAgent: (req.headers['user-agent'] as string) || '',
+        consentAccepted: true,
+        consentAcceptedAt: Date.now(),
+      };
+
+      db.createWithdrawalRequest(withdrawalRequest);
+
+      // Auditoría inmutable con IP y User-Agent
+      recordAuditEvent(
+        withdrawalRequest.companyId,
+        withdrawalRequest.id,
+        0,
+        'DELIVERY_CANCELLED',
+        `Solicitud de arrepentimiento/desistimiento ${withdrawalRequest.id} registrada por ${consumerName}.`,
+        consumerName,
+        undefined,
+        'CLIENT',
+        { legalAction: 'WITHDRAWAL_REQUEST_CREATED', withdrawalId: withdrawalRequest.id, type: withdrawalRequest.type }
+      );
+
+      // Notificaciones por correo
+      EmailService.sendWithdrawalConfirmation(withdrawalRequest).catch(() => {});
+      EmailService.notifyMerchantWithdrawal(withdrawalRequest).catch(() => {});
+
+      return res.status(201).json({
+        success: true,
+        withdrawalId: withdrawalRequest.id,
+        message: "Su solicitud de desistimiento ha sido registrada. Recibirá una respuesta en un plazo máximo de 5 días hábiles.",
+        estimatedResponseDate: Date.now() + (5 * 24 * 60 * 60 * 1000),
+      });
+    } catch (err: any) {
+      console.error('[Withdrawal Request Error]:', err);
+      return res.status(500).json({ error: "Error interno al procesar la solicitud de desistimiento" });
+    }
+  });
+
+  // 2. Endpoint Público para Consultar Estado del Desistimiento (Verificación razonable y proporcional - Disp. 3/2026)
+  app.get("/api/legal/withdrawal-status/:withdrawalId", rateLimit(60000, 20), (req: Request, res: Response) => {
+    const { withdrawalId } = req.params;
+    const { email, document } = req.query;
+
+    const request = db.getWithdrawalRequest(withdrawalId);
+    if (!request) {
+      return res.status(404).json({ error: "Solicitud de desistimiento no encontrada" });
+    }
+
+    // Verificación razonable de identidad sin barreras burocráticas (Disposición 3/2026)
+    const emailMatches = email && typeof email === 'string' && request.consumerEmail.toLowerCase() === email.trim().toLowerCase();
+    const docMatches = document && typeof document === 'string' && request.consumerDocument && request.consumerDocument.toLowerCase() === document.trim().toLowerCase();
+
+    if (!emailMatches && !docMatches) {
+      return res.status(403).json({
+        error: "Verificación de identidad requerida. Ingrese el correo electrónico o documento asociado al trámite.",
+      });
+    }
+
+    return res.status(200).json({
+      withdrawalId: request.id,
+      type: request.type,
+      status: request.status,
+      createdAt: request.createdAt,
+      updatedAt: request.updatedAt,
+      processedAt: request.processedAt,
+      responseMessage: request.responseMessage,
+      refundAmount: request.refundAmount,
+      refundMethod: request.refundMethod,
+      exceptionApplied: request.exceptionApplied,
+      exceptionJustification: request.exceptionJustification,
+      estimatedResponseDate: request.createdAt + (5 * 24 * 60 * 60 * 1000),
+    });
+  });
+
+  // 3. Endpoint Autenticado para Procesar Desistimiento (Comercio / Administrador)
+  app.post("/api/legal/withdrawal-process/:withdrawalId", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), async (req: AuthenticatedRequest, res: Response) => {
+    const { withdrawalId } = req.params;
+    const { status, responseMessage, refundAmount, refundMethod, exceptionApplied, exceptionJustification } = req.body;
+
+    const request = db.getWithdrawalRequest(withdrawalId);
+    if (!request) {
+      return res.status(404).json({ error: "Solicitud no encontrada" });
+    }
+
+    // Aislamiento multi-tenant
+    if (request.companyId !== req.user!.companyId && req.user!.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: "No tiene permisos para procesar solicitudes de otra empresa" });
+    }
+
+    if (!['PROCESSING', 'APPROVED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ error: "Estado inválido (debe ser PROCESSING, APPROVED o REJECTED)" });
+    }
+
+    if (status === 'REJECTED' && !exceptionApplied && !exceptionJustification) {
+      return res.status(400).json({ error: "Debe indicar la excepción legal aplicada o justificación formal del rechazo" });
+    }
+
+    let processedRefund = null;
+    if (status === 'APPROVED' && request.saleId) {
+      try {
+        processedRefund = await processRefund(request.saleId, refundAmount, refundMethod);
+      } catch (refundErr) {
+        console.error('[Refund Process Error]:', refundErr);
+      }
+    }
+
+    const updated = db.updateWithdrawalRequest(withdrawalId, {
+      status,
+      responseMessage: responseMessage || undefined,
+      refundAmount: status === 'APPROVED' ? Number(refundAmount || 0) : undefined,
+      refundMethod: status === 'APPROVED' ? refundMethod : undefined,
+      exceptionApplied: status === 'REJECTED' ? (exceptionApplied || null) : null,
+      exceptionJustification: status === 'REJECTED' ? (exceptionJustification || '') : undefined,
+      processedAt: Date.now(),
+      processedBy: req.user!.userId,
+      updatedAt: Date.now(),
+    });
+
+    // Auditoría
+    recordAuditEvent(
+      request.companyId,
+      request.id,
+      0,
+      'DELIVERY_COMPLETED',
+      `Solicitud de desistimiento ${request.id} procesada con estado: ${status}.`,
+      req.user!.name,
+      req.user!.userId,
+      req.user!.role,
+      { legalAction: 'WITHDRAWAL_PROCESSED', status, refundAmount, processedRefund }
+    );
+
+    if (updated) {
+      EmailService.sendWithdrawalResolution(updated).catch(() => {});
+    }
+
+    return res.status(200).json({ success: true, request: updated, refundDetails: processedRefund });
+  });
+
+  // 4. Endpoint Autenticado para Listar Solicitudes de Desistimiento del Tenant
+  app.get("/api/legal/withdrawals", authenticateUser, requireRole(['SUPER_ADMIN', 'COMPANY_ADMIN']), (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role === 'SUPER_ADMIN') {
+      return res.json(db.getAllWithdrawalRequests());
+    }
+    return res.json(db.getWithdrawalRequestsByCompany(req.user!.companyId));
+  });
+
   app.post("/api/auth/login", rateLimit(60000, 10), (req: Request, res: Response) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -503,15 +758,20 @@ export function createUbikaApp(): express.Express {
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password, salt);
 
-    const newUser = {
-      id: `usr_${Date.now()}`,
+    const now = Date.now();
+    const newUser: UserRecord = {
+      id: `usr_${crypto.randomUUID()}`,
       email: invitation.email,
       passwordHash,
       name: name || invitation.email.split('@')[0],
       role: invitation.role, // Enforce role from invitation, cannot be changed by user
       companyId: invitation.companyId, // Enforce company from invitation, cannot be changed
-      createdAt: Date.now(),
+      createdAt: now,
       active: true,
+      privacyPolicyAccepted: true,
+      privacyPolicyAcceptedAt: now,
+      termsOfServiceAccepted: true,
+      termsOfServiceAcceptedAt: now,
     };
 
     db.createUser(newUser);

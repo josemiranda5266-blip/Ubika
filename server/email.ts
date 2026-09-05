@@ -53,6 +53,41 @@ class EmailServiceClass {
     return await this.dispatch(to, subject, text, html);
   }
 
+  /**
+   * Send withdrawal request confirmation to consumer.
+   */
+  async sendWithdrawalConfirmation(req: { id: string; consumerEmail: string; consumerName: string; type: string }): Promise<boolean> {
+    const subject = `UBIKA - Comprobante de solicitud de desistimiento (${req.id})`;
+    const text = `Estimado/a ${req.consumerName},\n\nHemos recibido su solicitud de desistimiento con código único de trámite: ${req.id}.\nTipo: ${req.type === 'PURCHASE_WITHDRAWAL' ? 'Arrepentimiento de compra' : 'Baja de servicio'}.\n\nConforme a la normativa aplicable (Ley 24.240 y Disposición 954/2025), su solicitud será procesada en un plazo máximo de 5 días hábiles.\n\nPuede consultar el estado de su trámite en cualquier momento ingresando su código de trámite y su correo en la plataforma.\n\nAtentamente,\nEquipo UBIKA`;
+    const html = `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+      <h2>Solicitud de Desistimiento Recibida</h2>
+      <p>Estimado/a <strong>${req.consumerName}</strong>,</p>
+      <p>Se ha registrado su solicitud de arrepentimiento/desistimiento con el siguiente código único de trámite:</p>
+      <p style="font-size: 18px; font-weight: bold; background: #f3f4f6; padding: 12px; border-radius: 8px; font-family: monospace;">${req.id}</p>
+      <p><strong>Tipo:</strong> ${req.type === 'PURCHASE_WITHDRAWAL' ? 'Arrepentimiento de compra' : 'Baja de servicio'}</p>
+      <p>Conforme a la normativa de Defensa del Consumidor, recibirá una respuesta formal en un plazo máximo de 5 días hábiles.</p>
+    </div>`;
+    return await this.dispatch(req.consumerEmail, subject, text, html);
+  }
+
+  /**
+   * Notify merchant about a new consumer withdrawal request.
+   */
+  async notifyMerchantWithdrawal(req: { id: string; companyId: string; consumerName: string; type: string; reason: string }): Promise<boolean> {
+    const subject = `[AVISO UBIKA] Nueva solicitud de desistimiento ${req.id}`;
+    const text = `Se ha recibido una nueva solicitud de desistimiento para la empresa ${req.companyId}.\nCódigo: ${req.id}\nConsumidor: ${req.consumerName}\nMotivo: ${req.reason}\n\nPor favor ingrese al panel de administración para revisarla.`;
+    return await this.dispatch(`admin@${req.companyId}.ubika.local`, subject, text);
+  }
+
+  /**
+   * Send resolution notification to consumer.
+   */
+  async sendWithdrawalResolution(req: { id: string; consumerEmail: string; consumerName: string; status: string; responseMessage?: string }): Promise<boolean> {
+    const subject = `UBIKA - Resolución de solicitud de desistimiento (${req.id})`;
+    const text = `Estimado/a ${req.consumerName},\n\nSu solicitud con código ${req.id} ha sido resuelta con estado: ${req.status}.\n${req.responseMessage ? `Detalles: ${req.responseMessage}\n` : ''}\nAtentamente,\nEquipo UBIKA`;
+    return await this.dispatch(req.consumerEmail, subject, text);
+  }
+
   private async dispatch(to: string, subject: string, text: string, html?: string): Promise<boolean> {
     const provider = (process.env.EMAIL_PROVIDER || 'console').toLowerCase();
     const from = process.env.EMAIL_FROM || 'no-reply@ubika.app';
