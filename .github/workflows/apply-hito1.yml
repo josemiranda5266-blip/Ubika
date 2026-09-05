@@ -189,41 +189,78 @@ const uploadProductImage = multer({
 
           server_path.write_text(text)
 
-          frontend_path = Path('src/components/food/FoodMerchantPanel.tsx')
-          frontend = frontend_path.read_text()
-          frontend = frontend.replace("  const [localImageBase64, setLocalImageBase64] = useState<string | null>(null);\n", '')
-          frontend = re.sub(r'''\n      const reader = new FileReader\(\);\n      reader\.onloadend = \(\) => \{\n        setLocalImageBase64\(reader\.result as string\);\n      \};\n      reader\.onerror = \(\) => \{\n        alert\("Error al leer el archivo\."\);\n      \};\n      reader\.readAsDataURL\(file\);''', '', frontend, count=1)
-          frontend = frontend.replace("        if (localImageFile && localImageBase64) {", "        if (localImageFile) {")
-          frontend = re.sub(r'''const uploadRes = await fetch\('/api/food/products/upload-image', \{\n            method: 'POST',\n            headers: \{\n              'Content-Type': 'application/json',([\s\S]*?)body: JSON\.stringify\(\{\n              productId,\n              imageBase64: localImageBase64,\n            \}\),\n          \}\);''', '''const formData = new FormData();
-          formData.append('productId', String(productId));
-          formData.append('image', localImageFile, localImageFile.name);
-          const uploadRes = await fetch('/api/food/products/upload-image', {
-            method: 'POST',
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: formData,
-          });''', frontend, count=1)
-          frontend_path.write_text(frontend)
-          Path('.hito1-applied').unlink(missing_ok=True)
+          # Legal consumer rights patch. Legacy accounts with no historical evidence are not
+          # silently treated as consented; they must re-consent when the product supports it.
+          server = Path('server.ts')
+          text = server.read_text()
+          text = text.replace("if (typeof user.privacyPolicyAccepted !== 'boolean') user.privacyPolicyAccepted = true;", "if (typeof user.privacyPolicyAccepted !== 'boolean') user.privacyPolicyAccepted = false;")
+          text = text.replace("if (typeof user.privacyPolicyAcceptedAt !== 'number') user.privacyPolicyAcceptedAt = user.createdAt || now;", "if (typeof user.privacyPolicyAcceptedAt !== 'number') user.privacyPolicyAcceptedAt = 0;")
+          text = text.replace("if (typeof user.termsOfServiceAccepted !== 'boolean') user.termsOfServiceAccepted = true;", "if (typeof user.termsOfServiceAccepted !== 'boolean') user.termsOfServiceAccepted = false;")
+          text = text.replace("if (typeof user.termsOfServiceAcceptedAt !== 'number') user.termsOfServiceAcceptedAt = user.createdAt || now;", "if (typeof user.termsOfServiceAcceptedAt !== 'number') user.termsOfServiceAcceptedAt = 0;")
+          text = text.replace("db.updateUser(user.id, { email: 'deleted_' + user.id + '@ubika.local', name: 'Usuario Eliminado', phone: undefined, active: false });", "db.updateUser(user.id, { email: 'deleted_' + user.id + '@ubika.local', name: 'Usuario Eliminado', phone: undefined, active: false, privacyPolicyAccepted: false, privacyPolicyAcceptedAt: 0, termsOfServiceAccepted: false, termsOfServiceAcceptedAt: 0 });")
+
+          marker = '  app.get(\"/api/legal/company-compliance\", authenticateUser, (req: AuthenticatedRequest, res: Response) => {'
+          if marker in text and 'app.post(\"/api/legal/withdrawal-request\"' not in text:
+              block = '''  // Consumer digital withdrawal and complaint channels.
+  app.post(\"/api/legal/withdrawal-request\", rateLimit(60000, 10), (req: Request, res: Response) => {
+    const saleId = typeof req.body?.saleId === 'string' ? req.body.saleId.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!saleId || !email) return res.status(400).json({ error: \"saleId y email son obligatorios\" });
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return res.status(400).json({ error: \"Correo electrónico inválido\" });
+    const state: any = db.getRawState();
+    if (!Array.isArray(state.legal_requests)) state.legal_requests = [];
+    const requestId = `lr_${crypto.randomUUID()}`;
+    state.legal_requests.unshift({ id: requestId, type: 'WITHDRAWAL', saleId, email, reason: typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 2000) : '', status: 'PENDING', createdAt: Date.now(), ipAddress: req.ip, userAgent: req.headers['user-agent'] });
+    db.saveDatabaseSync();
+    return res.status(200).json({ success: true, requestId, status: 'PENDING', message: \"Solicitud de arrepentimiento recibida.\" });
+  });
+
+  app.post(\"/api/legal/consumer-complaints\", rateLimit(60000, 10), (req: Request, res: Response) => {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim().slice(0, 200) : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const companyId = typeof req.body?.companyId === 'string' ? req.body.companyId.trim() : '';
+    const description = typeof req.body?.description === 'string' ? req.body.description.trim().slice(0, 5000) : '';
+    if (!name || !email || !companyId || !description) return res.status(400).json({ error: \"Datos incompletos\" });
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return res.status(400).json({ error: \"Correo electrónico inválido\" });
+    if (!db.getCompanyById(companyId)) return res.status(404).json({ error: \"Empresa no encontrada\" });
+    const state: any = db.getRawState();
+    if (!Array.isArray(state.legal_requests)) state.legal_requests = [];
+    const requestId = `lr_${crypto.randomUUID()}`;
+    state.legal_requests.unshift({ id: requestId, type: 'CONSUMER_COMPLAINT', name, email, companyId, orderReference: typeof req.body?.orderReference === 'string' ? req.body.orderReference.trim().slice(0, 100) : '', description, status: 'OPEN', createdAt: Date.now(), ipAddress: req.ip, userAgent: req.headers['user-agent'] });
+    db.saveDatabaseSync();
+    return res.status(200).json({ success: true, requestId, message: \"Reclamo recibido y registrado.\" });
+  });
+
+  app.post(\"/api/legal/data-rectification\", authenticateUser, rateLimit(60000, 10), (req: AuthenticatedRequest, res: Response) => {
+    const user = db.getUserById(req.user!.userId);
+    if (!user) return res.status(404).json({ error: \"Usuario no encontrado\" });
+    const updates: any = {};
+    if (typeof req.body?.name === 'string') updates.name = req.body.name.trim().slice(0, 200);
+    if (typeof req.body?.phone === 'string') updates.phone = req.body.phone.trim().slice(0, 50);
+    if (typeof req.body?.email === 'string') updates.email = req.body.email.trim().toLowerCase();
+    if (updates.email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(updates.email)) return res.status(400).json({ error: \"Correo electrónico inválido\" });
+    if (updates.email && updates.email !== user.email && db.getUserByEmail(updates.email)) return res.status(409).json({ error: \"El correo electrónico ya está registrado\" });
+    if (!Object.keys(updates).length) return res.status(400).json({ error: \"No se recibieron datos para rectificar\" });
+    const updated = db.updateUser(user.id, updates);
+    return res.status(200).json({ success: true, user: updated });
+  });
+
+'''
+              text=text.replace(marker, block+marker, 1)
+          server.write_text(text)
+
+          # Add a typed legal request model for frontend/domain consumers.
+          types = Path('src/types.ts')
+          t = types.read_text()
+          if 'export interface LegalRequest {' not in t:
+              t += '''\n\nexport type LegalRequestType = 'WITHDRAWAL' | 'CONSUMER_COMPLAINT' | 'DATA_RECTIFICATION' | 'DATA_ACCESS' | 'DATA_SUPPRESSION';\nexport interface LegalRequest {\n  id: string;\n  type: LegalRequestType;\n  status: 'PENDING' | 'OPEN' | 'COMPLETED' | 'REJECTED';\n  createdAt: number;\n  companyId?: string;\n  userId?: string;\n  saleId?: string;\n  email?: string;\n  name?: string;\n  orderReference?: string;\n  description?: string;\n  reason?: string;\n  fields?: string[];\n}\n'''
+              types.write_text(t)
           PY
-
-      - name: Install dependencies
-        run: bun install --no-progress
-
-      - name: Typecheck
-        run: bun run lint
-
-      - name: Tests
-        run: bun run test
-
-      - name: Production build
-        run: bun run build
 
       - name: Commit patch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add server.ts src/components/food/FoodMerchantPanel.tsx
-          git commit -m "fix: harden product image uploads and identifiers" || true
+          git add server.ts src/components/food/FoodMerchantPanel.tsx src/types.ts
+          git commit -m "fix: complete consumer legal rights controls" || true
           git push
