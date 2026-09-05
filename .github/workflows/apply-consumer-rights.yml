@@ -1,0 +1,192 @@
+name: Apply UBIKA Consumer Rights
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: contains(github.event.head_commit.message, '[apply-consumer-rights]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch consumer rights
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          server = Path('server.ts')
+          s = server.read_text()
+
+          # Correct legacy-account consent normalization: absence of historical evidence is not consent.
+          s = s.replace("if (typeof user.privacyPolicyAccepted !== 'boolean') user.privacyPolicyAccepted = true;", "if (typeof user.privacyPolicyAccepted !== 'boolean') user.privacyPolicyAccepted = false;")
+          s = s.replace("if (typeof user.privacyPolicyAcceptedAt !== 'number') user.privacyPolicyAcceptedAt = user.createdAt || now;", "if (typeof user.privacyPolicyAcceptedAt !== 'number') user.privacyPolicyAcceptedAt = 0;")
+          s = s.replace("if (typeof user.termsOfServiceAccepted !== 'boolean') user.termsOfServiceAccepted = true;", "if (typeof user.termsOfServiceAccepted !== 'boolean') user.termsOfServiceAccepted = false;")
+          s = s.replace("if (typeof user.termsOfServiceAcceptedAt !== 'number') user.termsOfServiceAcceptedAt = user.createdAt || now;", "if (typeof user.termsOfServiceAcceptedAt !== 'number') user.termsOfServiceAcceptedAt = 0;")
+          s = s.replace("db.updateUser(user.id, { email: 'deleted_' + user.id + '@ubika.local', name: 'Usuario Eliminado', phone: undefined, active: false });", "db.updateUser(user.id, { email: 'deleted_' + user.id + '@ubika.local', name: 'Usuario Eliminado', phone: undefined, active: false, privacyPolicyAccepted: false, privacyPolicyAcceptedAt: 0, termsOfServiceAccepted: false, termsOfServiceAcceptedAt: 0 });")
+
+          marker = '  app.get("/api/legal/company-compliance", authenticateUser, (req: AuthenticatedRequest, res: Response) => {'
+          if marker not in s:
+              raise SystemExit('legal insertion marker not found')
+
+          if 'app.post("/api/legal/withdrawal-request"' not in s:
+              block = r'''  // Consumer rights: public digital withdrawal and service cancellation channels.
+  // No account registration is required. Verification, when needed, is limited to reasonable identity/security checks.
+  const legalEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  app.post("/api/legal/withdrawal-request", rateLimit(60000, 10), (req: Request, res: Response) => {
+    const type = req.body?.type === 'SERVICE_CANCELLATION' ? 'SERVICE_CANCELLATION' : req.body?.type === 'PURCHASE_WITHDRAWAL' ? 'PURCHASE_WITHDRAWAL' : '';
+    const saleId = typeof req.body?.saleId === 'string' ? req.body.saleId.trim() : '';
+    const subscriptionId = typeof req.body?.subscriptionId === 'string' ? req.body.subscriptionId.trim() : '';
+    const consumerName = typeof req.body?.consumerName === 'string' ? req.body.consumerName.trim().slice(0, 200) : '';
+    const consumerEmail = typeof req.body?.consumerEmail === 'string' ? req.body.consumerEmail.trim().toLowerCase() : '';
+    const consumerPhone = typeof req.body?.consumerPhone === 'string' ? req.body.consumerPhone.trim().slice(0, 50) : '';
+    const consumerDocument = typeof req.body?.consumerDocument === 'string' ? req.body.consumerDocument.trim().slice(0, 30) : '';
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 2000) : '';
+    const additionalNotes = typeof req.body?.additionalNotes === 'string' ? req.body.additionalNotes.trim().slice(0, 5000) : '';
+    const consentAccepted = req.body?.consentAccepted === true;
+
+    if (!type) return res.status(400).json({ error: "Tipo de solicitud inválido" });
+    if (!consumerName || !consumerEmail || !consumerPhone) return res.status(400).json({ error: "Nombre, correo y teléfono son obligatorios" });
+    if (!legalEmailPattern.test(consumerEmail)) return res.status(400).json({ error: "Correo electrónico inválido" });
+    if (reason.length < 10) return res.status(400).json({ error: "Debe indicar el motivo de la solicitud" });
+    if (!consentAccepted) return res.status(400).json({ error: "Debe aceptar el tratamiento de los datos necesarios para gestionar la solicitud" });
+    if (type === 'PURCHASE_WITHDRAWAL' && !saleId) return res.status(400).json({ error: "Debe identificar la compra" });
+    if (type === 'SERVICE_CANCELLATION' && !subscriptionId) return res.status(400).json({ error: "Debe identificar el servicio" });
+
+    const state: any = db.getRawState();
+    if (!Array.isArray(state.legal_requests)) state.legal_requests = [];
+    let companyId = typeof req.body?.companyId === 'string' ? req.body.companyId.trim() : '';
+    let customerId: string | undefined;
+    let orderNumber: number | undefined;
+
+    if (saleId) {
+      const sale = (state.commerce_sales || []).find((x: any) => x.id === saleId);
+      if (!sale) return res.status(404).json({ error: "Compra no encontrada" });
+      companyId = sale.companyId;
+      customerId = sale.customerId;
+      orderNumber = typeof sale.orderNumber === 'number' ? sale.orderNumber : undefined;
+      // Do not fabricate a legal deadline from sale.createdAt: Article 34 counts from delivery/contract formation depending on the operation.
+      // Eligibility exceptions are resolved by the merchant during processing and are recorded explicitly below.
+    }
+
+    if (!companyId) return res.status(400).json({ error: "No se pudo determinar el comercio" });
+    if (!db.getCompanyById(companyId)) return res.status(404).json({ error: "Comercio no encontrado" });
+
+    const now = Date.now();
+    const id = `wdrl_${crypto.randomUUID()}`;
+    const request = {
+      id, companyId, customerId, guestEmail: consumerEmail, guestPhone: consumerPhone,
+      saleId: saleId || undefined, subscriptionId: subscriptionId || undefined, orderNumber,
+      type, status: 'PENDING', consumerName, consumerDocument: consumerDocument || undefined,
+      consumerEmail, consumerPhone, reason, additionalNotes,
+      createdAt: now, updatedAt: now,
+      ipAddress: req.ip, userAgent: req.headers['user-agent'] || '',
+      consentAccepted: true, consentAcceptedAt: now,
+      legalResponseDueAt: now + 24 * 60 * 60 * 1000,
+    };
+    state.legal_requests.unshift(request);
+    db.saveDatabaseSync();
+    recordAuditEvent(companyId, id, orderNumber || 0, 'WITHDRAWAL_REQUEST_CREATED', `Solicitud legal ${id} creada: ${type}`, consumerName, undefined, 'CONSUMER', { type, ipAddress: req.ip, userAgent: req.headers['user-agent'] || '' });
+    return res.status(201).json({ success: true, withdrawalId: id, status: 'PENDING', message: "Solicitud registrada. Dentro de las 24 horas se informará el código de identificación y se gestionará la solicitud por este medio.", legalResponseDueAt: request.legalResponseDueAt });
+  });
+
+  app.get("/api/legal/withdrawal-status/:withdrawalId", rateLimit(60000, 20), (req: Request, res: Response) => {
+    const id = typeof req.params.withdrawalId === 'string' ? req.params.withdrawalId.trim() : '';
+    const email = typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : '';
+    const document = typeof req.query.document === 'string' ? req.query.document.trim() : '';
+    const state: any = db.getRawState();
+    const request = (state.legal_requests || []).find((x: any) => x.id === id && (x.type === 'PURCHASE_WITHDRAWAL' || x.type === 'SERVICE_CANCELLATION'));
+    if (!request) return res.status(404).json({ error: "Solicitud no encontrada" });
+    if ((!email || request.consumerEmail !== email) && (!document || request.consumerDocument !== document)) return res.status(403).json({ error: "Datos de verificación incorrectos" });
+    return res.json({ withdrawalId: request.id, type: request.type, status: request.status, createdAt: request.createdAt, updatedAt: request.updatedAt, processedAt: request.processedAt, responseMessage: request.responseMessage, refundAmount: request.refundAmount, refundMethod: request.refundMethod, exceptionApplied: request.exceptionApplied, legalResponseDueAt: request.legalResponseDueAt });
+  });
+
+  app.post("/api/legal/withdrawal-process/:withdrawalId", authenticateUser, (req: AuthenticatedRequest, res: Response) => {
+    const state: any = db.getRawState();
+    const id = req.params.withdrawalId;
+    const request = (state.legal_requests || []).find((x: any) => x.id === id && (x.type === 'PURCHASE_WITHDRAWAL' || x.type === 'SERVICE_CANCELLATION'));
+    if (!request) return res.status(404).json({ error: "Solicitud no encontrada" });
+    if (request.companyId !== req.user!.companyId && req.user!.role !== 'SUPER_ADMIN') return res.status(403).json({ error: "No tiene permisos para procesar esta solicitud" });
+    const status = req.body?.status;
+    if (!['PROCESSING', 'APPROVED', 'REJECTED'].includes(status)) return res.status(400).json({ error: "Estado inválido" });
+    const responseMessage = typeof req.body?.responseMessage === 'string' ? req.body.responseMessage.trim().slice(0, 3000) : '';
+    const exceptionApplied = typeof req.body?.exceptionApplied === 'string' ? req.body.exceptionApplied : undefined;
+    const exceptionJustification = typeof req.body?.exceptionJustification === 'string' ? req.body.exceptionJustification.trim().slice(0, 3000) : '';
+    if (status === 'REJECTED' && (!exceptionApplied || !exceptionJustification)) return res.status(400).json({ error: "Una solicitud rechazada debe registrar la excepción o fundamento y su justificación" });
+    request.status = status;
+    request.responseMessage = responseMessage;
+    request.exceptionApplied = exceptionApplied || null;
+    request.exceptionJustification = exceptionJustification || undefined;
+    request.updatedAt = Date.now();
+    if (status === 'APPROVED' || status === 'REJECTED') { request.processedAt = request.updatedAt; request.processedBy = req.user!.userId; }
+    db.saveDatabaseSync();
+    recordAuditEvent(request.companyId, request.id, request.orderNumber || 0, 'WITHDRAWAL_REQUEST_PROCESSED', `Solicitud legal ${request.id} actualizada: ${status}`, req.user!.name, req.user!.userId, req.user!.role, { status, exceptionApplied });
+    return res.json(request);
+  });
+
+  app.post("/api/legal/service-cancellation", rateLimit(60000, 10), (req: Request, res: Response) => {
+    req.body = { ...req.body, type: 'SERVICE_CANCELLATION' };
+    const subscriptionId = typeof req.body?.subscriptionId === 'string' ? req.body.subscriptionId.trim() : '';
+    if (!subscriptionId) return res.status(400).json({ error: "Debe identificar el servicio" });
+    const state: any = db.getRawState();
+    if (!Array.isArray(state.legal_requests)) state.legal_requests = [];
+    const companyId = typeof req.body?.companyId === 'string' ? req.body.companyId.trim() : '';
+    if (!companyId || !db.getCompanyById(companyId)) return res.status(400).json({ error: "Comercio inválido" });
+    const email = typeof req.body?.consumerEmail === 'string' ? req.body.consumerEmail.trim().toLowerCase() : '';
+    if (!email || !legalEmailPattern.test(email)) return res.status(400).json({ error: "Correo electrónico inválido" });
+    if (req.body?.consentAccepted !== true) return res.status(400).json({ error: "Debe aceptar el tratamiento de los datos necesarios para gestionar la solicitud" });
+    const now = Date.now();
+    const id = `wdrl_${crypto.randomUUID()}`;
+    state.legal_requests.unshift({ id, companyId, subscriptionId, type: 'SERVICE_CANCELLATION', status: 'PENDING', consumerName: typeof req.body?.consumerName === 'string' ? req.body.consumerName.trim().slice(0, 200) : '', consumerEmail: email, consumerPhone: typeof req.body?.consumerPhone === 'string' ? req.body.consumerPhone.trim().slice(0, 50) : '', reason: typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 2000) : 'Solicitud de baja de servicio', createdAt: now, updatedAt: now, ipAddress: req.ip, userAgent: req.headers['user-agent'] || '', consentAccepted: true, consentAcceptedAt: now, legalResponseDueAt: now + 24 * 60 * 60 * 1000 });
+    db.saveDatabaseSync();
+    return res.status(201).json({ success: true, withdrawalId: id, status: 'PENDING', legalResponseDueAt: now + 24 * 60 * 60 * 1000 });
+  });
+
+'''
+              s = s.replace(marker, block + marker, 1)
+
+          server.write_text(s)
+
+          types = Path('src/types.ts')
+          t = types.read_text()
+          if 'export interface WithdrawalRequest {' not in t:
+              t += '''\n\nexport type WithdrawalRequestType = 'PURCHASE_WITHDRAWAL' | 'SERVICE_CANCELLATION';\nexport type WithdrawalRequestStatus = 'PENDING' | 'PROCESSING' | 'APPROVED' | 'REJECTED';\nexport interface WithdrawalRequest {\n  id: string; companyId: string; customerId?: string; guestEmail?: string; guestPhone?: string;\n  saleId?: string; subscriptionId?: string; orderNumber?: number;\n  type: WithdrawalRequestType; status: WithdrawalRequestStatus;\n  consumerName: string; consumerDocument?: string; consumerEmail: string; consumerPhone: string;\n  reason: string; additionalNotes?: string; createdAt: number; updatedAt: number; processedAt?: number; processedBy?: string;\n  exceptionApplied?: 'PERISHABLE_PRODUCT' | 'DIGITAL_SERVICE_CONSUMED' | 'CUSTOM_MADE' | 'USED_OR_CONSUMED' | 'RESALE_OR_PRODUCTION' | null;\n  exceptionJustification?: string; responseMessage?: string; refundAmount?: number;\n  refundMethod?: 'ORIGINAL_PAYMENT' | 'STORE_CREDIT' | 'BANK_TRANSFER';\n  ipAddress: string; userAgent: string; consentAccepted: boolean; consentAcceptedAt: number; legalResponseDueAt?: number;\n}\n'''
+              types.write_text(t)
+
+          component = Path('src/components/ConsumerRights.tsx')
+          component.write_text('''import React, { useState } from 'react';\n\nexport const ConsumerRights: React.FC = () => {\n  const [type, setType] = useState<'PURCHASE_WITHDRAWAL' | 'SERVICE_CANCELLATION'>('PURCHASE_WITHDRAWAL');\n  const [form, setForm] = useState({ saleId: '', subscriptionId: '', companyId: '', consumerName: '', consumerEmail: '', consumerPhone: '', reason: '', additionalNotes: '' });\n  const [consent, setConsent] = useState(false);\n  const [result, setResult] = useState<string | null>(null);\n  const [error, setError] = useState<string | null>(null);\n  const update = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));\n  const submit = async (e: React.FormEvent) => {\n    e.preventDefault(); setError(null); setResult(null);\n    const res = await fetch('/api/legal/withdrawal-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, type, consentAccepted: consent }) });\n    const data = await res.json();\n    if (!res.ok) { setError(data.error || 'No se pudo registrar la solicitud'); return; }\n    setResult(`Solicitud registrada: ${data.withdrawalId}. Debe conservar este código.`);\n  };\n  const field = (key: string, label: string, required = true) => <label className="block text-sm font-semibold text-slate-700"><span>{label}</span><input required={required} value={(form as any)[key]} onChange={e => update(key, e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>;\n  return <main className="min-h-screen bg-slate-50 p-4 sm:p-8"><div className="mx-auto max-w-2xl rounded-2xl bg-white p-6 shadow-lg">\n    <div className="mb-6"><span className="text-xs font-black uppercase tracking-widest text-orange-600">Derechos del consumidor</span><h1 className="mt-1 text-2xl font-black">Botón de Arrepentimiento / Baja de Servicio</h1><p className="mt-2 text-sm text-slate-600">Canal digital gratuito. No necesitás registrarte para presentar la solicitud.</p></div>\n    <form onSubmit={submit} className="space-y-4">\n      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" onClick={() => setType('PURCHASE_WITHDRAWAL')} className={`rounded-lg p-3 text-sm font-bold ${type === 'PURCHASE_WITHDRAWAL' ? 'bg-orange-500 text-white' : 'bg-slate-100'}`}>Arrepentimiento de compra</button><button type="button" onClick={() => setType('SERVICE_CANCELLATION')} className={`rounded-lg p-3 text-sm font-bold ${type === 'SERVICE_CANCELLATION' ? 'bg-orange-500 text-white' : 'bg-slate-100'}`}>Baja de servicio</button></div>\n      {field('companyId', 'Código del comercio')}\n      {type === 'PURCHASE_WITHDRAWAL' ? field('saleId', 'Código de compra') : field('subscriptionId', 'Código del servicio')}\n      {field('consumerName', 'Nombre completo')}\n      {field('consumerEmail', 'Correo electrónico')}\n      {field('consumerPhone', 'Teléfono')}\n      {field('reason', 'Motivo')}\n      {field('additionalNotes', 'Observaciones', false)}\n      <label className="flex gap-2 text-sm text-slate-600"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} required /> Acepto el tratamiento de los datos estrictamente necesarios para gestionar esta solicitud.</label>\n      {error && <div className="rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</div>}\n      {result && <div className="rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{result}</div>}\n      <button type="submit" className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-black text-white">Enviar solicitud</button>\n    </form>\n    <p className="mt-5 text-xs text-slate-500">La normativa vigente exige informar el código de identificación de la petición y adoptar las medidas necesarias dentro de las 24 horas.</p>\n  </div></main>;\n};\n''')
+
+          app = Path('src/App.tsx')
+          a = app.read_text()
+          if "import { ConsumerRights } from './components/ConsumerRights';" not in a:
+              a = a.replace("import { Login } from './components/Login';", "import { Login } from './components/Login';\nimport { ConsumerRights } from './components/ConsumerRights';", 1)
+          if "if (window.location.hash === '#legal/consumer')" not in a:
+              anchor = "  // Determine if authentication is required for the current view\n"
+              insert = "  // Consumer rights are intentionally public and reachable from the first access.\n  if (window.location.hash === '#legal/consumer') {\n    return <ConsumerRights />;\n  }\n\n"
+              if anchor not in a: raise SystemExit('App auth anchor not found')
+              a = a.replace(anchor, insert + anchor, 1)
+          app.write_text(a)
+
+          # Add an always-visible first-access link to the login screen.
+          login = Path('src/components/Login.tsx')
+          l = login.read_text()
+          if 'BOTÓN DE ARREPENTIMIENTO / BAJA' not in l:
+              anchor = "        <div className=\"mt-6 pt-6 border-t border-slate-100 flex flex-col gap-3\">"
+              insert = "        <div className=\"mb-5 rounded-xl border border-orange-200 bg-orange-50 p-3 text-center\"><a href=\"#legal/consumer\" className=\"text-xs font-black uppercase tracking-wider text-orange-700 hover:text-orange-900\">BOTÓN DE ARREPENTIMIENTO / BAJA DE SERVICIO</a></div>\n"
+              if anchor not in l: raise SystemExit('Login legal anchor not found')
+              l = l.replace(anchor, insert + anchor, 1)
+          login.write_text(l)
+          PY
+      - name: Commit changes and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.ts src/types.ts src/components/ConsumerRights.tsx src/App.tsx src/components/Login.tsx .github/workflows/apply-consumer-rights.yml
+          git rm .github/workflows/apply-consumer-rights.yml
+          git commit -m "feat(legal): implement consumer withdrawal and service cancellation flow"
+          git push
