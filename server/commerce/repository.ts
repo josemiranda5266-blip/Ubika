@@ -30,11 +30,8 @@ export const CommerceRepository = {
     const state = db.getRawState() as any;
     if (!state.commerce_categories) state.commerce_categories = [];
     const idx = state.commerce_categories.findIndex((c: CommerceCategory) => c.id === category.id);
-    if (idx >= 0) {
-      state.commerce_categories[idx] = category;
-    } else {
-      state.commerce_categories.push(category);
-    }
+    if (idx >= 0) state.commerce_categories[idx] = category;
+    else state.commerce_categories.push(category);
     saveDatabaseSync();
     return category;
   },
@@ -79,11 +76,8 @@ export const CommerceRepository = {
     const state = db.getRawState() as any;
     if (!state.commerce_products) state.commerce_products = [];
     const idx = state.commerce_products.findIndex((p: CommerceProduct) => p.id === product.id);
-    if (idx >= 0) {
-      state.commerce_products[idx] = product;
-    } else {
-      state.commerce_products.push(product);
-    }
+    if (idx >= 0) state.commerce_products[idx] = product;
+    else state.commerce_products.push(product);
     saveDatabaseSync();
     return product;
   },
@@ -128,11 +122,8 @@ export const CommerceRepository = {
     const state = db.getRawState() as any;
     if (!state.commerce_customers) state.commerce_customers = [];
     const idx = state.commerce_customers.findIndex((c: CommerceCustomer) => c.id === customer.id);
-    if (idx >= 0) {
-      state.commerce_customers[idx] = customer;
-    } else {
-      state.commerce_customers.push(customer);
-    }
+    if (idx >= 0) state.commerce_customers[idx] = customer;
+    else state.commerce_customers.push(customer);
     saveDatabaseSync();
     return customer;
   },
@@ -214,11 +205,8 @@ export const CommerceRepository = {
     const state = db.getRawState() as any;
     if (!state.commerce_cash_sessions) state.commerce_cash_sessions = [];
     const idx = state.commerce_cash_sessions.findIndex((c: CashSession) => c.id === session.id);
-    if (idx >= 0) {
-      state.commerce_cash_sessions[idx] = session;
-    } else {
-      state.commerce_cash_sessions.unshift(session);
-    }
+    if (idx >= 0) state.commerce_cash_sessions[idx] = session;
+    else state.commerce_cash_sessions.unshift(session);
     saveDatabaseSync();
     return session;
   },
@@ -257,11 +245,8 @@ export const CommerceRepository = {
     const state = db.getRawState() as any;
     if (!state.commerce_sales) state.commerce_sales = [];
     const idx = state.commerce_sales.findIndex((s: Sale) => s.id === sale.id);
-    if (idx >= 0) {
-      state.commerce_sales[idx] = sale;
-    } else {
-      state.commerce_sales.unshift(sale);
-    }
+    if (idx >= 0) state.commerce_sales[idx] = sale;
+    else state.commerce_sales.unshift(sale);
     saveDatabaseSync();
     return sale;
   },
@@ -275,6 +260,46 @@ export const CommerceRepository = {
     return sales[idx];
   },
 
+  /**
+   * Atomically applies a store-credit refund to the customer and records the
+   * refund on the sale in one in-process persistence operation. This closes
+   * the failure window where credit could be granted but the sale ledger was
+   * not updated. Cross-process locking remains a persistence-layer concern.
+   */
+  applyStoreCreditRefund: (
+    saleId: string,
+    customerId: string,
+    companyId: string,
+    amount: number,
+    refundEntry: NonNullable<Sale['refunds']>[number],
+  ): { sale: Sale; customer: CommerceCustomer } | null => {
+    const state = db.getRawState() as any;
+    const sales = state.commerce_sales || [];
+    const customers = state.commerce_customers || [];
+    const sale = sales.find((s: Sale) => s.id === saleId && s.companyId === companyId);
+    const customer = customers.find((c: CommerceCustomer) => c.id === customerId && c.companyId === companyId);
+    if (!sale || !customer || !Number.isFinite(amount) || amount <= 0) return null;
+
+    const saleIndex = sales.findIndex((s: Sale) => s.id === saleId && s.companyId === companyId);
+    const customerIndex = customers.findIndex((c: CommerceCustomer) => c.id === customerId && c.companyId === companyId);
+    if (saleIndex === -1 || customerIndex === -1) return null;
+
+    const updatedRefunds = [...(sale.refunds || []), refundEntry];
+    const total = Number(sale.total);
+    sales[saleIndex] = {
+      ...sale,
+      refunds: updatedRefunds,
+      status: updatedRefunds.reduce((sum: number, refund: any) => sum + Number(refund.amount || 0), 0) >= total ? 'REFUNDED' : sale.status,
+      updatedAt: Date.now(),
+    };
+    customers[customerIndex] = {
+      ...customer,
+      accountBalance: Number(customer.accountBalance || 0) + amount,
+    };
+    saveDatabaseSync();
+    return { sale: sales[saleIndex], customer: customers[customerIndex] };
+  },
+
   // Invoices
   getInvoicesByCompany: (companyId: string): Invoice[] => {
     const state = db.getRawState();
@@ -285,11 +310,8 @@ export const CommerceRepository = {
     const state = db.getRawState() as any;
     if (!state.commerce_invoices) state.commerce_invoices = [];
     const idx = state.commerce_invoices.findIndex((i: Invoice) => i.id === invoice.id);
-    if (idx >= 0) {
-      state.commerce_invoices[idx] = invoice;
-    } else {
-      state.commerce_invoices.unshift(invoice);
-    }
+    if (idx >= 0) state.commerce_invoices[idx] = invoice;
+    else state.commerce_invoices.unshift(invoice);
     saveDatabaseSync();
     return invoice;
   },
