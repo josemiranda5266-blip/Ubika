@@ -1,0 +1,66 @@
+name: UBIKA Phase 1 Hardening
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: contains(github.event.head_commit.message, '[phase1-hardening]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply perimeter and identifier hardening
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('server.ts')
+          s = p.read_text()
+
+          # CORS: explicit environment allowlist. Empty allowlist means same-origin only.
+          old = "res.setHeader('Access-Control-Allow-Origin', '*');"
+          new = """const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean);
+    const requestOrigin = req.headers.origin;
+    if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+      res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+      res.setHeader('Vary', 'Origin');
+    }"""
+          if old not in s:
+              raise SystemExit('CORS wildcard marker not found')
+          s = s.replace(old, new, 1)
+
+          # Trust proxy must be explicit; default is disabled.
+          s = s.replace("app.set('trust proxy', 1); // Confía en el primer proxy para obtener la IP real del cliente", "app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);", 1)
+
+          # Remove permissive production CSP directives while retaining preview compatibility via env switch.
+          old_csp = '"default-src \'self\' \'unsafe-inline\' https: http: data: blob:; script-src \'self\' \'unsafe-inline\' \'unsafe-eval\' https: http:; style-src \'self\' \'unsafe-inline\' https: http:; img-src \'self\' data: blob: https: http:; font-src \'self\' data: https: http:; connect-src \'self\' https: http: ws: wss:; frame-ancestors *;"'
+          new_csp = 'process.env.NODE_ENV === \'production\' ? "default-src \'self\'; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data: blob: https:; font-src \'self\' data: https:; connect-src \'self\' https: wss:; frame-ancestors \'self\';" : "default-src \'self\' \'unsafe-inline\' https: http: data: blob:; script-src \'self\' \'unsafe-inline\' \'unsafe-eval\' https: http:; style-src \'self\' \'unsafe-inline\' https: http:; img-src \'self\' data: blob: https: http:; font-src \'self\' data: https: http:; connect-src \'self\' https: http: ws: wss:; frame-ancestors *;"'
+          if old_csp in s:
+              s = s.replace(old_csp, new_csp, 1)
+
+          # Registration IDs: never use predictable timestamps.
+          s = re.sub(r"`comp_\$\{Date\.now\(\)\}`", "`comp_${crypto.randomUUID()}`", s)
+          s = re.sub(r"`usr_\$\{Date\.now\(\)\}`", "`usr_${crypto.randomUUID()}`", s)
+
+          p.write_text(s)
+          PY
+
+      - name: Commit hardening changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.ts
+          git commit -m "fix: harden production perimeter and identifiers"
+          git push
+
+      - name: Remove one-time workflow
+        run: |
+          git rm .github/workflows/phase1-hardening.yml
+          git commit -m "chore: remove one-time phase 1 workflow"
+          git push
