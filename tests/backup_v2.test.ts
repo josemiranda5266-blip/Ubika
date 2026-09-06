@@ -5,7 +5,7 @@ import path from 'node:path';
 import './setup_env';
 
 const { createBackupV2, listBackupsV2, restoreBackupV2 } = await import('../server/ops/backup');
-const { db, saveDatabaseSync } = await import('../server/db');
+const { saveDatabaseSync } = await import('../server/db');
 
 const dataDir = path.resolve('data');
 const dbFile = path.join(dataDir, 'ubika_persistent_db.json');
@@ -47,7 +47,7 @@ async function runBackupV2Tests() {
 
   // Tampering with the backup payload must fail closed before restore.
   const originalBackup = fs.readFileSync(backupPath);
-  fs.writeFileSync(backupPath, Buffer.concat([originalBackup, Buffer.from('\n')]))
+  fs.writeFileSync(backupPath, Buffer.concat([originalBackup, Buffer.from('\n')]));
   assert.throws(() => restoreBackupV2(backup.fileName), /BACKUP_SIZE_MISMATCH|BACKUP_INTEGRITY_FAILED/);
   fs.writeFileSync(backupPath, originalBackup);
 
@@ -63,6 +63,7 @@ async function runBackupV2Tests() {
   // Retention must never expose more than the configured maximum number of snapshots.
   for (let i = 0; i < 12; i += 1) {
     createBackupV2();
+    await new Promise((resolve) => setTimeout(resolve, 2));
   }
   assert.ok(listBackupsV2().length <= 10);
 
