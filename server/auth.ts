@@ -103,8 +103,11 @@ export function requireRole(allowedRoles: UserRole[]) {
 }
 
 /**
- * In-memory IP rate limiter. Only Express's resolved req.ip is trusted;
- * callers cannot rotate the limiter key by supplying X-Forwarded-For.
+ * In-memory rate limiter keyed by the TCP peer address. This intentionally
+ * does not use req.ip because server.ts currently trusts a proxy hop globally;
+ * using req.ip in that configuration would let a caller spoof X-Forwarded-For
+ * and evade IP-based throttling. Once proxy trust is explicitly configured,
+ * this can be replaced by a trusted proxy-aware key.
  */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
@@ -119,7 +122,7 @@ export function rateLimit(limitWindowMs: number, maxRequests: number) {
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = req.ip || 'anonymous';
+    const key = req.socket.remoteAddress || 'anonymous';
     const now = Date.now();
 
     if (now - lastRateLimitCleanup >= RATE_LIMIT_CLEANUP_INTERVAL_MS) {
