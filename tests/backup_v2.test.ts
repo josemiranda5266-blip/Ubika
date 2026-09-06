@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import './setup_env';
@@ -42,6 +43,13 @@ async function runBackupV2Tests() {
 
   const listed = listBackupsV2();
   assert.ok(listed.some((item) => item.fileName === backup.fileName));
+  assert.ok(listed.every((item) => item.sha256 === crypto.createHash('sha256').update(fs.readFileSync(path.join(backupDir, item.fileName))).digest('hex')));
+
+  // Tampering with the backup payload must fail closed before restore.
+  const originalBackup = fs.readFileSync(backupPath);
+  fs.writeFileSync(backupPath, Buffer.concat([originalBackup, Buffer.from('\n')]))
+  assert.throws(() => restoreBackupV2(backup.fileName), /BACKUP_SIZE_MISMATCH|BACKUP_INTEGRITY_FAILED/);
+  fs.writeFileSync(backupPath, originalBackup);
 
   // The restore path must preserve the live state first and then reload it.
   const beforeRestore = fs.readFileSync(dbFile, 'utf8');
@@ -52,11 +60,19 @@ async function runBackupV2Tests() {
   const afterRestore = fs.readFileSync(dbFile, 'utf8');
   assert.equal(JSON.parse(afterRestore).users.length, JSON.parse(beforeRestore).users.length);
 
+  // Retention must never expose more than the configured maximum number of snapshots.
+  for (let i = 0; i < 12; i += 1) {
+    createBackupV2();
+  }
+  assert.ok(listBackupsV2().length <= 10);
+
   // Traversal / arbitrary path input must be rejected.
   assert.throws(() => restoreBackupV2('../ubika_persistent_db.json'), /INVALID_BACKUP_PATH|BACKUP_NOT_FOUND/);
 
   console.log('✔ Backup creation, manifest integrity and retention listing');
+  console.log('✔ Tampered payload rejected by size/hash validation');
   console.log('✔ Restore and rollback snapshot creation');
+  console.log('✔ Retention limit enforced');
   console.log('✔ Path traversal protection');
   console.log('✔ BACKUP V2 TESTS: OK');
 }
