@@ -50,7 +50,6 @@ export function createBackupV2(): { fileName: string; sha256: string; bytes: num
   ensureBackupDirectory();
   if (!fs.existsSync(DB_FILE)) throw new Error('DATABASE_FILE_NOT_FOUND');
 
-  // Ensure the snapshot reflects the current in-memory database state.
   saveDatabaseSync();
   if (!fs.existsSync(DB_FILE)) throw new Error('DATABASE_FILE_NOT_FOUND');
 
@@ -101,13 +100,17 @@ export function restoreBackupV2(fileName: string): { restoredFrom: string; rollb
   const parsed = JSON.parse(fs.readFileSync(backupPath, 'utf8')) as unknown;
   validateDatabaseShape(parsed);
 
-  // Always preserve the live database before replacing it.
   const rollback = createBackupV2();
   const restoreTemp = `${DB_FILE}.restore.${Date.now()}.tmp`;
   fs.writeFileSync(restoreTemp, JSON.stringify(parsed, null, 2), 'utf8');
 
   try {
     JSON.parse(fs.readFileSync(restoreTemp, 'utf8'));
+
+    // Windows does not reliably allow rename-over-existing files. Remove the
+    // current DB only after the replacement has been fully written and parsed.
+    // If reload fails, the rollback snapshot is copied back immediately.
+    fs.rmSync(DB_FILE, { force: true });
     fs.renameSync(restoreTemp, DB_FILE);
     db.reloadFromDisk();
   } catch (error) {
