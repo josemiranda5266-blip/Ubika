@@ -1,7 +1,7 @@
 # UBIKA — Auditoría Fase 7: Operación y perímetro
 
 Fecha: 2026-09-06  
-Estado: implementación pendiente en `server.ts`; no se ejecutaron tests/build/lint/typecheck por decisión de proceso.
+Estado: correcciones en curso; se habilitó la ejecución de tests/build/lint/typecheck cuando sea necesario.
 
 ## Hallazgos verificados
 
@@ -19,7 +19,7 @@ El middleware actual responde `Access-Control-Allow-Origin: *`.
 
 **Riesgo:** cualquier origen web puede realizar solicitudes cross-origin al backend. Aunque las rutas autenticadas requieren Bearer, el wildcard amplía innecesariamente la superficie y dificulta aplicar una política de origen controlada.
 
-**Corrección prevista:** usar `CORS_ALLOWED_ORIGINS` como allowlist. Para requests con `Origin`, devolver el origen únicamente si pertenece a la allowlist; añadir `Vary: Origin`. Para ausencia de `Origin`, mantener compatibilidad con clientes no-browser. Preflight debe rechazar orígenes no autorizados en vez de responder indiscriminadamente 204.
+**Corrección prevista:** usar `CORS_ALLOWED_ORIGINS` como allowlist. Para requests con `Origin`, devolver el origen únicamente si pertenece a la allowlist; añadir `Vary: Origin`. Preflight debe rechazar orígenes no autorizados en vez de responder indiscriminadamente 204.
 
 **Compatibilidad AI Studio:** no se debe conservar `*` como solución permanente. Si el preview necesita un origen adicional, debe declararse explícitamente mediante configuración de entorno.
 
@@ -43,18 +43,35 @@ La aplicación necesita un error handler final consistente y un shutdown control
 
 **Corrección prevista:** error handler que no devuelva stack traces en producción y cierre ordenadamente el servidor, evitando aceptar nuevas conexiones antes de terminar.
 
-## Restricción de implementación
+### 6. Backups: v2 creada, todavía no integrada al API
+
+Se creó `server/ops/backup.ts` como mecanismo de backup/restore v2. Ahora `createBackupV2()` fuerza `saveDatabaseSync()` antes de tomar el snapshot y `restoreBackupV2()` valida tanto SHA-256 como el tamaño declarado en el manifiesto. El archivo continúa separado de `server.ts` y todavía no reemplaza el endpoint administrativo legado.
+
+El endpoint existente `/api/admin/backup` continúa usando `db.createBackup()`, por lo que **Backup v2 aún no está operativo desde HTTP**. No debe considerarse cerrada esta parte hasta integrar listado/creación/restauración con autorización `SUPER_ADMIN` y manejo de errores controlado.
+
+### 7. Exposición de errores internos
+
+La auditoría encontró al menos un `catch` en `server.ts` que responde directamente `err.message`. Los clientes frontend también muestran `err.message` en varias pantallas, por lo que el backend debe ser la frontera de seguridad y devolver únicamente mensajes/códigos controlados.
+
+**Corrección prevista:** eliminar respuestas directas de excepciones internas, introducir un mapa de errores de dominio/controlados y añadir un error handler final que genere respuesta genérica para errores no previstos, incluyendo `X-Request-Id`.
+
+## Verificación
+
+Los tests/build/lint/typecheck ya no están bloqueados por la política de proceso. Se ejecutarán después de cerrar un conjunto coherente de correcciones o cuando una modificación requiera validación inmediata. Si el entorno de ejecución local no dispone del repositorio montado, la limitación se documentará y se continuará con verificación estática mediante GitHub.
+
+## Restricción de implementación de `server.ts`
 
 No se modificará `server.ts` mediante una reconstrucción parcial. El archivo es grande y la herramienta de actualización requiere reemplazo completo; hacerlo sin disponer del contenido íntegro verificado podría truncarlo accidentalmente.
 
-Por ello, esta fase queda registrada como **auditada y pendiente de integración segura** hasta disponer de un mecanismo de edición por parche o del archivo completo en un entorno de trabajo local.
+La integración de perímetro, errores, readiness, request ID, shutdown y Backup v2 se mantiene pendiente hasta disponer de un mecanismo seguro para reemplazar el archivo completo o de un entorno local editable.
 
 ## Próxima secuencia
 
-1. Integrar perímetro (`trust proxy` + CORS) sin wildcard.
-2. Añadir request/correlation ID.
-3. Separar liveness/readiness.
-4. Añadir error handler global y graceful shutdown.
-5. Revisar backups/restauración y límites operativos.
-6. Revisar logs finales en busca de PII/secrets.
-7. Sólo después de cerrar las correcciones: ejecutar typecheck/lint, tests y build de producción.
+1. Integrar Backup v2 en rutas administrativas y retirar/deprecate el mecanismo legado.
+2. Integrar manejo global de errores y request ID en `server.ts` mediante una actualización completa verificada.
+3. Integrar `TRUST_PROXY_HOPS` y CORS allowlist.
+4. Separar liveness/readiness.
+5. Añadir graceful shutdown.
+6. Ejecutar typecheck/lint y la batería de tests.
+7. Ejecutar build de producción y revisar el artefacto final.
+8. Actualizar este documento con resultados reales y cerrar Fase 7 sólo si todos los checks pasan.
