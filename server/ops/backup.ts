@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { db } from '../db';
 
-const DATA_DIR = path.resolve(process.env.UBIKA_DATA_DIR || 'data');
+const DATA_DIR = path.resolve('data');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 const DB_FILE = path.join(DATA_DIR, 'ubika_persistent_db.json');
 const BACKUP_PREFIX = 'ubika_backup_v2_';
