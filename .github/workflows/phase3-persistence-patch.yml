@@ -1,0 +1,114 @@
+name: UBIKA Phase 3 persistence patch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: contains(github.event.head_commit.message, '[phase3-persistence]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch persistence safety
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('server/db.ts')
+          s = p.read_text()
+          marker = "const DB_FILE = path.join(DATA_DIR, 'ubika_persistent_db.json');"
+          if marker not in s:
+              raise SystemExit('DB_FILE marker not found')
+
+          if 'const DB_WRITE_LOCK_FILE =' not in s:
+              s = s.replace(marker, marker + "\nconst DB_WRITE_LOCK_FILE = `${DB_FILE}.write.lock`;\nconst DB_WRITE_LOCK_STALE_MS = 30_000;", 1)
+
+          old = '''export function saveDatabaseSync(): void {
+  if (!dbState) return;
+  const tempFile = `${DB_FILE}.tmp.${Date.now()}`;
+  fs.writeFileSync(tempFile, JSON.stringify(dbState, null, 2), 'utf-8');
+  fs.renameSync(tempFile, DB_FILE);
+'''
+          if old not in s:
+              raise SystemExit('saveDatabaseSync body marker not found')
+          new = '''export function saveDatabaseSync(): void {
+  if (!dbState) return;
+
+  // Serialize writers across UBIKA processes on the same filesystem. The
+  // application still remains a single-writer JSON datastore; this lock
+  // prevents overlapping file replacement but does not turn JSON into a
+  // distributed database. Production multi-instance deployment must use a
+  // transactional shared datastore before horizontal scaling.
+  let lockFd: number | undefined;
+  const lockStartedAt = Date.now();
+  try {
+    while (lockFd === undefined) {
+      try {
+        lockFd = fs.openSync(DB_WRITE_LOCK_FILE, 'wx');
+        fs.writeSync(lockFd, JSON.stringify({ pid: process.pid, createdAt: lockStartedAt }), undefined, 'utf8');
+      } catch (err: any) {
+        if (err?.code !== 'EEXIST') throw err;
+        try {
+          const stat = fs.statSync(DB_WRITE_LOCK_FILE);
+          if (Date.now() - stat.mtimeMs > DB_WRITE_LOCK_STALE_MS) {
+            fs.unlinkSync(DB_WRITE_LOCK_FILE);
+            continue;
+          }
+        } catch (statErr: any) {
+          if (statErr?.code === 'ENOENT') continue;
+          throw statErr;
+        }
+        const sleepBuffer = new Int32Array(new SharedArrayBuffer(4));
+        Atomics.wait(sleepBuffer, 0, 0, 10);
+      }
+    }
+
+    const tempFile = `${DB_FILE}.tmp.${process.pid}.${Date.now()}`;
+    fs.writeFileSync(tempFile, JSON.stringify(dbState, null, 2), 'utf-8');
+    const tempFd = fs.openSync(tempFile, 'r');
+    try {
+      fs.fsyncSync(tempFd);
+    } finally {
+      fs.closeSync(tempFd);
+    }
+    fs.renameSync(tempFile, DB_FILE);
+'''
+          s = s.replace(old, new, 1)
+
+          # The function already has a trailing backup section. Add lock cleanup
+          # immediately before the function closes, without changing backup policy.
+          target = '''  if (now - lastBackupTime > 30 * 60 * 1000) {
+    createBackup();
+    lastBackupTime = now;
+  }
+}'''
+          replacement = '''  if (now - lastBackupTime > 30 * 60 * 1000) {
+    createBackup();
+    lastBackupTime = now;
+  }
+  } finally {
+    if (lockFd !== undefined) {
+      try { fs.closeSync(lockFd); } catch {}
+      try { fs.unlinkSync(DB_WRITE_LOCK_FILE); } catch {}
+    }
+  }
+}'''
+          if target not in s:
+              raise SystemExit('saveDatabaseSync cleanup marker not found')
+          s = s.replace(target, replacement, 1)
+          p.write_text(s)
+          PY
+
+      - name: Remove one-time workflow
+        run: |
+          rm .github/workflows/phase3-persistence-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server/db.ts .github/workflows/phase3-persistence-patch.yml
+          git commit -m "fix(db): serialize atomic persistence writes"
+          git push
