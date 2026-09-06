@@ -97,6 +97,14 @@ export interface SalePayment {
   createdAt: number;
 }
 
+export interface SaleRefund {
+  id: string;
+  amount: number;
+  method: 'ORIGINAL_PAYMENT' | 'STORE_CREDIT' | 'BANK_TRANSFER' | string;
+  status: 'COMPLETED' | 'PENDING_MANUAL';
+  createdAt: number;
+}
+
 export interface Sale {
   id: string;
   companyId: string;
@@ -110,6 +118,7 @@ export interface Sale {
   tax: number;
   total: number;
   payments: SalePayment[];
+  refunds?: SaleRefund[];
   status: 'DRAFT' | 'PENDING' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
   idempotencyKey?: string;
   createdBy: string;
