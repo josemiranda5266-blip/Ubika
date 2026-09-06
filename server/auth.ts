@@ -18,14 +18,10 @@ export interface AuthenticatedUserPayload {
   companyId: string;
   driverId?: string;
 }
-
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUserPayload;
 }
 
-/**
- * Generate signed JWT token
- */
 export function generateAuthToken(user: UserRecord): string {
   if (!JWT_SECRET) {
     throw new Error('JWT_SECRET is not configured');
@@ -41,9 +37,6 @@ export function generateAuthToken(user: UserRecord): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
-/**
- * Middleware: Verify Bearer Token and attach user payload to req.user
- */
 export function authenticateUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
@@ -54,12 +47,16 @@ export function authenticateUser(req: AuthenticatedRequest, res: Response, next:
     });
   }
 
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.slice('Bearer '.length).trim();
+  if (!token || token.split('.').length !== 3) {
+    return res.status(401).json({
+      error: 'Token inválido',
+      message: 'El encabezado Authorization no contiene un JWT válido',
+    });
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET!) as AuthenticatedUserPayload;
-    
-    // Verify user still exists in database
     const userInDb = db.getUserById(decoded.userId);
     if (!userInDb || !userInDb.active) {
       return res.status(401).json({
@@ -68,6 +65,8 @@ export function authenticateUser(req: AuthenticatedRequest, res: Response, next:
       });
     }
 
+    // Refresh mutable authorization fields from persistence so role/company
+    // changes take effect immediately without waiting for JWT expiration.
     req.user = {
       ...decoded,
       role: userInDb.role,
@@ -83,9 +82,6 @@ export function authenticateUser(req: AuthenticatedRequest, res: Response, next:
   }
 }
 
-/**
- * Middleware: Check if authenticated user has one of the allowed roles
- */
 export function requireRole(allowedRoles: UserRole[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -93,9 +89,8 @@ export function requireRole(allowedRoles: UserRole[]) {
     }
 
     if (req.user.role === 'SUPER_ADMIN') {
-      return next(); // SUPER_ADMIN can bypass role restrictions
+      return next();
     }
-
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({
         error: 'Acceso denegado',
@@ -108,17 +103,33 @@ export function requireRole(allowedRoles: UserRole[]) {
 }
 
 /**
- * In-memory IP/Token rate limiter to prevent abuse on public tracking or auth endpoints
+ * In-memory IP rate limiter. Only Express's resolved req.ip is trusted;
+ * callers cannot rotate the limiter key by supplying X-Forwarded-For.
  */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+let lastRateLimitCleanup = 0;
 
 export function rateLimit(limitWindowMs: number, maxRequests: number) {
+  if (!Number.isFinite(limitWindowMs) || limitWindowMs <= 0) {
+    throw new Error('limitWindowMs must be a positive number');
+  }
+  if (!Number.isFinite(maxRequests) || maxRequests <= 0) {
+    throw new Error('maxRequests must be a positive number');
+  }
+
   return (req: Request, res: Response, next: NextFunction) => {
-    // req.ip ya está sanitizado por Express gracias a app.set('trust proxy', 1)
     const key = req.ip || 'anonymous';
     const now = Date.now();
-    const entry = rateLimitMap.get(key);
 
+    if (now - lastRateLimitCleanup >= RATE_LIMIT_CLEANUP_INTERVAL_MS) {
+      for (const [entryKey, entry] of rateLimitMap) {
+        if (entry.resetAt <= now) rateLimitMap.delete(entryKey);
+      }
+      lastRateLimitCleanup = now;
+    }
+
+    const entry = rateLimitMap.get(key);
     if (!entry || now > entry.resetAt) {
       rateLimitMap.set(key, { count: 1, resetAt: now + limitWindowMs });
       return next();
