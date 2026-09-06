@@ -74,15 +74,17 @@ export async function processRefund(
         return { success: false, details: { error: 'Cliente no encontrado en la empresa de la venta', saleId } };
       }
 
-      CommerceRepository.updateCustomer(customer.id, {
-        accountBalance: Number(customer.accountBalance || 0) + refundAmount,
-      });
       const entry = buildRefundEntry(refundAmount, refundMethod, 'COMPLETED');
-      const refunds = [...getRefundEntries(sale), entry];
-      CommerceRepository.updateSale(sale.id, {
-        refunds,
-        status: getReservedRefundAmount({ refunds }) >= total ? 'REFUNDED' : sale.status,
-      } as any);
+      const result = CommerceRepository.applyStoreCreditRefund(
+        sale.id,
+        customer.id,
+        sale.companyId,
+        refundAmount,
+        entry,
+      );
+      if (!result) {
+        return { success: false, details: { error: 'No se pudo registrar atómicamente el crédito interno', saleId } };
+      }
       return { success: true, details: { method: 'STORE_CREDIT', credited: refundAmount, customerId: customer.id, saleId } };
     }
 
