@@ -87,7 +87,11 @@ export async function processRefund(
     }
 
     if (refundMethod === 'ORIGINAL_PAYMENT' && originalPayment?.externalReference && originalPayment.method === 'MERCADO_PAGO') {
-      const mpRes = await PaymentProviderService.refundPayment(originalPayment.externalReference);
+      const mpRes = await PaymentProviderService.refundPayment(
+        originalPayment.externalReference,
+        refundAmount,
+        `ubika_refund_${sale.id}_${refundAmount.toFixed(2)}`,
+      );
       if (!mpRes.success) {
         return { success: false, details: { method: 'MERCADO_PAGO', amount: refundAmount, response: mpRes.response, saleId } };
       }
