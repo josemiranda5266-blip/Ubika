@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { db } from '../db';
+import { db, saveDatabaseSync } from '../db';
 
 const DATA_DIR = path.resolve('data');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
@@ -39,8 +39,19 @@ function validateDatabaseShape(value: unknown): asserts value is { users: unknow
   }
 }
 
+function validateManifest(manifest: BackupManifest, backupPath: string): void {
+  if (manifest.format !== 'ubika-backup-v2') throw new Error('UNSUPPORTED_BACKUP_FORMAT');
+  const actualBytes = fs.statSync(backupPath).size;
+  if (manifest.bytes !== actualBytes) throw new Error('BACKUP_SIZE_MISMATCH');
+  if (manifest.sha256 !== sha256File(backupPath)) throw new Error('BACKUP_INTEGRITY_FAILED');
+}
+
 export function createBackupV2(): { fileName: string; sha256: string; bytes: number } {
   ensureBackupDirectory();
+  if (!fs.existsSync(DB_FILE)) throw new Error('DATABASE_FILE_NOT_FOUND');
+
+  // Ensure the snapshot reflects the current in-memory database state.
+  saveDatabaseSync();
   if (!fs.existsSync(DB_FILE)) throw new Error('DATABASE_FILE_NOT_FOUND');
 
   const timestamp = Date.now();
@@ -85,8 +96,7 @@ export function restoreBackupV2(fileName: string): { restoredFrom: string; rollb
   const manifestPath = `${backupPath}.manifest.json`;
   if (!fs.existsSync(manifestPath)) throw new Error('BACKUP_MANIFEST_NOT_FOUND');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as BackupManifest;
-  if (manifest.format !== 'ubika-backup-v2') throw new Error('UNSUPPORTED_BACKUP_FORMAT');
-  if (manifest.sha256 !== sha256File(backupPath)) throw new Error('BACKUP_INTEGRITY_FAILED');
+  validateManifest(manifest, backupPath);
 
   const parsed = JSON.parse(fs.readFileSync(backupPath, 'utf8')) as unknown;
   validateDatabaseShape(parsed);
