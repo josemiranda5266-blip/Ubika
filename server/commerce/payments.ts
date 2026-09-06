@@ -25,9 +25,6 @@ export const PaymentProviderService = {
   async createPayment(options: PaymentProcessOptions): Promise<{ success: boolean; externalReference: string; providerResponse: any }> {
     const accessToken = getMercadoPagoAccessToken();
     const isTest = process.env.NODE_ENV === 'test' || accessToken.startsWith('TEST-');
-
-    // Keep a stable caller-supplied reference when available; otherwise generate
-    // an unpredictable identifier instead of relying on timestamp + Math.random.
     const externalReference = options.externalReference || generateExternalReference();
 
     if (isTest) {
@@ -70,11 +67,7 @@ export const PaymentProviderService = {
         };
       }
 
-      return {
-        success: false,
-        externalReference,
-        providerResponse: data,
-      };
+      return { success: false, externalReference, providerResponse: data };
     } catch (err) {
       console.error('[PaymentProviderService Error]:', err);
       return {
@@ -85,19 +78,32 @@ export const PaymentProviderService = {
     }
   },
 
-  async refundPayment(paymentId: string): Promise<{ success: boolean; response: any }> {
+  /** Partial refunds are sent with the requested amount and protected by an idempotency key. */
+  async refundPayment(
+    paymentId: string,
+    amount?: number,
+    idempotencyKey?: string,
+  ): Promise<{ success: boolean; response: any }> {
     const accessToken = getMercadoPagoAccessToken();
-    if (process.env.NODE_ENV === 'test') {
-      return { success: true, response: { status: 'refunded', id: paymentId } };
+    const isTest = process.env.NODE_ENV === 'test' || accessToken.startsWith('TEST-');
+    const refundIdempotencyKey = idempotencyKey || `ubika_refund_${crypto.randomUUID()}`;
+
+    if (isTest) {
+      return {
+        success: true,
+        response: { status: 'refunded', id: paymentId, amount, idempotency_key: refundIdempotencyKey },
+      };
     }
 
     try {
-      const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}/refunds`, {
+      const response = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}/refunds`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          'X-Idempotency-Key': refundIdempotencyKey,
         },
+        body: JSON.stringify(amount === undefined ? {} : { amount }),
       });
       const data = await response.json();
       return { success: response.ok, response: data };
