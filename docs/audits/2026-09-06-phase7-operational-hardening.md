@@ -1,77 +1,88 @@
 # UBIKA — Auditoría Fase 7: Operación y perímetro
 
 Fecha: 2026-09-06  
-Estado: correcciones en curso; se habilitó la ejecución de tests/build/lint/typecheck cuando sea necesario.
+Estado: correcciones en curso; tests/build/lint/typecheck habilitados cuando sean necesarios.
 
-## Hallazgos verificados
+## Estado de referencia
 
-### 1. `trust proxy` está hardcodeado
+La rama `main` actualmente apunta a `27ad3fdd57dd234e6cc4d5688e174fd735f79229` (`fix: preserve existing package dependencies`). La auditoría de esta fase se debe hacer contra ese estado y no contra snapshots históricos anteriores.
 
-`createUbikaApp()` usa `app.set('trust proxy', 1)`. Esto hace que Express confíe siempre en un salto de proxy, mientras `.env.example` documenta `TRUST_PROXY_HOPS=0` como valor por defecto.
+## Hallazgos verificados sobre `main`
 
-**Riesgo:** `req.ip`, rate limiting y auditoría de red pueden depender de una cadena de proxies distinta a la real.
+### 1. CORS: política incompleta, no wildcard
 
-**Corrección prevista:** parsear `TRUST_PROXY_HOPS` al inicio, aceptar solamente entero no negativo y usar `0` por defecto. No aceptar valores inválidos silenciosamente.
+El middleware actual establece métodos y headers CORS, pero no define `Access-Control-Allow-Origin`. No se debe confundir esto con el hallazgo histórico de wildcard `*`: en el `server.ts` actual no se observó ese wildcard.
 
-### 2. CORS permite cualquier origen
+**Riesgo actual:** los clientes web que dependan de requests cross-origin controladas no tienen una allowlist explícita y la política queda implícita/incompleta.
 
-El middleware actual responde `Access-Control-Allow-Origin: *`.
+**Corrección preparada:** `server/ops/http-security.ts` implementa `CORS_ALLOWED_ORIGINS`, `Vary: Origin`, rechazo de preflight no autorizado y headers mínimos. Falta integrarlo en `createUbikaApp()`.
 
-**Riesgo:** cualquier origen web puede realizar solicitudes cross-origin al backend. Aunque las rutas autenticadas requieren Bearer, el wildcard amplía innecesariamente la superficie y dificulta aplicar una política de origen controlada.
+### 2. Request ID / correlación
 
-**Corrección prevista:** usar `CORS_ALLOWED_ORIGINS` como allowlist. Para requests con `Origin`, devolver el origen únicamente si pertenece a la allowlist; añadir `Vary: Origin`. Preflight debe rechazar orígenes no autorizados en vez de responder indiscriminadamente 204.
+El `server.ts` actual no establece un `X-Request-Id` de forma consistente por request.
 
-**Compatibilidad AI Studio:** no se debe conservar `*` como solución permanente. Si el preview necesita un origen adicional, debe declararse explícitamente mediante configuración de entorno.
+**Corrección preparada:** `server/ops/http-security.ts` acepta un ID externo sólo con formato/longitud segura o genera `crypto.randomUUID()`, y lo devuelve como `X-Request-Id`.
 
-### 3. Health y readiness están mezclados
+### 3. Manejo global de errores
 
-`/health` y `/api/health` devuelven `status: ok` sin comprobar que el almacenamiento persistente esté realmente operativo.
+El `server.ts` actual sí contiene un error handler final que evita devolver el detalle de la excepción al cliente. Sin embargo, varias rutas de Commerce todavía convierten directamente `err.message` en respuestas HTTP 400, por ejemplo en las rutas `/api/v1/commerce/*`. Eso puede exponer mensajes internos o detalles de implementación de servicios.
 
-**Riesgo:** un proceso puede estar vivo pero incapaz de leer/escribir la base JSON; un orquestador podría enviar tráfico a una instancia no preparada.
+**Corrección preparada:** `httpErrorHandler()` devuelve `INTERNAL_SERVER_ERROR` y un `requestId` sin stack trace ni detalle interno. Falta reemplazar gradualmente los `catch` que exponen `err.message` por errores de dominio/controlados.
 
-**Corrección prevista:** mantener `/health` como liveness y agregar `/readiness` y `/api/readiness`. Readiness debe verificar que la base persistente haya sido cargada y que el directorio/archivo de datos sea accesible; ante fallo responder 503 sin exponer rutas internas ni secretos.
+### 4. Health / readiness
 
-### 4. Falta de correlation/request ID explícito
+`GET /api/health` actualmente devuelve `status: ok`, versión y tipo de almacenamiento, pero no existe una separación clara entre liveness y readiness. La respuesta no verifica explícitamente que el almacenamiento persistente esté preparado para operar.
 
-Existe `AsyncLocalStorage<Request>` para auditoría, pero no se observó un identificador de correlación generado/propagado por request.
+**Corrección pendiente:** mantener `/api/health` como liveness y agregar `/api/readiness` con comprobación segura de la disponibilidad de la base persistente, respondiendo 503 cuando la instancia no esté lista.
 
-**Corrección prevista:** middleware que acepte un request ID externo sólo si cumple formato/longitud segura o genere uno con `crypto.randomUUID()`. Exponerlo como `X-Request-Id` y reutilizarlo en logs/auditoría.
+### 5. Trust proxy
 
-### 5. Manejo global de errores y apagado ordenado
+El hallazgo histórico de `app.set('trust proxy', 1)` **no corresponde al `server.ts` actual de `main`** y queda descartado como hallazgo vigente hasta nueva evidencia. Antes de introducir configuración nueva se debe verificar cómo Express recibe `req.ip` y si el despliegue realmente necesita `TRUST_PROXY_HOPS`.
 
-La aplicación necesita un error handler final consistente y un shutdown controlado para `SIGTERM`/`SIGINT`.
+### 6. Graceful shutdown
 
-**Corrección prevista:** error handler que no devuelva stack traces en producción y cierre ordenadamente el servidor, evitando aceptar nuevas conexiones antes de terminar.
+No se observan handlers explícitos de `SIGTERM`/`SIGINT` en el `server.ts` actual. El proceso inicia con `app.listen(...)` sin una estrategia de cierre ordenado.
 
-### 6. Backups: v2 creada, todavía no integrada al API
+**Corrección pendiente:** conservar la referencia al `http.Server`, detener aceptación de nuevas conexiones y cerrar el proceso de forma controlada ante `SIGTERM`/`SIGINT`.
 
-Se creó `server/ops/backup.ts` como mecanismo de backup/restore v2. Ahora `createBackupV2()` fuerza `saveDatabaseSync()` antes de tomar el snapshot y `restoreBackupV2()` valida tanto SHA-256 como el tamaño declarado en el manifiesto. El archivo continúa separado de `server.ts` y todavía no reemplaza el endpoint administrativo legado.
+### 7. Backups: v2 creada, todavía no integrada al API
 
-El endpoint existente `/api/admin/backup` continúa usando `db.createBackup()`, por lo que **Backup v2 aún no está operativo desde HTTP**. No debe considerarse cerrada esta parte hasta integrar listado/creación/restauración con autorización `SUPER_ADMIN` y manejo de errores controlado.
+`server/ops/backup.ts` ya implementa Backup v2: snapshot después de `saveDatabaseSync()`, manifiesto con SHA-256/tamaño, validación de integridad, validación básica del esquema y rollback previo a restore.
 
-### 7. Exposición de errores internos
+El endpoint existente `/api/admin/backup` continúa usando `db.createBackup()`. Por tanto, **Backup v2 todavía no está operativo desde HTTP**. Falta integrar creación/listado/restauración con autorización `SUPER_ADMIN`, errores controlados y una estrategia segura para reemplazo de archivo compatible con Windows/Linux.
 
-La auditoría encontró al menos un `catch` en `server.ts` que responde directamente `err.message`. Los clientes frontend también muestran `err.message` en varias pantallas, por lo que el backend debe ser la frontera de seguridad y devolver únicamente mensajes/códigos controlados.
+### 8. Protección HTTP reusable preparada
 
-**Corrección prevista:** eliminar respuestas directas de excepciones internas, introducir un mapa de errores de dominio/controlados y añadir un error handler final que genere respuesta genérica para errores no previstos, incluyendo `X-Request-Id`.
+Se agregó `server/ops/http-security.ts`, con:
+
+- `X-Request-Id` seguro y correlacionable.
+- CORS mediante allowlist `CORS_ALLOWED_ORIGINS`.
+- rechazo de preflight no autorizado.
+- `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` y `Permissions-Policy`.
+- `X-Powered-By` deshabilitado.
+- error handler genérico con `INTERNAL_SERVER_ERROR` y `requestId`.
+
+Se agregó `tests/http_security.test.ts` y quedó incorporado al script `npm test`/`test` del proyecto.
+
+**Importante:** esta capa está preparada y testeada estáticamente, pero todavía no está montada en `createUbikaApp()`. No se considera una corrección de producción cerrada hasta integrarla.
 
 ## Verificación
 
-Los tests/build/lint/typecheck ya no están bloqueados por la política de proceso. Se ejecutarán después de cerrar un conjunto coherente de correcciones o cuando una modificación requiera validación inmediata. Si el entorno de ejecución local no dispone del repositorio montado, la limitación se documentará y se continuará con verificación estática mediante GitHub.
+Los tests/build/lint/typecheck están autorizados y deben ejecutarse cuando el entorno permita ejecución. En esta sesión el contenedor local no pudo clonar GitHub por resolución de red, por lo que no se debe afirmar que la batería haya sido ejecutada localmente.
+
+Además, existe al menos un workflow histórico de hardening que terminó en `failure` sobre un commit que ya no es `main`; ese resultado no debe utilizarse como evidencia de fallo del `27ad3fdd...` actual sin volver a ejecutar la suite sobre la rama vigente.
 
 ## Restricción de implementación de `server.ts`
 
-No se modificará `server.ts` mediante una reconstrucción parcial. El archivo es grande y la herramienta de actualización requiere reemplazo completo; hacerlo sin disponer del contenido íntegro verificado podría truncarlo accidentalmente.
-
-La integración de perímetro, errores, readiness, request ID, shutdown y Backup v2 se mantiene pendiente hasta disponer de un mecanismo seguro para reemplazar el archivo completo o de un entorno local editable.
+No se modificará `server.ts` mediante una reconstrucción parcial. El archivo es grande y la herramienta de actualización exige reemplazo completo. La integración de los módulos preparados debe hacerse sólo cuando se disponga del contenido íntegro verificado o de un mecanismo de edición segura.
 
 ## Próxima secuencia
 
-1. Integrar Backup v2 en rutas administrativas y retirar/deprecate el mecanismo legado.
-2. Integrar manejo global de errores y request ID en `server.ts` mediante una actualización completa verificada.
-3. Integrar `TRUST_PROXY_HOPS` y CORS allowlist.
-4. Separar liveness/readiness.
-5. Añadir graceful shutdown.
-6. Ejecutar typecheck/lint y la batería de tests.
-7. Ejecutar build de producción y revisar el artefacto final.
-8. Actualizar este documento con resultados reales y cerrar Fase 7 sólo si todos los checks pasan.
+1. Integrar `http-security.ts` en `createUbikaApp()`.
+2. Reemplazar los `catch` de Commerce que exponen `err.message` por errores/códigos controlados.
+3. Separar liveness/readiness.
+4. Integrar graceful shutdown.
+5. Integrar Backup v2 en rutas administrativas y deprecar el mecanismo legado.
+6. Ejecutar typecheck/lint y la batería completa de tests.
+7. Ejecutar build de producción.
+8. Revisar artefacto final y actualizar este documento con resultados reales.
