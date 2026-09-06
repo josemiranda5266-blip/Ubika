@@ -56,7 +56,11 @@ export function authenticateUser(req: AuthenticatedRequest, res: Response, next:
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET!) as AuthenticatedUserPayload;
+    const decoded = jwt.verify(token, JWT_SECRET!) as Partial<AuthenticatedUserPayload>;
+    if (typeof decoded.userId !== 'string' || decoded.userId.length === 0) {
+      return res.status(401).json({ error: 'Token inválido', message: 'El token no identifica a un usuario válido' });
+    }
+
     const userInDb = db.getUserById(decoded.userId);
     if (!userInDb || !userInDb.active) {
       return res.status(401).json({
@@ -65,10 +69,13 @@ export function authenticateUser(req: AuthenticatedRequest, res: Response, next:
       });
     }
 
-    // Refresh mutable authorization fields from persistence so role/company
-    // changes take effect immediately without waiting for JWT expiration.
+    // Refresh all mutable identity/authorization fields from persistence so
+    // email, name, role, tenant and driver changes take effect immediately
+    // without waiting for JWT expiration.
     req.user = {
-      ...decoded,
+      userId: userInDb.id,
+      email: userInDb.email,
+      name: userInDb.name,
       role: userInDb.role,
       companyId: userInDb.companyId,
       driverId: userInDb.driverId,
@@ -104,10 +111,8 @@ export function requireRole(allowedRoles: UserRole[]) {
 
 /**
  * In-memory rate limiter keyed by the TCP peer address. This intentionally
- * does not use req.ip because server.ts currently trusts a proxy hop globally;
- * using req.ip in that configuration would let a caller spoof X-Forwarded-For
- * and evade IP-based throttling. Once proxy trust is explicitly configured,
- * this can be replaced by a trusted proxy-aware key.
+ * does not use req.ip until proxy trust is explicitly configured, preventing
+ * X-Forwarded-For spoofing from rotating the limiter key.
  */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
