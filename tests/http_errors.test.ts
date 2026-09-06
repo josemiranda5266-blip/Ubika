@@ -23,6 +23,7 @@ async function runTest() {
 
   assert.equal(toSafeErrorResponse(new Error('INSUFFICIENT_STOCK_NEGATIVE_RESULT')).status, 409);
   assert.equal(toSafeErrorResponse(new Error('UNAUTHORIZED_SOMETHING')).status, 403);
+  assert.equal(toSafeErrorResponse(new Error('UNKNOWN_INTERNAL_CODE')).body.error, 'INTERNAL_SERVER_ERROR');
   assert.equal(toSafeErrorResponse(new Error('database password=secret')).status, 500);
   assert.equal(toSafeErrorResponse(new Error('database password=secret')).body.message.includes('secret'), false);
 
