@@ -1,0 +1,64 @@
+name: UBIKA one-time perimeter hardening
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply perimeter hardening
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('server.ts')
+          s = p.read_text()
+
+          # Explicit proxy trust; default is no trusted proxy.
+          s, n = re.subn(
+              r"\s*app\.set\(['\"]trust proxy['\"],\s*1\);[^\n]*",
+              "\n  const trustedProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS || '0', 10);\n  if (Number.isInteger(trustedProxyHops) && trustedProxyHops > 0) app.set('trust proxy', trustedProxyHops);",
+              s,
+              count=1,
+          )
+          if n != 1:
+              raise SystemExit('trust proxy marker not found')
+
+          old_cors = """    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');"""
+          new_cors = """    const configuredOrigins = (process.env.CORS_ALLOWED_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean);
+    const requestOrigin = req.headers.origin;
+    if (requestOrigin && configuredOrigins.includes(requestOrigin)) {
+      res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+      res.setHeader('Vary', 'Origin');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');"""
+          if old_cors not in s:
+              raise SystemExit('CORS marker not found')
+          s = s.replace(old_cors, new_cors, 1)
+
+          old_csp = re.search(r"res\.setHeader\('Content-Security-Policy',\s*\"[^\"]*\"\);", s)
+          if not old_csp:
+              raise SystemExit('CSP marker not found')
+          new_csp = "res.setHeader('Content-Security-Policy', \"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; form-action 'self';\");"
+          s = s[:old_csp.start()] + new_csp + s[old_csp.end():]
+
+          p.write_text(s)
+          PY
+      - name: Commit and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.ts .github/workflows/one-time-perimeter-hardening.yml
+          git rm .github/workflows/one-time-perimeter-hardening.yml
+          git commit -m "security: harden production perimeter headers and proxy trust"
+          git push
