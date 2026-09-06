@@ -40,19 +40,54 @@ function buildRefundEntry(amount: number, method: RefundMethod | string, status:
 }
 
 /**
+ * Resolve the tenant that authorized the refund through the legal withdrawal
+ * record. The refund engine must never infer a tenant from saleId alone.
+ * If the same sale is referenced by withdrawal requests belonging to
+ * different companies, fail closed instead of guessing.
+ */
+function resolveRefundCompanyId(saleId: string): string | null {
+  const state: any = db.getRawState();
+  const requests = Array.isArray(state?.withdrawal_requests) ? state.withdrawal_requests : [];
+  const companyIds = [...new Set(
+    requests
+      .filter((request: any) => request?.saleId === saleId && typeof request?.companyId === 'string' && request.companyId.trim())
+      .map((request: any) => request.companyId.trim())
+  )];
+
+  return companyIds.length === 1 ? companyIds[0] : null;
+}
+
+/**
  * Executes the provider/customer-credit side of a refund and records the
  * operation on the source entity. Completed and pending-manual amounts are
  * reserved so sequential duplicate requests cannot exceed the sale total.
  * Each refund operation receives its own stable idempotency key so two
  * legitimate partial refunds for the same amount are not collapsed by the
  * payment provider. Cross-instance atomicity remains a Phase 3 requirement.
+ *
+ * Tenant isolation is enforced here as a second line of defense: the sale
+ * must belong to the company attached to the legal withdrawal request that
+ * authorized this operation. If that relationship cannot be established,
+ * the refund is rejected rather than falling back to an unscoped lookup.
  */
 export async function processRefund(
   saleId: string,
   amount?: number,
   method?: RefundMethod
 ): Promise<{ success: boolean; details: any }> {
-  const sale = CommerceRepository.getSaleById(saleId);
+  const refundCompanyId = resolveRefundCompanyId(saleId);
+  if (!refundCompanyId) {
+    return {
+      success: false,
+      details: {
+        error: 'No se pudo determinar de forma segura la empresa autorizante del reintegro',
+        saleId,
+        code: 'REFUND_TENANT_CONTEXT_REQUIRED',
+      },
+    };
+  }
+
+  const sale = CommerceRepository.getSaleByIdForCompany(saleId, refundCompanyId);
   if (sale) {
     const total = Number(sale.total);
     if (!Number.isFinite(total) || total <= 0) {
@@ -120,6 +155,19 @@ export async function processRefund(
 
   const foodOrder = db.getFoodOrderById(saleId);
   if (foodOrder) {
+    // Food orders do not currently expose a tenant-scoped repository helper;
+    // enforce the same boundary before reading or mutating the order.
+    if ((foodOrder as any).companyId !== refundCompanyId) {
+      return {
+        success: false,
+        details: {
+          error: 'La orden no pertenece a la empresa autorizante del reintegro',
+          orderId: foodOrder.id,
+          code: 'REFUND_TENANT_MISMATCH',
+        },
+      };
+    }
+
     const total = Number(foodOrder.totalAmount);
     if (!Number.isFinite(total) || total <= 0) {
       return { success: false, details: { error: 'Orden con importe inválido', orderId: foodOrder.id } };
