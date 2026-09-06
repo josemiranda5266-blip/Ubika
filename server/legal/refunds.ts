@@ -43,7 +43,9 @@ function buildRefundEntry(amount: number, method: RefundMethod | string, status:
  * Executes the provider/customer-credit side of a refund and records the
  * operation on the source entity. Completed and pending-manual amounts are
  * reserved so sequential duplicate requests cannot exceed the sale total.
- * Cross-instance atomicity remains a Phase 3 persistence requirement.
+ * Each refund operation receives its own stable idempotency key so two
+ * legitimate partial refunds for the same amount are not collapsed by the
+ * payment provider. Cross-instance atomicity remains a Phase 3 requirement.
  */
 export async function processRefund(
   saleId: string,
@@ -89,21 +91,21 @@ export async function processRefund(
     }
 
     if (refundMethod === 'ORIGINAL_PAYMENT' && originalPayment?.externalReference && originalPayment.method === 'MERCADO_PAGO') {
+      const entry = buildRefundEntry(refundAmount, refundMethod, 'COMPLETED');
       const mpRes = await PaymentProviderService.refundPayment(
         originalPayment.externalReference,
         refundAmount,
-        `ubika_refund_${sale.id}_${refundAmount.toFixed(2)}`,
+        `ubika_refund_${entry.id}`,
       );
       if (!mpRes.success) {
         return { success: false, details: { method: 'MERCADO_PAGO', amount: refundAmount, response: mpRes.response, saleId } };
       }
-      const entry = buildRefundEntry(refundAmount, refundMethod, 'COMPLETED');
       const refunds = [...getRefundEntries(sale), entry];
       CommerceRepository.updateSale(sale.id, {
         refunds,
         status: getReservedRefundAmount({ refunds }) >= total ? 'REFUNDED' : sale.status,
       } as any);
-      return { success: true, details: { method: 'MERCADO_PAGO', amount: refundAmount, response: mpRes.response, saleId } };
+      return { success: true, details: { method: 'MERCADO_PAGO', amount: refundAmount, response: mpRes.response, saleId, refundId: entry.id } };
     }
 
     const entry = buildRefundEntry(refundAmount, refundMethod, 'PENDING_MANUAL');
@@ -112,7 +114,7 @@ export async function processRefund(
     } as any);
     return {
       success: true,
-      details: { method: refundMethod, amount: refundAmount, saleId, requiresManualSettlement: true, status: 'PENDING_MANUAL' },
+      details: { method: refundMethod, amount: refundAmount, saleId, refundId: entry.id, requiresManualSettlement: true, status: 'PENDING_MANUAL' },
     };
   }
 
@@ -133,7 +135,7 @@ export async function processRefund(
     } as any);
     return {
       success: true,
-      details: { orderId: foodOrder.id, refundAmount, method: entry.method, requiresManualSettlement: true, status: 'PENDING_MANUAL' },
+      details: { orderId: foodOrder.id, refundAmount, refundId: entry.id, method: entry.method, requiresManualSettlement: true, status: 'PENDING_MANUAL' },
     };
   }
 
