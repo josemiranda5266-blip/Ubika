@@ -40,11 +40,9 @@ const POLICIES: Record<string, ErrorPolicy> = {
   UNSUPPORTED_BACKUP_FORMAT: { status: 422, message: 'La versión del respaldo no es compatible.' },
 };
 
-const GENERIC_BAD_REQUEST_CODES = new Set([
-  'INVALID_',
-  'MISSING_',
-  'REQUIRED',
-]);
+const GENERIC_BAD_REQUEST_PREFIXES = ['INVALID_', 'MISSING_'];
+const GENERIC_BAD_REQUEST_SUFFIXES = ['_REQUIRED'];
+const INTERNAL_ERROR_CODE = 'INTERNAL_SERVER_ERROR';
 
 function extractCode(error: unknown): string | undefined {
   if (typeof error === 'string') return error;
@@ -60,7 +58,8 @@ function extractCode(error: unknown): string | undefined {
 function policyFor(code: string | undefined): ErrorPolicy {
   if (!code) return { status: 500, message: 'Por favor intente nuevamente en unos instantes.' };
   if (POLICIES[code]) return POLICIES[code];
-  if ([...GENERIC_BAD_REQUEST_CODES].some((prefix) => code.startsWith(prefix) || code.endsWith(prefix))) {
+  if (GENERIC_BAD_REQUEST_PREFIXES.some((prefix) => code.startsWith(prefix)) ||
+      GENERIC_BAD_REQUEST_SUFFIXES.some((suffix) => code.endsWith(suffix))) {
     return { status: 400, message: 'Los datos enviados no son válidos.' };
   }
   if (code.startsWith('UNAUTHORIZED_')) return { status: 403, message: 'No tiene permiso para realizar esta operación.' };
@@ -69,12 +68,20 @@ function policyFor(code: string | undefined): ErrorPolicy {
 }
 
 export function toSafeErrorResponse(error: unknown): { status: number; body: SafeErrorResponse } {
-  const code = extractCode(error);
-  const policy = policyFor(code);
+  const internalCode = extractCode(error);
+  const policy = policyFor(internalCode);
+  const isKnownPublicCode =
+    !!internalCode &&
+    (!!POLICIES[internalCode] ||
+      GENERIC_BAD_REQUEST_PREFIXES.some((prefix) => internalCode.startsWith(prefix)) ||
+      GENERIC_BAD_REQUEST_SUFFIXES.some((suffix) => internalCode.endsWith(suffix)) ||
+      internalCode.startsWith('UNAUTHORIZED_') ||
+      internalCode.startsWith('NOT_FOUND_'));
+
   return {
     status: policy.status,
     body: {
-      error: code || 'INTERNAL_SERVER_ERROR',
+      error: isKnownPublicCode ? internalCode! : INTERNAL_ERROR_CODE,
       message: policy.message,
     },
   };
