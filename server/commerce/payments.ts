@@ -21,6 +21,14 @@ function generateExternalReference(): string {
   return `ubika_pay_${crypto.randomUUID()}`;
 }
 
+/** Keep only payment fields that are useful to UBIKA; never persist arbitrary provider payloads. */
+function sanitizeProviderResponse(data: unknown): Record<string, unknown> {
+  if (!data || typeof data !== 'object') return {};
+  const source = data as Record<string, unknown>;
+  const allowed = ['status', 'status_detail', 'id', 'payment_method_id', 'transaction_amount', 'external_reference'];
+  return Object.fromEntries(allowed.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]));
+}
+
 export const PaymentProviderService = {
   async createPayment(options: PaymentProcessOptions): Promise<{ success: boolean; externalReference: string; providerResponse: any }> {
     const accessToken = getMercadoPagoAccessToken();
@@ -37,7 +45,7 @@ export const PaymentProviderService = {
           id: `mp_${crypto.randomUUID()}`,
           payment_method_id: options.paymentMethod,
           transaction_amount: options.amount,
-          idempotency_key: options.idempotencyKey,
+          external_reference: externalReference,
         },
       };
     }
@@ -59,21 +67,22 @@ export const PaymentProviderService = {
       });
 
       const data = await response.json();
+      const safeResponse = sanitizeProviderResponse(data);
       if (response.ok) {
         return {
           success: data.status === 'approved' || data.status === 'pending',
           externalReference,
-          providerResponse: data,
+          providerResponse: safeResponse,
         };
       }
 
-      return { success: false, externalReference, providerResponse: data };
+      return { success: false, externalReference, providerResponse: safeResponse };
     } catch (err) {
-      console.error('[PaymentProviderService Error]:', err);
+      console.error('[PaymentProviderService Error]:', err instanceof Error ? err.message : 'unknown provider error');
       return {
         success: false,
         externalReference,
-        providerResponse: { error: String(err) },
+        providerResponse: { error: 'PAYMENT_PROVIDER_UNAVAILABLE' },
       };
     }
   },
@@ -106,9 +115,10 @@ export const PaymentProviderService = {
         body: JSON.stringify(amount === undefined ? {} : { amount }),
       });
       const data = await response.json();
-      return { success: response.ok, response: data };
+      return { success: response.ok, response: sanitizeProviderResponse(data) };
     } catch (err) {
-      return { success: false, response: { error: String(err) } };
+      console.error('[PaymentProviderService Refund Error]:', err instanceof Error ? err.message : 'unknown provider error');
+      return { success: false, response: { error: 'REFUND_PROVIDER_UNAVAILABLE' } };
     }
   }
 };
