@@ -1,10 +1,9 @@
 name: UBIKA CI
 
+# Verification is intentionally held until the production-hardening code phases are complete.
+# Do not run tests/lint/build during the implementation pass.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -12,20 +11,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
       - name: Install dependencies
         run: bun install --no-progress
-
       - name: Typecheck
         run: bun run lint
-
       - name: Tests
         run: bun run test
-
       - name: Production build
         run: bun run build
