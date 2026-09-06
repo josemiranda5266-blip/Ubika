@@ -24,15 +24,15 @@ function getRefundEntries(entity: any): RefundEntry[] {
   return Array.isArray(entity?.refunds) ? entity.refunds : [];
 }
 
-function getCompletedRefundedAmount(entity: any): number {
+function getReservedRefundAmount(entity: any): number {
   return Math.round(getRefundEntries(entity)
-    .filter(refund => refund.status === 'COMPLETED')
+    .filter(refund => refund.status === 'COMPLETED' || refund.status === 'PENDING_MANUAL')
     .reduce((sum, refund) => sum + Number(refund.amount || 0), 0) * 100) / 100;
 }
 
 function canRefund(entity: any, total: number, amount: number): boolean {
-  const completed = getCompletedRefundedAmount(entity);
-  return amount <= Math.round((total - completed) * 100) / 100;
+  const reserved = getReservedRefundAmount(entity);
+  return amount <= Math.round((total - reserved) * 100) / 100;
 }
 
 function buildRefundEntry(amount: number, method: RefundMethod | string, status: RefundEntry['status']): RefundEntry {
@@ -41,7 +41,8 @@ function buildRefundEntry(amount: number, method: RefundMethod | string, status:
 
 /**
  * Executes the provider/customer-credit side of a refund and records the
- * operation on the source entity. Sequential duplicate refunds are rejected.
+ * operation on the source entity. Completed and pending-manual amounts are
+ * reserved so sequential duplicate requests cannot exceed the sale total.
  * Cross-instance atomicity remains a Phase 3 persistence requirement.
  */
 export async function processRefund(
@@ -58,7 +59,7 @@ export async function processRefund(
 
     const refundAmount = normalizeRefundAmount(amount, total);
     if (refundAmount === null || !canRefund(sale, total, refundAmount)) {
-      return { success: false, details: { error: 'Importe de reintegro inválido o superior al saldo reintegrable', saleId, total, refundedAmount: getCompletedRefundedAmount(sale) } };
+      return { success: false, details: { error: 'Importe de reintegro inválido o superior al saldo reintegrable', saleId, total, refundedAmount: getReservedRefundAmount(sale) } };
     }
 
     const originalPayment = (sale.payments || []).find(p => p.status === 'COMPLETED') || (sale.payments || [])[0];
@@ -80,7 +81,7 @@ export async function processRefund(
       const refunds = [...getRefundEntries(sale), entry];
       CommerceRepository.updateSale(sale.id, {
         refunds,
-        status: getCompletedRefundedAmount({ refunds }) >= total ? 'REFUNDED' : sale.status,
+        status: getReservedRefundAmount({ refunds }) >= total ? 'REFUNDED' : sale.status,
       } as any);
       return { success: true, details: { method: 'STORE_CREDIT', credited: refundAmount, customerId: customer.id, saleId } };
     }
@@ -94,7 +95,7 @@ export async function processRefund(
       const refunds = [...getRefundEntries(sale), entry];
       CommerceRepository.updateSale(sale.id, {
         refunds,
-        status: getCompletedRefundedAmount({ refunds }) >= total ? 'REFUNDED' : sale.status,
+        status: getReservedRefundAmount({ refunds }) >= total ? 'REFUNDED' : sale.status,
       } as any);
       return { success: true, details: { method: 'MERCADO_PAGO', amount: refundAmount, response: mpRes.response, saleId } };
     }
@@ -117,7 +118,7 @@ export async function processRefund(
     }
     const refundAmount = normalizeRefundAmount(amount, total);
     if (refundAmount === null || !canRefund(foodOrder, total, refundAmount)) {
-      return { success: false, details: { error: 'Importe de reintegro inválido o superior al saldo reintegrable', orderId: foodOrder.id, total, refundedAmount: getCompletedRefundedAmount(foodOrder) } };
+      return { success: false, details: { error: 'Importe de reintegro inválido o superior al saldo reintegrable', orderId: foodOrder.id, total, refundedAmount: getReservedRefundAmount(foodOrder) } };
     }
 
     const entry = buildRefundEntry(refundAmount, method || foodOrder.paymentMethod || 'ORIGINAL_PAYMENT', 'PENDING_MANUAL');
