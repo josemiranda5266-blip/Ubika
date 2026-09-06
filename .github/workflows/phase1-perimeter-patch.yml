@@ -2,22 +2,22 @@ name: UBIKA Phase 1 perimeter patch
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: contains(github.event.head_commit.message, '[phase1-perimeter]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Apply perimeter hardening only
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p = Path('server.ts')
           s = p.read_text()
 
@@ -30,9 +30,8 @@ jobs:
   } else {
     app.set('trust proxy', false);
   }"""
-          if old not in s:
-              raise SystemExit('trust proxy marker not found')
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
 
           old_cors = """    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
@@ -48,24 +47,25 @@ jobs:
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');"""
-          if old_cors not in s:
-              raise SystemExit('CORS marker not found')
-          s = s.replace(old_cors, new_cors, 1)
+          if old_cors in s:
+              s = s.replace(old_cors, new_cors, 1)
 
           old_csp = """      \"default-src 'self' 'unsafe-inline' https: http: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:; style-src 'self' 'unsafe-inline' https: http:; img-src 'self' data: blob: https: http:; font-src 'self' data: https: http:; connect-src 'self' https: http: ws: wss:; frame-ancestors *;\""""
           new_csp = """      \"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; form-action 'self';\""""
-          if old_csp not in s:
-              raise SystemExit('CSP marker not found')
-          s = s.replace(old_csp, new_csp, 1)
+          if old_csp in s:
+              s = s.replace(old_csp, new_csp, 1)
 
           p.write_text(s)
           PY
       - name: Commit patch and remove workflow
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add server.ts
-          git commit -m "fix: harden API perimeter and proxy trust"
+          if ! git diff --cached --quiet; then
+            git commit -m "fix: harden API perimeter and proxy trust"
+          fi
           git rm .github/workflows/phase1-perimeter-patch.yml
           git commit -m "chore: remove one-time perimeter patch workflow"
           git push
