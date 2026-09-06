@@ -1,8 +1,17 @@
+import crypto from 'crypto';
 import { CommerceRepository } from '../commerce/repository';
 import { PaymentProviderService } from '../commerce/payments';
 import { db } from '../db';
 
 type RefundMethod = 'ORIGINAL_PAYMENT' | 'STORE_CREDIT' | 'BANK_TRANSFER';
+
+type RefundEntry = {
+  id: string;
+  amount: number;
+  method: RefundMethod | string;
+  status: 'COMPLETED' | 'PENDING_MANUAL';
+  createdAt: number;
+};
 
 function normalizeRefundAmount(amount: number | undefined, total: number): number | null {
   const refundAmount = amount ?? total;
@@ -11,10 +20,29 @@ function normalizeRefundAmount(amount: number | undefined, total: number): numbe
   return Math.round(refundAmount * 100) / 100;
 }
 
+function getRefundEntries(entity: any): RefundEntry[] {
+  return Array.isArray(entity?.refunds) ? entity.refunds : [];
+}
+
+function getCompletedRefundedAmount(entity: any): number {
+  return Math.round(getRefundEntries(entity)
+    .filter(refund => refund.status === 'COMPLETED')
+    .reduce((sum, refund) => sum + Number(refund.amount || 0), 0) * 100) / 100;
+}
+
+function canRefund(entity: any, total: number, amount: number): boolean {
+  const completed = getCompletedRefundedAmount(entity);
+  return amount <= Math.round((total - completed) * 100) / 100;
+}
+
+function buildRefundEntry(amount: number, method: RefundMethod | string, status: RefundEntry['status']): RefundEntry {
+  return { id: `ref_${crypto.randomUUID()}`, amount, method, status, createdAt: Date.now() };
+}
+
 /**
- * Executes only the provider/customer-credit side of a refund. The caller is
- * responsible for authorization and for persisting the final legal/order
- * state. Unknown sale IDs are failures, never successful "manual" refunds.
+ * Executes the provider/customer-credit side of a refund and records the
+ * operation on the source entity. Sequential duplicate refunds are rejected.
+ * Cross-instance atomicity remains a Phase 3 persistence requirement.
  */
 export async function processRefund(
   saleId: string,
@@ -29,8 +57,8 @@ export async function processRefund(
     }
 
     const refundAmount = normalizeRefundAmount(amount, total);
-    if (refundAmount === null) {
-      return { success: false, details: { error: 'Importe de reintegro inválido', saleId, total } };
+    if (refundAmount === null || !canRefund(sale, total, refundAmount)) {
+      return { success: false, details: { error: 'Importe de reintegro inválido o superior al saldo reintegrable', saleId, total, refundedAmount: getCompletedRefundedAmount(sale) } };
     }
 
     const originalPayment = (sale.payments || []).find(p => p.status === 'COMPLETED') || (sale.payments || [])[0];
@@ -48,59 +76,59 @@ export async function processRefund(
       CommerceRepository.updateCustomer(customer.id, {
         accountBalance: Number(customer.accountBalance || 0) + refundAmount,
       });
-      return {
-        success: true,
-        details: { method: 'STORE_CREDIT', credited: refundAmount, customerId: customer.id, saleId },
-      };
+      const entry = buildRefundEntry(refundAmount, refundMethod, 'COMPLETED');
+      const refunds = [...getRefundEntries(sale), entry];
+      CommerceRepository.updateSale(sale.id, {
+        refunds,
+        status: getCompletedRefundedAmount({ refunds }) >= total ? 'REFUNDED' : sale.status,
+      } as any);
+      return { success: true, details: { method: 'STORE_CREDIT', credited: refundAmount, customerId: customer.id, saleId } };
     }
 
     if (refundMethod === 'ORIGINAL_PAYMENT' && originalPayment?.externalReference && originalPayment.method === 'MERCADO_PAGO') {
       const mpRes = await PaymentProviderService.refundPayment(originalPayment.externalReference);
-      return {
-        success: mpRes.success,
-        details: {
-          method: 'MERCADO_PAGO',
-          amount: refundAmount,
-          response: mpRes.response,
-          saleId,
-        },
-      };
+      if (!mpRes.success) {
+        return { success: false, details: { method: 'MERCADO_PAGO', amount: refundAmount, response: mpRes.response, saleId } };
+      }
+      const entry = buildRefundEntry(refundAmount, refundMethod, 'COMPLETED');
+      const refunds = [...getRefundEntries(sale), entry];
+      CommerceRepository.updateSale(sale.id, {
+        refunds,
+        status: getCompletedRefundedAmount({ refunds }) >= total ? 'REFUNDED' : sale.status,
+      } as any);
+      return { success: true, details: { method: 'MERCADO_PAGO', amount: refundAmount, response: mpRes.response, saleId } };
     }
 
-    // Cash, bank transfer and other manual original-payment refunds are
-    // acknowledged as a pending/manual operation, not as provider settlement.
+    const entry = buildRefundEntry(refundAmount, refundMethod, 'PENDING_MANUAL');
+    CommerceRepository.updateSale(sale.id, {
+      refunds: [...getRefundEntries(sale), entry],
+    } as any);
     return {
       success: true,
-      details: {
-        method: refundMethod,
-        amount: refundAmount,
-        saleId,
-        requiresManualSettlement: true,
-      },
+      details: { method: refundMethod, amount: refundAmount, saleId, requiresManualSettlement: true, status: 'PENDING_MANUAL' },
     };
   }
 
   const foodOrder = db.getFoodOrderById(saleId);
   if (foodOrder) {
     const total = Number(foodOrder.totalAmount);
+    if (!Number.isFinite(total) || total <= 0) {
+      return { success: false, details: { error: 'Orden con importe inválido', orderId: foodOrder.id } };
+    }
     const refundAmount = normalizeRefundAmount(amount, total);
-    if (refundAmount === null) {
-      return { success: false, details: { error: 'Importe de reintegro inválido', orderId: foodOrder.id, total } };
+    if (refundAmount === null || !canRefund(foodOrder, total, refundAmount)) {
+      return { success: false, details: { error: 'Importe de reintegro inválido o superior al saldo reintegrable', orderId: foodOrder.id, total, refundedAmount: getCompletedRefundedAmount(foodOrder) } };
     }
 
+    const entry = buildRefundEntry(refundAmount, method || foodOrder.paymentMethod || 'ORIGINAL_PAYMENT', 'PENDING_MANUAL');
+    db.updateFoodOrder(foodOrder.id, {
+      refunds: [...getRefundEntries(foodOrder), entry],
+    } as any);
     return {
       success: true,
-      details: {
-        orderId: foodOrder.id,
-        refundAmount,
-        method: method || foodOrder.paymentMethod,
-        requiresManualSettlement: true,
-      },
+      details: { orderId: foodOrder.id, refundAmount, method: entry.method, requiresManualSettlement: true, status: 'PENDING_MANUAL' },
     };
   }
 
-  return {
-    success: false,
-    details: { error: 'Venta u orden no encontrada', saleId },
-  };
+  return { success: false, details: { error: 'Venta u orden no encontrada', saleId } };
 }
