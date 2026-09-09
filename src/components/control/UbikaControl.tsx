@@ -35,7 +35,7 @@ interface UbikaControlProps {
   onOpenCustomerLink?: (token: string) => void;
 }
 
-export type ControlTab = 'dashboard' | 'history' | 'map' | 'drivers' | 'routes' | 'audit';
+export type ControlTab = 'dashboard' | 'history' | 'map' | 'drivers' | 'routes' | 'audit' | 'users';
 
 export const UbikaControl: React.FC<UbikaControlProps> = ({ onOpenCustomerLink }) => {
   const currentUser = getStoredUser();

@@ -48,10 +48,10 @@ function buildRefundEntry(amount: number, method: RefundMethod | string, status:
 function resolveRefundCompanyId(saleId: string): string | null {
   const state: any = db.getRawState();
   const requests = Array.isArray(state?.withdrawal_requests) ? state.withdrawal_requests : [];
-  const companyIds = [...new Set(
+  const companyIds: string[] = [...new Set(
     requests
       .filter((request: any) => request?.saleId === saleId && typeof request?.companyId === 'string' && request.companyId.trim())
-      .map((request: any) => request.companyId.trim())
+      .map((request: any): string => request.companyId.trim())
   )];
 
   return companyIds.length === 1 ? companyIds[0] : null;
