@@ -1,0 +1,44 @@
+name: One-time type repair
+
+on:
+  push:
+    branches: [ops/production-hardening-adapter]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor == 'josemiranda5266-blip'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ops/production-hardening-adapter
+      - name: Apply targeted repairs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('server/legal/refunds.ts')
+          s = p.read_text()
+          old = '''  const companyIds = [...new Set(\n    requests\n      .filter((request: any) => request?.saleId === saleId && typeof request?.companyId === 'string' && request.companyId.trim())\n      .map((request: any) => request.companyId.trim())\n  )];'''
+          new = '''  const companyIds: string[] = [...new Set(\n    requests\n      .filter((request: any) => request?.saleId === saleId && typeof request?.companyId === 'string' && request.companyId.trim())\n      .map((request: any): string => request.companyId.trim())\n  )];'''
+          if old not in s: raise SystemExit('refunds target not found')
+          p.write_text(s.replace(old, new))
+
+          p = Path('src/components/control/UbikaControl.tsx')
+          s = p.read_text()
+          old = "export type ControlTab = 'dashboard' | 'history' | 'map' | 'drivers' | 'routes' | 'audit';"
+          new = "export type ControlTab = 'dashboard' | 'history' | 'map' | 'drivers' | 'routes' | 'audit' | 'users';"
+          if old not in s: raise SystemExit('ControlTab target not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Remove one-time workflow
+        run: rm .github/workflows/one-time-type-repair.yml
+      - name: Commit repairs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add server/legal/refunds.ts src/components/control/UbikaControl.tsx .github/workflows/one-time-type-repair.yml
+          git diff --cached --quiet || git commit -m 'fix: resolve existing TypeScript errors'
+          git push origin HEAD:ops/production-hardening-adapter
