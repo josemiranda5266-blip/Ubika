@@ -24,7 +24,16 @@ function ensureBackupDirectory(): void {
 function isAuthorizedBackupFile(filePath: string): boolean {
   const resolved = path.resolve(filePath);
   const root = path.resolve(BACKUPS_DIR) + path.sep;
-  return resolved.startsWith(root) && path.basename(resolved).startsWith(BACKUP_PREFIX) && resolved.endsWith('.json');
+  if (!resolved.startsWith(root) || !path.basename(resolved).startsWith(BACKUP_PREFIX) || !resolved.endsWith('.json')) {
+    return false;
+  }
+
+  try {
+    const stat = fs.lstatSync(resolved);
+    return stat.isFile();
+  } catch {
+    return false;
+  }
 }
 
 function sha256File(filePath: string): string {
@@ -39,11 +48,32 @@ function validateDatabaseShape(value: unknown): asserts value is { users: unknow
   }
 }
 
-function validateManifest(manifest: BackupManifest, backupPath: string): void {
-  if (manifest.format !== 'ubika-backup-v2') throw new Error('UNSUPPORTED_BACKUP_FORMAT');
+function validateManifest(value: unknown, backupPath: string): void {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('INVALID_BACKUP_MANIFEST');
+  }
+
+  const manifest = value as Record<string, unknown>;
+  if (
+    manifest.format !== 'ubika-backup-v2' ||
+    typeof manifest.createdAt !== 'string' ||
+    manifest.source !== 'ubika_persistent_db.json' ||
+    typeof manifest.sha256 !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(manifest.sha256) ||
+    typeof manifest.bytes !== 'number' ||
+    !Number.isSafeInteger(manifest.bytes) ||
+    manifest.bytes < 0
+  ) {
+    throw new Error('INVALID_BACKUP_MANIFEST');
+  }
+
   const actualBytes = fs.statSync(backupPath).size;
   if (manifest.bytes !== actualBytes) throw new Error('BACKUP_SIZE_MISMATCH');
   if (manifest.sha256 !== sha256File(backupPath)) throw new Error('BACKUP_INTEGRITY_FAILED');
+}
+
+function isRegularBackupFileName(name: string): boolean {
+  return name.startsWith(BACKUP_PREFIX) && name.endsWith('.json') && !name.endsWith('.manifest.json');
 }
 
 export function createBackupV2(): { fileName: string; sha256: string; bytes: number } {
@@ -73,7 +103,7 @@ export function createBackupV2(): { fileName: string; sha256: string; bytes: num
   fs.writeFileSync(`${target}.manifest.json`, JSON.stringify(manifest, null, 2), 'utf8');
 
   const backups = fs.readdirSync(BACKUPS_DIR)
-    .filter((name) => name.startsWith(BACKUP_PREFIX) && name.endsWith('.json') && !name.endsWith('.manifest.json'))
+    .filter(isRegularBackupFileName)
     .sort();
   while (backups.length > MAX_BACKUPS) {
     const oldest = backups.shift();
@@ -94,7 +124,14 @@ export function restoreBackupV2(fileName: string): { restoredFrom: string; rollb
 
   const manifestPath = `${backupPath}.manifest.json`;
   if (!fs.existsSync(manifestPath)) throw new Error('BACKUP_MANIFEST_NOT_FOUND');
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as BackupManifest;
+  try {
+    if (!fs.lstatSync(manifestPath).isFile()) throw new Error('BACKUP_MANIFEST_NOT_FOUND');
+  } catch (error) {
+    if (error instanceof Error && error.message === 'BACKUP_MANIFEST_NOT_FOUND') throw error;
+    throw new Error('BACKUP_MANIFEST_NOT_FOUND');
+  }
+
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as unknown;
   validateManifest(manifest, backupPath);
 
   const parsed = JSON.parse(fs.readFileSync(backupPath, 'utf8')) as unknown;
@@ -127,7 +164,14 @@ export function restoreBackupV2(fileName: string): { restoredFrom: string; rollb
 export function listBackupsV2(): Array<{ fileName: string; bytes: number; sha256: string }> {
   ensureBackupDirectory();
   return fs.readdirSync(BACKUPS_DIR)
-    .filter((name) => name.startsWith(BACKUP_PREFIX) && name.endsWith('.json') && !name.endsWith('.manifest.json'))
+    .filter(isRegularBackupFileName)
+    .filter((fileName) => {
+      try {
+        return fs.lstatSync(path.join(BACKUPS_DIR, fileName)).isFile();
+      } catch {
+        return false;
+      }
+    })
     .sort()
     .reverse()
     .map((fileName) => ({
