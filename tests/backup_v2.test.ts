@@ -51,6 +51,12 @@ async function runBackupV2Tests() {
   assert.throws(() => restoreBackupV2(backup.fileName), /BACKUP_SIZE_MISMATCH|BACKUP_INTEGRITY_FAILED/);
   fs.writeFileSync(backupPath, originalBackup);
 
+  // A structurally invalid manifest must be rejected before any restore or rollback is attempted.
+  const originalManifest = fs.readFileSync(manifestPath, 'utf8');
+  fs.writeFileSync(manifestPath, JSON.stringify({ format: 'ubika-backup-v2', bytes: 'invalid' }), 'utf8');
+  assert.throws(() => restoreBackupV2(backup.fileName), /INVALID_BACKUP_MANIFEST/);
+  fs.writeFileSync(manifestPath, originalManifest, 'utf8');
+
   // The restore path must preserve the live state first and then reload it.
   const beforeRestore = fs.readFileSync(dbFile, 'utf8');
   const result = restoreBackupV2(backup.fileName);
@@ -72,6 +78,7 @@ async function runBackupV2Tests() {
 
   console.log('✔ Backup creation, manifest integrity and retention listing');
   console.log('✔ Tampered payload rejected by size/hash validation');
+  console.log('✔ Malformed manifest rejected before restore');
   console.log('✔ Restore and rollback snapshot creation');
   console.log('✔ Retention limit enforced');
   console.log('✔ Path traversal protection');
