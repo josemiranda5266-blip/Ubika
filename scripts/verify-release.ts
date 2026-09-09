@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process';
 
 const checks = [
-  { name: 'Typecheck', command: 'bun', args: ['run', 'lint'] },
-  { name: 'Tests', command: 'bun', args: ['run', 'test'] },
-  { name: 'Production build', command: 'bun', args: ['run', 'build'] },
+  { name: 'Typecheck', command: 'npm', args: ['run', 'lint'] },
+  { name: 'Tests', command: 'npm', args: ['run', 'test'] },
+  { name: 'Production build', command: 'npm', args: ['run', 'build'] },
 ];
 
 console.log('\nUBIKA — VERIFICACIÓN DE RELEASE\n');
@@ -36,4 +36,4 @@ console.log('✔ TYPECHECK: OK');
 console.log('✔ TESTS: OK');
 console.log('✔ BUILD: OK');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-console.log('🚀 UBIKA ESTÁ LISTA PARA PUBLICAR.\n');
+console.log('✔ VERIFICACIONES DE CÓDIGO COMPLETADAS.\n');
