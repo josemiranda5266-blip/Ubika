@@ -4,11 +4,12 @@ import jwt from 'jsonwebtoken';
 import { db, UserRecord, UserRole } from './db';
 
 const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET is not configured. Server cannot start.');
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be configured with at least 32 characters. Server cannot start.');
 }
 
 const JWT_EXPIRES_IN = '24h';
+const JWT_ALGORITHM = 'HS256' as const;
 
 export interface AuthenticatedUserPayload {
   userId: string;
@@ -23,8 +24,8 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export function generateAuthToken(user: UserRecord): string {
-  if (!JWT_SECRET) {
-    throw new Error('JWT_SECRET is not configured');
+  if (!JWT_SECRET || JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET must be configured with at least 32 characters');
   }
   const payload: AuthenticatedUserPayload = {
     userId: user.id,
@@ -34,7 +35,7 @@ export function generateAuthToken(user: UserRecord): string {
     companyId: user.companyId,
     driverId: user.driverId,
   };
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN, algorithm: JWT_ALGORITHM });
 }
 
 export function authenticateUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -56,7 +57,7 @@ export function authenticateUser(req: AuthenticatedRequest, res: Response, next:
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET!) as Partial<AuthenticatedUserPayload>;
+    const decoded = jwt.verify(token, JWT_SECRET!, { algorithms: [JWT_ALGORITHM] }) as Partial<AuthenticatedUserPayload>;
     if (typeof decoded.userId !== 'string' || decoded.userId.length === 0) {
       return res.status(401).json({ error: 'Token inválido', message: 'El token no identifica a un usuario válido' });
     }
